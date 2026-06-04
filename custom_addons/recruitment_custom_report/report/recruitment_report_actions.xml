@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 1. Pipeline Summary -->
+    <record id="action_report_recruitment_pipeline" model="ir.actions.report">
+        <field name="name">Pipeline Summary</field>
+        <field name="model">hr.applicant</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">recruitment_custom_report.rpt_pipeline</field>
+        <field name="report_file">recruitment_custom_report.rpt_pipeline</field>
+        <field name="print_report_name">'Recruitment Pipeline Summary'</field>
+        <field name="binding_model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- 2. Stage-wise Analysis -->
+    <record id="action_report_recruitment_stage_analysis" model="ir.actions.report">
+        <field name="name">Stage-wise Analysis</field>
+        <field name="model">hr.applicant</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">recruitment_custom_report.rpt_stage</field>
+        <field name="report_file">recruitment_custom_report.rpt_stage</field>
+        <field name="print_report_name">'Stage-wise Recruitment Analysis'</field>
+        <field name="binding_model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- 3. Activity Report -->
+    <record id="action_report_recruitment_activity" model="ir.actions.report">
+        <field name="name">Recruitment Activity</field>
+        <field name="model">hr.applicant</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">recruitment_custom_report.rpt_activity</field>
+        <field name="report_file">recruitment_custom_report.rpt_activity</field>
+        <field name="print_report_name">'Recruitment Activity Report'</field>
+        <field name="binding_model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- 4. Applicant Status -->
+    <record id="action_report_recruitment_applicant_status" model="ir.actions.report">
+        <field name="name">Applicant Status</field>
+        <field name="model">hr.applicant</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">recruitment_custom_report.rpt_status</field>
+        <field name="report_file">recruitment_custom_report.rpt_status</field>
+        <field name="print_report_name">'Applicant Status Report'</field>
+        <field name="binding_model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>
