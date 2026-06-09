@@ -17,6 +17,9 @@
                 <field name="x_role_status"     string="Role Status"/>
                 <field name="x_sub_status"      string="Sub Status"/>
             </xpath>
+            <xpath expr="//field[@name='user_id']" position="replace">
+                <field name="x_recruiter_ids" widget="many2many_tags" options="{'no_create': True}"/>
+            </xpath>
         </field>
     </record>
 
@@ -61,6 +64,10 @@
                 <field name="x_poc_id"          string="POC"             optional="show"/>
                 <field name="x_role_status"     string="Role Status"     optional="show"/>
                 <field name="x_sub_status"      string="Sub Status"      optional="show"/>
+                <field name="x_recruiter_ids"   widget="many2many_tags"  optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="replace">
+                <!-- Removed original user_id in favor of x_recruiter_ids above -->
             </xpath>
         </field>
     </record>
@@ -77,6 +84,24 @@
             <xpath expr="//field[@name='name'][@class='fs-3']" position="replace">
                 <field class="fs-3" name="x_display_name"/>
             </xpath>
+            <xpath expr="//div[hasclass('col') and div/@groups='!base.group_multi_company']" position="replace">
+                <div class="col">
+                    <div groups="!base.group_multi_company">
+                        <field name="x_recruiter_ids" widget="many2many_avatar_user" options="{'display_avatar_name': True}"/>
+                    </div>
+                    <div groups="base.group_multi_company">
+                        <t t-if="record.company_id.raw_value != 0">
+                            <div class="d-flex flex-row align-items-center">
+                                <field name="x_recruiter_ids" widget="many2many_avatar_user" options="{'display_avatar_name': False}"/>
+                                <field class="ms-1" name="company_id"/>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <field name="x_recruiter_ids" widget="many2many_avatar_user" options="{'display_avatar_name': True}"/>
+                        </t>
+                    </div>
+                </div>
+            </xpath>
         </field>
     </record>
 
@@ -91,6 +116,9 @@
             </xpath>
             <xpath expr="//filter[@name='department']" position="attributes">
                 <attribute name="string">Client</attribute>
+            </xpath>
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="x_recruiter_ids" string="Recruiters"/>
             </xpath>
         </field>
     </record>

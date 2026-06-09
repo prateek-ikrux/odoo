@@ -41,6 +41,42 @@ class HrJob(models.Model):
         store=True,
     )
 
+    x_recruiter_ids = fields.Many2many(
+        'res.users',
+        'hr_job_recruiter_rel',
+        'job_id', 'user_id',
+        string='Recruiters',
+        domain="[('share', '=', False)]",
+    )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        jobs = super().create(vals_list)
+        for job in jobs:
+            # Sync original user_id with first recruiter in x_recruiter_ids
+            if job.x_recruiter_ids and not job.user_id:
+                job.user_id = job.x_recruiter_ids[0]
+            # If user_id was set directly and x_recruiter_ids is empty, sync back
+            elif job.user_id and not job.x_recruiter_ids:
+                job.x_recruiter_ids = [(4, job.user_id.id)]
+        return jobs
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'x_recruiter_ids' in vals:
+            for job in self:
+                if job.x_recruiter_ids:
+                    # Update primary user_id if not among the selected recruiters
+                    if job.user_id not in job.x_recruiter_ids:
+                        job.user_id = job.x_recruiter_ids[0]
+                else:
+                    job.user_id = False
+        elif 'user_id' in vals:
+            for job in self:
+                if job.user_id and job.user_id not in job.x_recruiter_ids:
+                    job.x_recruiter_ids = [(4, job.user_id.id)]
+        return res
+
     def _job_display_label(self, name, department, employment_type):
         """Build a disambiguated label: Role (Client - FTE)."""
         emp_labels = {'fte': 'FTE', 'consulting': 'Consulting'}
