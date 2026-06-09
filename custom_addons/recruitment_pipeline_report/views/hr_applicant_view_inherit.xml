@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- FORM — job-position fields shown readonly from linked job -->
+    <record id="hr_applicant_form_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.applicant.form.inherit.pipeline</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_applicant_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="x_employment_type" string="Employment Type" readonly="1"/>
+                <field name="x_poc_id"          string="POC"             readonly="1"/>
+                <field name="x_role_status"     string="Role Status"     readonly="1"/>
+                <field name="x_sub_status"      string="Sub Status"      readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- LIST — readonly job-position columns -->
+    <record id="hr_applicant_list_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.applicant.list.inherit.pipeline</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.crm_case_tree_view_job"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+            <xpath expr="//field[@name='stage_id']" position="after">
+                <field name="x_role_status" string="Role Status" optional="show" readonly="1"/>
+                <field name="x_sub_status"  string="Sub Status"  optional="show" readonly="1"/>
+                <field name="x_poc_id"      string="POC"         optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- SEARCH (Recruitment Analysis) -->
+    <record id="hr_applicant_search_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.applicant.search.inherit.pipeline</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_applicant_view_search"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="x_poc_id" string="POC"/>
+            </xpath>
+
+            <xpath expr="//filter[@name='department']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+
+            <xpath expr="//search/separator[1]" position="before">
+                <separator/>
+                <filter name="ps_active"
+                        string="Active"
+                        domain="[('x_role_status','=','active')]"/>
+                <filter name="ps_in_progress"
+                        string="In Progress"
+                        domain="[('x_role_status','=','in_progress')]"/>
+                <filter name="ps_on_hold"
+                        string="On Hold"
+                        domain="[('x_role_status','=','on_hold')]"/>
+                <filter name="ps_closed"
+                        string="Closed"
+                        domain="[('x_role_status','=','closed')]"/>
+            </xpath>
+
+            <xpath expr="//search/group" position="inside">
+                <filter name="group_by_role_status"
+                        string="Role Status"
+                        context="{'group_by': 'x_role_status'}"/>
+                <filter name="group_by_emp_type"
+                        string="Employment Type"
+                        context="{'group_by': 'x_employment_type'}"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- SEARCH (main Applications menu — hr_applicant_view_search_bis) -->
+    <record id="hr_applicant_search_bis_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.applicant.search.bis.inherit.pipeline</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_applicant_view_search_bis"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="x_poc_id" string="POC"/>
+            </xpath>
+
+            <xpath expr="//search/separator[1]" position="before">
+                <separator/>
+                <filter name="ps_active"
+                        string="Active"
+                        domain="[('x_role_status','=','active')]"/>
+                <filter name="ps_in_progress"
+                        string="In Progress"
+                        domain="[('x_role_status','=','in_progress')]"/>
+                <filter name="ps_on_hold"
+                        string="On Hold"
+                        domain="[('x_role_status','=','on_hold')]"/>
+                <filter name="ps_closed"
+                        string="Closed"
+                        domain="[('x_role_status','=','closed')]"/>
+            </xpath>
+
+            <xpath expr="//search/group" position="inside">
+                <filter name="group_by_client"
+                        string="Client"
+                        context="{'group_by': 'department_id'}"/>
+                <filter name="group_by_role_status"
+                        string="Role Status"
+                        context="{'group_by': 'x_role_status'}"/>
+                <filter name="group_by_emp_type"
+                        string="Employment Type"
+                        context="{'group_by': 'x_employment_type'}"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

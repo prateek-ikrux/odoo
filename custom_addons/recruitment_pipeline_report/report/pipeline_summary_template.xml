@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<record id="paperformat_a3_landscape" model="report.paperformat">
+    <field name="name">A3 Landscape - Pipeline Summary</field>
+    <field name="default">False</field>
+    <field name="format">A3</field>
+    <field name="orientation">Landscape</field>
+    <field name="margin_top">8</field>
+    <field name="margin_bottom">8</field>
+    <field name="margin_left">5</field>
+    <field name="margin_right">5</field>
+    <field name="header_line">False</field>
+    <field name="header_spacing">3</field>
+    <field name="dpi">96</field>
+</record>
+
+<template id="report_pipeline_summary_document">
+<t t-call="web.html_container">
+<t t-foreach="docs" t-as="o">
+<t t-set="rows" t-value="o._get_report_data()"/>
+<t t-call="web.external_layout">
+<div class="page">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 6.5pt; color: #111; }
+  .rpt-hdr { display:flex; justify-content:space-between; align-items:baseline;
+             border-bottom:2px solid #333; padding-bottom:4px; margin-bottom:6px; }
+  .rpt-title { font-size:12pt; font-weight:700; margin:0; }
+  .rpt-meta  { font-size:6pt; color:#666; }
+  .ptbl { width:100%; border-collapse:collapse; table-layout:fixed; }
+  .ptbl thead tr.hdr1 th {
+    background:#2c3e50; color:#fff; font-size:6pt; font-weight:700;
+    text-align:center; padding:3px 2px; border:1px solid #1a252f; }
+  .ptbl thead tr.hdr2 th {
+    background:#f0f3f4; color:#333; font-size:5.8pt; font-weight:600;
+    text-align:center; padding:3px 2px; border:1px solid #ccc;
+    vertical-align:bottom; line-height:1.2; word-wrap:break-word; }
+  .ptbl tbody tr.odd  { background:#fff; }
+  .ptbl tbody tr.even { background:#f8f9fa; }
+  .ptbl tbody td {
+    padding:2.5px 2px; font-size:6.2pt; border:1px solid #ddd;
+    vertical-align:middle; word-wrap:break-word; }
+  .ptbl tbody td.num { text-align:center; }
+  .ptbl tbody td.seq { text-align:center; color:#999; font-size:5.5pt; }
+  .w-seq { width:12px; } .w-cl  { width:52px; } .w-poc { width:52px; }
+  .w-rol { width:75px; } .w-rt  { width:38px; } .w-rs  { width:38px; }
+  .w-ss  { width:38px; } .w-np  { width:20px; } .w-num { width:22px; }
+  .b-fte { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#e74c3c;color:#fff; }
+  .b-con { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#e67e22;color:#fff; }
+  .s-act { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#27ae60;color:#fff; }
+  .s-inp { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#2980b9;color:#fff; }
+  .s-hld { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#f39c12;color:#fff; }
+  .s-cls { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#95a5a6;color:#fff; }
+  .no-data { text-align:center;color:#888;padding:14px;font-style:italic; }
+  .rpt-foot { margin-top:6px;font-size:5.5pt;color:#aaa;text-align:right; }
+</style>
+
+<div class="rpt-hdr">
+    <div class="rpt-title">Pipeline Summary</div>
+    <div class="rpt-meta">
+        <t t-if="o.date_from or o.date_to">
+            Period: <t t-if="o.date_from"><span t-esc="o.date_from"/></t>
+            <t t-if="o.date_from and o.date_to"> to </t>
+            <t t-if="o.date_to"><span t-esc="o.date_to"/></t> | 
+        </t>
+        Printed: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d %b %Y %H:%M')"/>
+    </div>
+</div>
+
+<table class="ptbl">
+    <thead>
+        <tr class="hdr1">
+            <th class="w-seq">#</th>
+            <th class="w-cl">Client</th>
+            <th class="w-poc">POC</th>
+            <th class="w-rol">Role</th>
+            <th class="w-rt">Role Type</th>
+            <th class="w-rs">Role Status</th>
+            <th class="w-ss">Sub Status</th>
+            <th class="w-np">Pos.</th>
+            <th colspan="23" style="background:#1a6b9a;">Pipeline Summary</th>
+        </tr>
+        <tr class="hdr2">
+            <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+            <th>Profiles Shared</th>
+            <th>Screening Pending</th>
+            <th>Duplicate Profiles</th>
+            <th>Assessment Link Shared</th>
+            <th>Assessment Reject</th>
+            <th>L1 TBS</th>
+            <th>L1 Slot Shared</th>
+            <th>L1 Scheduled</th>
+            <th>L1 Feedback Pending</th>
+            <th>L1 Reject</th>
+            <th>L2 TBS</th>
+            <th>L2 Slot Shared</th>
+            <th>L2 Scheduled</th>
+            <th>L2 Feedback Pending</th>
+            <th>L2 Reject</th>
+            <th>Client Round TBS</th>
+            <th>Client Round Scheduled</th>
+            <th>Client Round FP</th>
+            <th>Client Round Reject</th>
+            <th>TBO</th>
+            <th>Offered/ Yet to Join</th>
+            <th>Joined</th>
+            <th>Declined</th>
+        </tr>
+    </thead>
+    <tbody>
+        <t t-if="rows">
+            <t t-foreach="rows" t-as="row">
+                <tr t-att-class="'odd' if row_index % 2 == 0 else 'even'">
+                    <td class="seq" t-esc="row['seq']"/>
+                    <td t-esc="row['client']"/>
+                    <td t-esc="row['poc']"/>
+                    <td t-esc="row['role']"/>
+                    <td>
+                        <t t-if="row['role_type_key'] == 'fte'"><span class="b-fte">FTE</span></t>
+                        <t t-else=""><span class="b-con">Consulting</span></t>
+                    </td>
+                    <td>
+                        <t t-if="row['role_status_key'] == 'active'"><span class="s-act">Active</span></t>
+                        <t t-elif="row['role_status_key'] == 'in_progress'"><span class="s-inp">In Progress</span></t>
+                        <t t-elif="row['role_status_key'] == 'on_hold'"><span class="s-hld">On Hold</span></t>
+                        <t t-else=""><span class="s-cls">Closed</span></t>
+                    </td>
+                    <td t-esc="row['sub_status']"/>
+                    <td class="num" t-esc="row['no_of_positions']"/>
+                    <td class="num" t-esc="row['profiles_shared']"/>
+                    <td class="num" t-esc="row['screening_pending']"/>
+                    <td class="num" t-esc="row['duplicate_profiles']"/>
+                    <td class="num" t-esc="row['assessment_link_shared']"/>
+                    <td class="num" t-esc="row['assessment_reject']"/>
+                    <td class="num" t-esc="row['l1_tbs']"/>
+                    <td class="num" t-esc="row['l1_slot_shared']"/>
+                    <td class="num" t-esc="row['l1_scheduled']"/>
+                    <td class="num" t-esc="row['l1_feedback_pending']"/>
+                    <td class="num" t-esc="row['l1_reject']"/>
+                    <td class="num" t-esc="row['l2_tbs']"/>
+                    <td class="num" t-esc="row['l2_slot_shared']"/>
+                    <td class="num" t-esc="row['l2_scheduled']"/>
+                    <td class="num" t-esc="row['l2_feedback_pending']"/>
+                    <td class="num" t-esc="row['l2_reject']"/>
+                    <td class="num" t-esc="row['cr_tbs']"/>
+                    <td class="num" t-esc="row['cr_scheduled']"/>
+                    <td class="num" t-esc="row['cr_feedback_pending']"/>
+                    <td class="num" t-esc="row['cr_reject']"/>
+                    <td class="num" t-esc="row['tbo']"/>
+                    <td class="num" t-esc="row['offered']"/>
+                    <td class="num" t-esc="row['joined']"/>
+                    <td class="num" t-esc="row['declined']"/>
+                </tr>
+            </t>
+        </t>
+        <t t-else="">
+            <tr><td colspan="31" class="no-data">No data found.</td></tr>
+        </t>
+    </tbody>
+</table>
+<div class="rpt-foot">Pipeline Summary Report - Confidential</div>
+</div>
+</t>
+</t>
+</t>
+</template>
+
+</odoo>

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════
+         List view — all columns, read-only, exportable
+    ══════════════════════════════════════════════════════════ -->
+    <record id="view_pipeline_summary_list" model="ir.ui.view">
+        <field name="name">recruitment.pipeline.summary.view.list</field>
+        <field name="model">recruitment.pipeline.summary.view</field>
+        <field name="arch" type="xml">
+            <list string="Pipeline Summary" create="false" edit="false" delete="false" export_xlsx="0">
+                <header>
+                    <button name="action_export_xlsx" string="Export Excel"
+                            type="object" class="btn-primary" display="always"/>
+                </header>
+                <field name="client"                 string="Client"/>
+                <field name="poc"                    string="POC"/>
+                <field name="role"                   string="Role"/>
+                <field name="role_type"              string="Role Type"
+                       widget="badge"
+                       decoration-danger="role_type == 'fte'"
+                       decoration-warning="role_type == 'consulting'"/>
+                <field name="role_status"            string="Role Status"
+                       widget="badge"
+                       decoration-success="role_status == 'active'"
+                       decoration-info="role_status == 'in_progress'"
+                       decoration-warning="role_status == 'on_hold'"
+                       decoration-muted="role_status == 'closed'"/>
+                <field name="sub_status"             string="Sub Status"/>
+                <field name="no_of_positions"        string="No. of Positions"              sum="Total"/>
+                <field name="profiles_shared"        string="Profiles Shared"               sum="Total"/>
+                <field name="screening_pending"      string="Screening Pending"             sum="Total"/>
+                <field name="duplicate_profiles"     string="Duplicate Profiles"            sum="Total"/>
+                <field name="assessment_link_shared" string="Assessment Link Shared"        sum="Total"/>
+                <field name="assessment_reject"      string="Assessment Reject"             sum="Total"/>
+                <field name="l1_tbs"                 string="L1 TBS"                        sum="Total"/>
+                <field name="l1_slot_shared"         string="L1 Slot Shared"                sum="Total"/>
+                <field name="l1_scheduled"           string="L1 Scheduled"                  sum="Total"/>
+                <field name="l1_feedback_pending"    string="L1 Feedback Pending"           sum="Total"/>
+                <field name="l1_reject"              string="L1 Reject"                     sum="Total"/>
+                <field name="l2_tbs"                 string="L2 TBS"                        sum="Total"/>
+                <field name="l2_slot_shared"         string="L2 Slot Shared"                sum="Total"/>
+                <field name="l2_scheduled"           string="L2 Scheduled"                  sum="Total"/>
+                <field name="l2_feedback_pending"    string="L2 Feedback Pending"           sum="Total"/>
+                <field name="l2_reject"              string="L2 Reject"                     sum="Total"/>
+                <field name="cr_tbs"                 string="Client Round TBS"              sum="Total"/>
+                <field name="cr_scheduled"           string="Client Round Scheduled"        sum="Total"/>
+                <field name="cr_feedback_pending"    string="Client Round Feedback Pending" sum="Total"/>
+                <field name="cr_reject"              string="Client Round Reject"           sum="Total"/>
+                <field name="tbo"                    string="TBO"                           sum="Total"/>
+                <field name="offered"                string="Offered/Yet to Join"           sum="Total"/>
+                <field name="joined"                 string="Joined"                        sum="Total"/>
+                <field name="declined"               string="Declined"                      sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════
+         Pivot view
+    ══════════════════════════════════════════════════════════ -->
+    <record id="view_pipeline_summary_pivot" model="ir.ui.view">
+        <field name="name">recruitment.pipeline.summary.view.pivot</field>
+        <field name="model">recruitment.pipeline.summary.view</field>
+        <field name="arch" type="xml">
+            <pivot string="Pipeline Summary" display_quantity="true">
+                <field name="client"                 type="row"/>
+                <field name="poc"                    type="row"/>
+                <field name="role"                   type="row"/>
+                <field name="role_type"              type="row"/>
+                <field name="role_status"            type="row"/>
+                <field name="sub_status"             type="row"/>
+                <field name="no_of_positions"        type="measure"/>
+                <field name="profiles_shared"        type="measure"/>
+                <field name="screening_pending"      type="measure"/>
+                <field name="l1_tbs"                 type="measure"/>
+                <field name="l1_slot_shared"         type="measure"/>
+                <field name="l1_scheduled"           type="measure"/>
+                <field name="l1_feedback_pending"    type="measure"/>
+                <field name="l1_reject"              type="measure"/>
+                <field name="l2_tbs"                 type="measure"/>
+                <field name="l2_slot_shared"         type="measure"/>
+                <field name="l2_scheduled"           type="measure"/>
+                <field name="l2_feedback_pending"    type="measure"/>
+                <field name="l2_reject"              type="measure"/>
+                <field name="cr_tbs"                 type="measure"/>
+                <field name="cr_scheduled"           type="measure"/>
+                <field name="cr_feedback_pending"    type="measure"/>
+                <field name="cr_reject"              type="measure"/>
+                <field name="tbo"                    type="measure"/>
+                <field name="offered"                type="measure"/>
+                <field name="joined"                 type="measure"/>
+                <field name="declined"               type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════
+         Action — no search_view_id to avoid _auto=False validation
+    ══════════════════════════════════════════════════════════ -->
+    <record id="action_pipeline_summary_pivot" model="ir.actions.act_window">
+        <field name="name">Pipeline Summary</field>
+        <field name="res_model">recruitment.pipeline.summary.view</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No data found.</p>
+            <p>Ensure applicants have a Client and Job Position assigned.</p>
+        </field>
+    </record>
+
+    <!-- Excel export with two-row headers (list + pivot Action menu) -->
+    <record id="action_pipeline_summary_export_xlsx" model="ir.actions.server">
+        <field name="name">Export Excel</field>
+        <field name="model_id" ref="model_recruitment_pipeline_summary_view"/>
+        <field name="binding_model_id" ref="model_recruitment_pipeline_summary_view"/>
+        <field name="binding_view_types">list,pivot</field>
+        <field name="state">code</field>
+        <field name="code">action = env['recruitment.pipeline.summary.view'].search([]).action_export_xlsx()</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════
+         PDF wizard
+    ══════════════════════════════════════════════════════════ -->
+    <record id="view_pipeline_summary_wizard_form" model="ir.ui.view">
+        <field name="name">recruitment.pipeline.summary.wizard.form</field>
+        <field name="model">recruitment.pipeline.summary.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Pipeline Summary PDF">
+                <sheet>
+                    <div class="oe_title"><h1>Pipeline Summary — PDF</h1></div>
+                    <group>
+                        <group string="Date Range">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Filters">
+                            <field name="department_ids" widget="many2many_tags"
+                                   string="Clients"/>
+                            <field name="job_ids" widget="many2many_tags"
+                                   string="Roles"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_print_report" string="Print PDF"
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_pipeline_summary_wizard" model="ir.actions.act_window">
+        <field name="name">Pipeline Summary (PDF)</field>
+        <field name="res_model">recruitment.pipeline.summary.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_pipeline_summary_wizard_form"/>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════
+         Menus
+    ══════════════════════════════════════════════════════════ -->
+    <delete model="ir.ui.menu" id="menu_pipeline_summary_pdf"/>
+
+    <menuitem
+        id="menu_pipeline_summary_pivot"
+        name="Pipeline Summary"
+        parent="hr_recruitment.menu_hr_recruitment_root"
+        action="action_pipeline_summary_pivot"
+        sequence="98"/>
+
+</odoo>

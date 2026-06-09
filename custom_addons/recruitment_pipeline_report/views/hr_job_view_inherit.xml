@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Job Position FORM -->
+    <record id="hr_job_view_form_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.job.form.inherit.pipeline</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="x_employment_type" string="Employment Type"/>
+                <field name="x_poc_id"          string="Point of Contact (POC)"/>
+                <field name="x_role_status"     string="Role Status"/>
+                <field name="x_sub_status"      string="Sub Status"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Job Position LIST (HR base) -->
+    <record id="hr_job_view_list_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.job.list.inherit.pipeline</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="x_display_name" string="Job Position"/>
+                <field name="department_id" string="Client" optional="hide"/>
+                <field name="x_employment_type" string="Employment Type" optional="show"/>
+                <field name="x_poc_id"          string="POC"             optional="show"/>
+                <field name="x_role_status"     string="Role Status"     optional="show"/>
+                <field name="x_sub_status"      string="Sub Status"      optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Job Position LIST (Recruitment — primary list view) -->
+    <record id="hr_job_view_recruitment_list_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.job.recruitment.list.inherit.pipeline</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_job_view_tree_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="x_display_name" string="Job Position"/>
+            </xpath>
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+                <attribute name="optional">hide</attribute>
+            </xpath>
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="x_employment_type" string="Employment Type" optional="show"/>
+                <field name="x_poc_id"          string="POC"             optional="show"/>
+                <field name="x_role_status"     string="Role Status"     optional="show"/>
+                <field name="x_sub_status"      string="Sub Status"      optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Job Position KANBAN (Recruitment — default view) -->
+    <record id="hr_job_view_recruitment_kanban_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.job.recruitment.kanban.inherit.pipeline</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr_recruitment.view_hr_job_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="x_display_name"/>
+            </xpath>
+            <xpath expr="//field[@name='name'][@class='fs-3']" position="replace">
+                <field class="fs-3" name="x_display_name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Job Position SEARCH -->
+    <record id="hr_job_view_search_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.job.search.inherit.pipeline</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_job_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+            <xpath expr="//filter[@name='department']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Job Positions sidebar search panel (Recruitment) -->
+    <record id="hr_job_search_recruitment_inherit_pipeline" model="ir.ui.view">
+        <field name="name">hr.job.search.recruitment.inherit.pipeline</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_job_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//searchpanel//field[@name='department_id']" position="attributes">
+                <attribute name="string">Client</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
