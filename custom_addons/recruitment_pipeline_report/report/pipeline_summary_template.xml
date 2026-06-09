@@ -78,7 +78,7 @@
             <th class="w-rs">Role Status</th>
             <th class="w-ss">Sub Status</th>
             <th class="w-np">Pos.</th>
-            <th colspan="23" style="background:#1a6b9a;">Pipeline Summary</th>
+            <th colspan="24" style="background:#1a6b9a;">Pipeline Summary</th>
         </tr>
         <tr class="hdr2">
             <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
@@ -98,6 +98,7 @@
             <th>L2 Feedback Pending</th>
             <th>L2 Reject</th>
             <th>Client Round TBS</th>
+            <th>Client Round Slot Shared</th>
             <th>Client Round Scheduled</th>
             <th>Client Round FP</th>
             <th>Client Round Reject</th>
@@ -143,6 +144,7 @@
                     <td class="num" t-esc="row['l2_feedback_pending']"/>
                     <td class="num" t-esc="row['l2_reject']"/>
                     <td class="num" t-esc="row['cr_tbs']"/>
+                    <td class="num" t-esc="row['cr_slot_shared']"/>
                     <td class="num" t-esc="row['cr_scheduled']"/>
                     <td class="num" t-esc="row['cr_feedback_pending']"/>
                     <td class="num" t-esc="row['cr_reject']"/>
@@ -154,7 +156,7 @@
             </t>
         </t>
         <t t-else="">
-            <tr><td colspan="31" class="no-data">No data found.</td></tr>
+            <tr><td colspan="32" class="no-data">No data found.</td></tr>
         </t>
     </tbody>
 </table>

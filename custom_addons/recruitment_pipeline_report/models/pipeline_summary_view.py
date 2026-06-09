@@ -6,6 +6,8 @@ from psycopg2 import sql as psql
 from .pipeline_constants import (
     ROLE_STATUS_SELECTION,
     SUB_STATUS_SELECTION,
+    MEASURE_FIELDS,
+    STAGE_BY_FIELD,
 )
 
 
@@ -50,6 +52,7 @@ class RecruitmentPipelineSummaryView(models.Model):
     l2_feedback_pending    = fields.Integer(string='L2 Feedback Pending',            readonly=True)
     l2_reject              = fields.Integer(string='L2 Reject',                      readonly=True)
     cr_tbs                 = fields.Integer(string='Client Round TBS',               readonly=True)
+    cr_slot_shared         = fields.Integer(string='Client Round Slot Shared',       readonly=True)
     cr_scheduled           = fields.Integer(string='Client Round Scheduled',         readonly=True)
     cr_feedback_pending    = fields.Integer(string='Client Round Feedback Pending',  readonly=True)
     cr_reject              = fields.Integer(string='Client Round Reject',            readonly=True)
@@ -58,8 +61,23 @@ class RecruitmentPipelineSummaryView(models.Model):
     joined                 = fields.Integer(string='Joined',                         readonly=True)
     declined               = fields.Integer(string='Declined',                       readonly=True)
 
+    @staticmethod
+    def _stage_count_sql_fragments():
+        """Build COUNT(*) FILTER fragments from the canonical stage name map."""
+        parts = []
+        for field_name in MEASURE_FIELDS:
+            stage_name = STAGE_BY_FIELD[field_name]
+            parts.append(
+                psql.SQL("COUNT(*) FILTER (WHERE s.name->>'en_US' = {}) AS {}").format(
+                    psql.Literal(stage_name),
+                    psql.Identifier(field_name),
+                )
+            )
+        return psql.SQL(',\n                    ').join(parts)
+
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
+        stage_counts = self._stage_count_sql_fragments()
 
         query = psql.SQL("""
             CREATE OR REPLACE VIEW {table} AS (
@@ -67,7 +85,7 @@ class RecruitmentPipelineSummaryView(models.Model):
                     ROW_NUMBER() OVER (
                         ORDER BY d.name->>'en_US', j.name->>'en_US'
                     )                                           AS id,
-                    d.id                                        AS department_id,
+                    MAX(d.id)                                   AS department_id,
                     j.id                                        AS job_id,
                     COALESCE(d.name->>'en_US', 'N/A')          AS client,
                     COALESCE(poc.name,         'N/A')          AS poc,
@@ -76,61 +94,21 @@ class RecruitmentPipelineSummaryView(models.Model):
                     COALESCE(j.x_role_status, 'active')        AS role_status,
                     j.x_sub_status                             AS sub_status,
                     COALESCE(j.no_of_recruitment, 0)           AS no_of_positions,
-
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'New')
-                                                                AS profiles_shared,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Screening Pending')
-                                                                AS screening_pending,
-                    0                                           AS duplicate_profiles,
-                    0                                           AS assessment_link_shared,
-                    0                                           AS assessment_reject,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L1 to be Scheduled')
-                                                                AS l1_tbs,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L1 Slot Shared')
-                                                                AS l1_slot_shared,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L1 Scheduled')
-                                                                AS l1_scheduled,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L1 Feedback Pending')
-                                                                AS l1_feedback_pending,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L1 Reject')
-                                                                AS l1_reject,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L2 to be Scheduled')
-                                                                AS l2_tbs,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L2 Slot Shared')
-                                                                AS l2_slot_shared,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L2 Scheduled')
-                                                                AS l2_scheduled,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L2 Feedback Pending')
-                                                                AS l2_feedback_pending,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'L2 Reject')
-                                                                AS l2_reject,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Client Round TBS')
-                                                                AS cr_tbs,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Client Round Scheduled')
-                                                                AS cr_scheduled,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Client Round Feedback Pending')
-                                                                AS cr_feedback_pending,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Client Round Reject')
-                                                                AS cr_reject,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'TBO')
-                                                                AS tbo,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Offered')
-                                                                AS offered,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Joined')
-                                                                AS joined,
-                    COUNT(*) FILTER (WHERE s.name->>'en_US' = 'Declined')
-                                                                AS declined
+                    {stage_counts}
 
                 FROM hr_applicant a
-                JOIN  hr_department            d  ON d.id  = a.department_id
                 JOIN  hr_job                   j  ON j.id  = a.job_id
+                LEFT JOIN hr_department        d  ON d.id  = a.department_id
                 LEFT JOIN hr_recruitment_stage s  ON s.id  = a.stage_id
                 LEFT JOIN res_partner          poc ON poc.id = j.x_poc_id
-                GROUP BY d.id, d.name, j.id, j.name, j.x_employment_type,
+                GROUP BY COALESCE(d.id, 0), d.name, j.id, j.name, j.x_employment_type,
                          j.x_role_status, j.x_sub_status,
                          j.no_of_recruitment, poc.id, poc.name
             )
-        """).format(table=psql.Identifier(self._table))
+        """).format(
+            table=psql.Identifier(self._table),
+            stage_counts=stage_counts,
+        )
 
         self.env.cr.execute(query)
 

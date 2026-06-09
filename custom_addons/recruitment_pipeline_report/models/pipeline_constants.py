@@ -22,6 +22,7 @@ SECONDARY_HEADERS = [
     'L2 Feedback Pending',
     'L2 Reject',
     'Client Round TBS',
+    'Client Round Slot Shared',
     'Client Round Scheduled',
     'Client Round Feedback Pending',
     'Client Round Reject',
@@ -31,7 +32,6 @@ SECONDARY_HEADERS = [
     'Declined',
 ]
 
-# Field names on recruitment.pipeline.summary.view matching SECONDARY_HEADERS
 MEASURE_FIELDS = [
     'profiles_shared',
     'screening_pending',
@@ -49,6 +49,7 @@ MEASURE_FIELDS = [
     'l2_feedback_pending',
     'l2_reject',
     'cr_tbs',
+    'cr_slot_shared',
     'cr_scheduled',
     'cr_feedback_pending',
     'cr_reject',
@@ -57,6 +58,36 @@ MEASURE_FIELDS = [
     'joined',
     'declined',
 ]
+
+# Exact hr.recruitment.stage names as configured in the database (en_US).
+STAGE_BY_FIELD = {
+    'profiles_shared':        'Profile Shared',
+    'screening_pending':      'Screening Pending',
+    'duplicate_profiles':     'Duplicate Profiles',
+    'assessment_link_shared':  'Assessment Link Shared',
+    'assessment_reject':      'Assessment Reject',
+    'l1_tbs':                 'L1 TBS',
+    'l1_slot_shared':         'L1 Slot Shared',
+    'l1_scheduled':           'L1 Scheduled',
+    'l1_feedback_pending':    'L1 Feedback Pending',
+    'l1_reject':              'L1 Reject',
+    'l2_tbs':                 'L2 TBS',
+    'l2_slot_shared':         'L2 Slot Shared',
+    'l2_scheduled':           'L2 Scheduled',
+    'l2_feedback_pending':    'L2 Feedback Pending',
+    'l2_reject':              'L2 Reject',
+    'cr_tbs':                 'Client Round TBS',
+    'cr_slot_shared':         'Client Round Slot Shared',
+    'cr_scheduled':           'Client Round Scheduled',
+    'cr_feedback_pending':    'Client Round Feedback Pending',
+    'cr_reject':              'Client Round Reject',
+    'tbo':                    'TBO',
+    'offered':                'Offered/Yet to Join',
+    'joined':                 'Joined',
+    'declined':               'Declined',
+}
+
+ALL_STAGE_NAMES = list(STAGE_BY_FIELD.values())
 
 ROLE_STATUS_SELECTION = [
     ('active', 'Active'),

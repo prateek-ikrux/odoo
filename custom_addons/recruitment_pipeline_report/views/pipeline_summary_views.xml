@@ -44,6 +44,7 @@
                 <field name="l2_feedback_pending"    string="L2 Feedback Pending"           sum="Total"/>
                 <field name="l2_reject"              string="L2 Reject"                     sum="Total"/>
                 <field name="cr_tbs"                 string="Client Round TBS"              sum="Total"/>
+                <field name="cr_slot_shared"         string="Client Round Slot Shared"    sum="Total"/>
                 <field name="cr_scheduled"           string="Client Round Scheduled"        sum="Total"/>
                 <field name="cr_feedback_pending"    string="Client Round Feedback Pending" sum="Total"/>
                 <field name="cr_reject"              string="Client Round Reject"           sum="Total"/>
@@ -83,6 +84,7 @@
                 <field name="l2_feedback_pending"    type="measure"/>
                 <field name="l2_reject"              type="measure"/>
                 <field name="cr_tbs"                 type="measure"/>
+                <field name="cr_slot_shared"         type="measure"/>
                 <field name="cr_scheduled"           type="measure"/>
                 <field name="cr_feedback_pending"    type="measure"/>
                 <field name="cr_reject"              type="measure"/>
