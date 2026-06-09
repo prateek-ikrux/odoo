@@ -1,19 +1,11 @@
 # -*- coding: utf-8 -*-
-import base64
-import io
 
-from odoo import models, fields, tools, api
+from odoo import models, fields, tools
 from psycopg2 import sql as psql
 
 from .pipeline_constants import (
     ROLE_STATUS_SELECTION,
     SUB_STATUS_SELECTION,
-    PRIMARY_HEADERS,
-    SECONDARY_HEADERS,
-    MEASURE_FIELDS,
-    ROLE_STATUS_LABELS,
-    SUB_STATUS_LABELS,
-    EMP_TYPE_LABELS,
 )
 
 
@@ -143,85 +135,17 @@ class RecruitmentPipelineSummaryView(models.Model):
 
         self.env.cr.execute(query)
 
-    @api.model
-    def _generate_xlsx_bytes(self):
-        """Build pipeline summary XLSX with two-row headers."""
-        import xlsxwriter  # noqa: PLC0415
-
-        records = self.search([], order='client, role')
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-        worksheet = workbook.add_worksheet('Pipeline Summary')
-
-        primary_fmt = workbook.add_format({
-            'bold': True, 'align': 'center', 'valign': 'vcenter',
-            'bg_color': '#2C3E50', 'font_color': '#FFFFFF',
-            'border': 1, 'text_wrap': True,
-        })
-        pipeline_hdr_fmt = workbook.add_format({
-            'bold': True, 'align': 'center', 'valign': 'vcenter',
-            'bg_color': '#1A6B9A', 'font_color': '#FFFFFF',
-            'border': 1,
-        })
-        secondary_fmt = workbook.add_format({
-            'bold': True, 'align': 'center', 'valign': 'vcenter',
-            'bg_color': '#F0F3F4', 'border': 1, 'text_wrap': True,
-        })
-        cell_fmt = workbook.add_format({'border': 1, 'valign': 'vcenter'})
-        num_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
-
-        identity_count = len(PRIMARY_HEADERS)
-        measure_count = len(SECONDARY_HEADERS)
-
-        for col, title in enumerate(PRIMARY_HEADERS):
-            worksheet.write(0, col, title, primary_fmt)
-        worksheet.merge_range(
-            0, identity_count, 0, identity_count + measure_count - 1,
-            'Pipeline Summary', pipeline_hdr_fmt,
-        )
-        for col in range(identity_count):
-            worksheet.write(1, col, '', secondary_fmt)
-        for col, title in enumerate(SECONDARY_HEADERS, start=identity_count):
-            worksheet.write(1, col, title, secondary_fmt)
-
-        for row_idx, rec in enumerate(records, start=2):
-            identity_values = [
-                row_idx - 1,
-                rec.client or '',
-                rec.poc or '',
-                rec.role or '',
-                EMP_TYPE_LABELS.get(rec.role_type, rec.role_type or ''),
-                ROLE_STATUS_LABELS.get(rec.role_status, rec.role_status or ''),
-                SUB_STATUS_LABELS.get(rec.sub_status, rec.sub_status or ''),
-                rec.no_of_positions or 0,
-            ]
-            for col, val in enumerate(identity_values):
-                fmt = num_fmt if col in (0, 7) else cell_fmt
-                worksheet.write(row_idx, col, val, fmt)
-            for col, field_name in enumerate(MEASURE_FIELDS, start=identity_count):
-                worksheet.write(row_idx, col, getattr(rec, field_name, 0) or 0, num_fmt)
-
-        worksheet.set_column(0, 0, 4)
-        worksheet.set_column(1, 3, 18)
-        worksheet.set_column(4, 7, 12)
-        worksheet.set_column(identity_count, identity_count + measure_count - 1, 14)
-        worksheet.freeze_panes(2, 0)
-
-        workbook.close()
-        output.seek(0)
-        return output.read()
-
-    def action_export_xlsx(self):
-        """Export pipeline summary with two-row headers (primary + secondary)."""
-        xlsx_data = self.env['recruitment.pipeline.summary.view']._generate_xlsx_bytes()
-        attachment = self.env['ir.attachment'].create({
-            'name': 'Pipeline_Summary.xlsx',
-            'type': 'binary',
-            'datas': base64.b64encode(xlsx_data),
-            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        })
+    def action_open_export_wizard(self):
+        """Open export wizard with date range, client, and role filters."""
         return {
-            'type': 'ir.actions.act_url',
-            'url': f'/web/content/{attachment.id}?download=true',
-            'target': 'self',
+            'type': 'ir.actions.act_window',
+            'name': 'Export Pipeline Summary',
+            'res_model': 'recruitment.pipeline.summary.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'views': [(
+                self.env.ref(
+                    'recruitment_pipeline_report.view_pipeline_summary_export_wizard_form'
+                ).id, 'form',
+            )],
         }

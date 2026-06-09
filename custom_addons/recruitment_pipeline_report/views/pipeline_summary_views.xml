@@ -10,7 +10,7 @@
         <field name="arch" type="xml">
             <list string="Pipeline Summary" create="false" edit="false" delete="false" export_xlsx="0">
                 <header>
-                    <button name="action_export_xlsx" string="Export Excel"
+                    <button name="action_open_export_wizard" string="Export Excel"
                             type="object" class="btn-primary" display="always"/>
                 </header>
                 <field name="client"                 string="Client"/>
@@ -107,14 +107,51 @@
         </field>
     </record>
 
-    <!-- Excel export with two-row headers (list + pivot Action menu) -->
+    <!-- Excel export wizard (date range + client + role filters) -->
+    <record id="view_pipeline_summary_export_wizard_form" model="ir.ui.view">
+        <field name="name">recruitment.pipeline.summary.export.wizard.form</field>
+        <field name="model">recruitment.pipeline.summary.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Pipeline Summary">
+                <sheet>
+                    <!-- <div class="oe_title"><h1>Export Pipeline Summary</h1></div> -->
+                    <group>
+                        <group string="Date Range">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Filters">
+                            <field name="department_ids" widget="many2many_tags"
+                                   string="Clients"/>
+                            <field name="job_ids" widget="many2many_tags"
+                                   string="Roles"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_export_xlsx" string="Export Excel"
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_pipeline_summary_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export Excel</field>
+        <field name="res_model">recruitment.pipeline.summary.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_pipeline_summary_export_wizard_form"/>
+    </record>
+
     <record id="action_pipeline_summary_export_xlsx" model="ir.actions.server">
         <field name="name">Export Excel</field>
         <field name="model_id" ref="model_recruitment_pipeline_summary_view"/>
         <field name="binding_model_id" ref="model_recruitment_pipeline_summary_view"/>
         <field name="binding_view_types">list,pivot</field>
         <field name="state">code</field>
-        <field name="code">action = env['recruitment.pipeline.summary.view'].search([]).action_export_xlsx()</field>
+        <field name="code">action = env['recruitment.pipeline.summary.view'].action_open_export_wizard()</field>
     </record>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -160,8 +197,6 @@
     <!-- ══════════════════════════════════════════════════════════
          Menus
     ══════════════════════════════════════════════════════════ -->
-    <delete model="ir.ui.menu" id="menu_pipeline_summary_pdf"/>
-
     <menuitem
         id="menu_pipeline_summary_pivot"
         name="Pipeline Summary"

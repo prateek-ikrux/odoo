@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import base64
+
 from odoo import models, fields
 from collections import defaultdict
 
 from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS, EMP_TYPE_LABELS
+from .pipeline_xlsx import build_pipeline_xlsx
 
 # ── Exact stage names as configured in Odoo ──────────────────────────────────
 # Profile / Screening
@@ -154,3 +157,19 @@ class PipelineSummaryWizard(models.TransientModel):
         return self.env.ref(
             'recruitment_pipeline_report.action_report_pipeline_summary'
         ).report_action(self)
+
+    def action_export_xlsx(self):
+        """Export filtered pipeline summary to Excel with two-row headers."""
+        rows = self._get_report_data()
+        xlsx_data = build_pipeline_xlsx(rows)
+        attachment = self.env['ir.attachment'].create({
+            'name': 'Pipeline_Summary.xlsx',
+            'type': 'binary',
+            'datas': base64.b64encode(xlsx_data),
+            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'self',
+        }
