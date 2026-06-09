@@ -70,7 +70,7 @@ class RecruitmentPipelineSummaryView(models.Model):
                     d.id                                        AS department_id,
                     j.id                                        AS job_id,
                     COALESCE(d.name->>'en_US', 'N/A')          AS client,
-                    COALESCE(u.name,           'N/A')          AS poc,
+                    COALESCE(poc.name,         'N/A')          AS poc,
                     COALESCE(j.name->>'en_US', 'N/A')          AS role,
                     COALESCE(j.x_employment_type, 'fte')       AS role_type,
                     COALESCE(j.x_role_status, 'active')        AS role_status,
@@ -125,11 +125,10 @@ class RecruitmentPipelineSummaryView(models.Model):
                 JOIN  hr_department            d  ON d.id  = a.department_id
                 JOIN  hr_job                   j  ON j.id  = a.job_id
                 LEFT JOIN hr_recruitment_stage s  ON s.id  = a.stage_id
-                LEFT JOIN res_users            pu ON pu.id = j.x_poc_id
-                LEFT JOIN res_partner          u  ON u.id  = pu.partner_id
+                LEFT JOIN res_partner          poc ON poc.id = j.x_poc_id
                 GROUP BY d.id, d.name, j.id, j.name, j.x_employment_type,
                          j.x_role_status, j.x_sub_status,
-                         j.no_of_recruitment, pu.id, u.name
+                         j.no_of_recruitment, poc.id, poc.name
             )
         """).format(table=psql.Identifier(self._table))
 

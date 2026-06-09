@@ -12,7 +12,8 @@
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="x_employment_type" string="Employment Type"/>
-                <field name="x_poc_id"          string="Point of Contact (POC)"/>
+                <field name="x_poc_id"          string="Point of Contact (POC)"
+                       context="{'default_x_client_department_id': department_id}"/>
                 <field name="x_role_status"     string="Role Status"/>
                 <field name="x_sub_status"      string="Sub Status"/>
             </xpath>

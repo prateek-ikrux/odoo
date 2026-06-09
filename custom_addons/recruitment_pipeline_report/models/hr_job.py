@@ -18,9 +18,10 @@ class HrJob(models.Model):
     )
 
     x_poc_id = fields.Many2one(
-        'res.users',
+        'res.partner',
         string='Point of Contact (POC)',
-        help='Internal recruiter responsible for this job position.',
+        domain="[('x_client_department_id', '=', department_id)]",
+        help='External client contact who handles this job position.',
     )
 
     x_role_status = fields.Selection(

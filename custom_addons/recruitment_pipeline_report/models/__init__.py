@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from . import res_partner
+from . import hr_department
 from . import hr_job
 from . import hr_applicant
 from . import pipeline_summary_wizard
