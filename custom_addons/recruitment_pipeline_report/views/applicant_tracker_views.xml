@@ -11,7 +11,7 @@
                   create="false" edit="true" delete="false" export_xlsx="0">
 
                 <!-- Requisition Details -->
-                <field name="x_rec_id"               string="Rec ID"               optional="show" readonly="1"/>
+                <field name="x_req_id"               string="Req ID"               optional="show" readonly="1"/>
                 <field name="department_id"           string="Client"               optional="show" readonly="1"/>
                 <field name="job_id"                  string="Position / Role"      optional="show" readonly="1"/>
                 <field name="x_employment_type"       string="Role Type"            optional="show" readonly="1"/>

@@ -39,8 +39,6 @@ class RecruitmentPipelineSummaryView(models.Model):
     profiles_shared        = fields.Integer(string='Profiles Shared',               readonly=True)
     screening_pending      = fields.Integer(string='Screening Pending',              readonly=True)
     duplicate_profiles     = fields.Integer(string='Duplicate Profiles',             readonly=True)
-    assessment_link_shared = fields.Integer(string='Assessment Link Shared',         readonly=True)
-    assessment_reject      = fields.Integer(string='Assessment Reject',              readonly=True)
     l1_tbs                 = fields.Integer(string='L1 TBS',                         readonly=True)
     l1_slot_shared         = fields.Integer(string='L1 Slot Shared',                 readonly=True)
     l1_scheduled           = fields.Integer(string='L1 Scheduled',                   readonly=True)

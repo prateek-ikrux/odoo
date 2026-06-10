@@ -36,10 +36,21 @@ class HrJob(models.Model):
     )
 
     # ── New fields ────────────────────────────────────────────────
-    x_rec_id = fields.Char(
-        string='Rec ID',
+    x_req_id = fields.Char(
+        string='Req ID',
         copy=False,
-        help='Unique identifier for this job position.',
+        help='Manually entered Requisition ID for this job position (e.g. REQ-2024-001). Can be any value chosen by the user.',
+    )
+
+    # Deprecated alias — kept only so existing ir.ui.view records that still
+    # reference x_rec_id pass ORM validation during the upgrade. Odoo will
+    # overwrite those view records with the new XML (using x_req_id) as part
+    # of this same upgrade. Safe to remove in a future version.
+    x_rec_id = fields.Char(
+        related='x_req_id',
+        string='Req ID (deprecated)',
+        store=False,
+        readonly=True,
     )
 
     x_min_experience = fields.Integer(
@@ -103,13 +114,13 @@ class HrJob(models.Model):
 
     # ── Display name computation ──────────────────────────────────
 
-    def _job_display_label(self, rec_id, name, department, employment_type,
+    def _job_display_label(self, req_id, name, department, employment_type,
                            min_exp, max_exp):
         """
         Format: [JOB0001] Infosys - Python Developer | FTE | 2-4 Yrs
         """
         emp_labels = {'fte': 'FTE', 'consulting': 'Consulting'}
-        prefix = f'[{rec_id}] ' if rec_id else ''
+        prefix = f'[{req_id}] ' if req_id else ''
         client = department.display_name if department else ''
         role   = name or ''
         emp    = emp_labels.get(employment_type, '')
@@ -129,19 +140,19 @@ class HrJob(models.Model):
         return label
 
     @api.depends('name', 'department_id', 'x_employment_type',
-                 'x_rec_id', 'x_min_experience', 'x_max_experience')
+                 'x_req_id', 'x_min_experience', 'x_max_experience')
     def _compute_display_name(self):
         for rec in self:
             rec.display_name = rec._job_display_label(
-                rec.x_rec_id, rec.name, rec.department_id,
+                rec.x_req_id, rec.name, rec.department_id,
                 rec.x_employment_type, rec.x_min_experience, rec.x_max_experience,
             )
 
     @api.depends('name', 'department_id', 'x_employment_type',
-                 'x_rec_id', 'x_min_experience', 'x_max_experience')
+                 'x_req_id', 'x_min_experience', 'x_max_experience')
     def _compute_display_name_with_type(self):
         for rec in self:
             rec.x_display_name = rec._job_display_label(
-                rec.x_rec_id, rec.name, rec.department_id,
+                rec.x_req_id, rec.name, rec.department_id,
                 rec.x_employment_type, rec.x_min_experience, rec.x_max_experience,
             )

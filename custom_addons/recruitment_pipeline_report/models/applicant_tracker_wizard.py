@@ -65,7 +65,7 @@ class ApplicantTrackerWizard(models.TransientModel):
             rows.append({
                 'seq':                    seq,
                 # Requisition Details
-                'rec_id':                 job.x_rec_id              if job else '',
+                'req_id':                 job.x_req_id              if job else '',
                 'client':                 dept.name                 if dept else '',
                 'role':                   job.name                  if job else '',
                 'role_type':              'FTE' if emp_type == 'fte' else 'Consulting',

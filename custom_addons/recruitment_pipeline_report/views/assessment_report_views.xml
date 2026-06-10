@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── List view (read-only inline preview) ───────────────────────── -->
+    <record id="view_assessment_report_list" model="ir.ui.view">
+        <field name="name">recruitment.assessment.report.list</field>
+        <field name="model">hr.applicant</field>
+        <field name="priority">33</field>
+        <field name="arch" type="xml">
+            <list string="Internal Assessment Report"
+                  create="false" edit="true" delete="false" export_xlsx="0">
+
+                <field name="x_req_id"                     string="Req ID"                    optional="show" readonly="1"/>
+                <field name="department_id"                string="Client"                    optional="show" readonly="1"/>
+                <field name="job_id"                       string="Role"                      optional="show" readonly="1"/>
+                <field name="x_employment_type"            string="Role Type"                 optional="show" readonly="1"/>
+                <field name="x_role_status"                string="Role Status"               optional="show" readonly="1"
+                       widget="badge"
+                       decoration-success="x_role_status == 'active'"
+                       decoration-info="x_role_status == 'in_progress'"
+                       decoration-warning="x_role_status == 'on_hold'"
+                       decoration-muted="x_role_status == 'closed'"/>
+                <field name="x_sub_status"                 string="Sub Status"                optional="show" readonly="1"/>
+                <field name="partner_name"                 string="Candidate Name"            optional="show"/>
+                <field name="x_assessment_link_received"   string="Assessment Link Received"  optional="show"
+                       widget="badge"
+                       decoration-success="x_assessment_link_received == 'yes'"
+                       decoration-danger="x_assessment_link_received == 'no'"/>
+                <field name="x_assessment_taken"           string="Assessment Taken"          optional="show"
+                       widget="badge"
+                       decoration-success="x_assessment_taken == 'yes'"
+                       decoration-danger="x_assessment_taken == 'no'"/>
+                <field name="x_assessment_feedback"        string="Assessment Feedback"       optional="show"
+                       widget="badge"
+                       decoration-success="x_assessment_feedback == 'select'"
+                       decoration-danger="x_assessment_feedback == 'reject'"/>
+                <field name="stage_id"                     string="Current Hiring Status"     optional="show"/>
+
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Window action ──────────────────────────────────────────────── -->
+    <record id="action_assessment_report_list" model="ir.actions.act_window">
+        <field name="name">Internal Assessment Report</field>
+        <field name="res_model">hr.applicant</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_assessment_report_list')}),
+        ]"/>
+        <field name="search_view_id" ref="hr_applicant_search_inherit_pipeline"/>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No applicants found.</p>
+            <p>Applicants will appear here once added to a job position.</p>
+        </field>
+    </record>
+
+    <!-- ── Export wizard form ─────────────────────────────────────────── -->
+    <record id="view_assessment_report_export_wizard_form" model="ir.ui.view">
+        <field name="name">recruitment.assessment.report.export.wizard.form</field>
+        <field name="model">recruitment.assessment.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Internal Assessment Report">
+                <sheet>
+                    <group>
+                        <group string="Date Range">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Filters">
+                            <field name="department_ids" widget="many2many_tags"
+                                   string="Clients"/>
+                            <field name="job_ids"        widget="many2many_tags"
+                                   string="Roles"/>
+                            <field name="recruiter_ids"  widget="many2many_tags"
+                                   string="Recruiters"
+                                   domain="[('share','=',False)]"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_export_xlsx"
+                            string="Export Excel"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Wizard action (dialog) ─────────────────────────────────────── -->
+    <record id="action_assessment_report_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export Internal Assessment Report</field>
+        <field name="res_model">recruitment.assessment.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_assessment_report_export_wizard_form"/>
+    </record>
+
+    <!-- ── "Export Excel" button bound to the Assessment Report list ──── -->
+    <record id="action_assessment_report_export_xlsx" model="ir.actions.server">
+        <field name="name">Export Excel</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="binding_model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = env.ref('recruitment_pipeline_report.action_assessment_report_export_wizard').read()[0]</field>
+    </record>
+
+    <!-- ── Menu item ──────────────────────────────────────────────────── -->
+    <menuitem
+        id="menu_assessment_report"
+        name="Internal Assessment Report"
+        parent="hr_recruitment.menu_hr_recruitment_root"
+        action="action_assessment_report_list"
+        sequence="100"/>
+
+</odoo>

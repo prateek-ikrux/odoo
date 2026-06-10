@@ -12,7 +12,7 @@
                 <attribute name="readonly">1</attribute>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_rec_id"              string="Rec ID"              readonly="1"/>
+                <field name="x_req_id"              string="Req ID"              readonly="1"/>
                 <field name="x_employment_type"     string="Employment Type"     readonly="1"/>
                 <field name="x_poc_id"              string="POC"                 readonly="1"/>
                 <field name="x_role_status"         string="Role Status"         readonly="1"/>
@@ -23,11 +23,22 @@
                        string="Recruiter"
                        options="{'no_create': True}"/>
                 <field name="x_client_portal_status" string="Client Portal Status"/>
+                <field name="x_assessment_link_received" string="Assessment Link Received"/>
+                <field name="x_assessment_taken"
+                       string="Assessment Taken"
+                       invisible="x_assessment_link_received != 'yes'"/>
             </xpath>
             <!-- Candidate Details tab / section -->
             <xpath expr="//sheet" position="inside">
                 <notebook>
                     <page string="Candidate Details" name="candidate_details">
+                        <group>
+                            <group string="Assessment">
+                                <field name="x_assessment_link_received" string="Assessment Link Received"/>
+                                <field name="x_assessment_taken"         string="Assessment Taken"/>
+                                <field name="x_assessment_feedback"      string="Assessment Feedback"/>
+                            </group>
+                        </group>
                         <group>
                             <group string="Personal">
                                 <field name="partner_phone"             string="Candidate Number"/>
@@ -74,7 +85,7 @@
                 <field name="x_role_status"          string="Role Status"          optional="show" readonly="1"/>
                 <field name="x_sub_status"           string="Sub Status"           optional="show" readonly="1"/>
                 <field name="x_poc_id"               string="POC"                  optional="show" readonly="1"/>
-                <field name="x_rec_id"               string="Rec ID"               optional="show" readonly="1"/>
+                <field name="x_req_id"               string="Req ID"               optional="show" readonly="1"/>
                 <field name="x_recruiter_id"         string="Recruiter"            optional="show"/>
                 <field name="x_client_portal_status" string="Client Portal Status" optional="show"/>
                 <field name="partner_phone"          string="Candidate Number"     optional="hide"/>
@@ -101,7 +112,7 @@
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="x_poc_id"               string="POC"/>
                 <field name="x_recruiter_id"         string="Recruiter"/>
-                <field name="x_rec_id"               string="Rec ID"/>
+                <field name="x_req_id"               string="Req ID"/>
                 <field name="partner_phone"          string="Candidate Number"/>
                 <field name="x_skill"                string="Skill"/>
                 <field name="x_current_organization" string="Current Organization"/>
@@ -164,7 +175,7 @@
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="x_poc_id"               string="POC"/>
                 <field name="x_recruiter_id"         string="Recruiter"/>
-                <field name="x_rec_id"               string="Rec ID"/>
+                <field name="x_req_id"               string="Req ID"/>
                 <field name="partner_phone"          string="Candidate Number"/>
                 <field name="x_skill"                string="Skill"/>
                 <field name="x_current_organization" string="Current Organization"/>

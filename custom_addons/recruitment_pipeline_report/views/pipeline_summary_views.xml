@@ -29,8 +29,6 @@
                 <field name="profiles_shared"        string="Profiles Shared"               sum="Total"/>
                 <field name="screening_pending"      string="Screening Pending"             sum="Total"/>
                 <field name="duplicate_profiles"     string="Duplicate Profiles"            sum="Total"/>
-                <field name="assessment_link_shared" string="Assessment Link Shared"        sum="Total"/>
-                <field name="assessment_reject"      string="Assessment Reject"             sum="Total"/>
                 <field name="l1_tbs"                 string="L1 TBS"                        sum="Total"/>
                 <field name="l1_slot_shared"         string="L1 Slot Shared"                sum="Total"/>
                 <field name="l1_scheduled"           string="L1 Scheduled"                  sum="Total"/>

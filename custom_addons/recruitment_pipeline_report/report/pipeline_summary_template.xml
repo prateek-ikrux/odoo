@@ -85,8 +85,6 @@
             <th>Profiles Shared</th>
             <th>Screening Pending</th>
             <th>Duplicate Profiles</th>
-            <th>Assessment Link Shared</th>
-            <th>Assessment Reject</th>
             <th>L1 TBS</th>
             <th>L1 Slot Shared</th>
             <th>L1 Scheduled</th>
@@ -131,8 +129,6 @@
                     <td class="num" t-esc="row['profiles_shared']"/>
                     <td class="num" t-esc="row['screening_pending']"/>
                     <td class="num" t-esc="row['duplicate_profiles']"/>
-                    <td class="num" t-esc="row['assessment_link_shared']"/>
-                    <td class="num" t-esc="row['assessment_reject']"/>
                     <td class="num" t-esc="row['l1_tbs']"/>
                     <td class="num" t-esc="row['l1_slot_shared']"/>
                     <td class="num" t-esc="row['l1_scheduled']"/>

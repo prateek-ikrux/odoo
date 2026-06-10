@@ -8,7 +8,7 @@ import io
 
 TRACKER_COLUMNS = [
     # ── Requisition Details ──────────────────────────────────────
-    ('Requisition Details',  'Rec ID',               'rec_id',                 12),
+    ('Requisition Details',  'Req ID',               'req_id',                 12),
     ('',                     'Client Name',           'client',                 18),
     ('',                     'Position / Role Name',  'role',                   22),
     ('',                     'Role Type',             'role_type',              12),

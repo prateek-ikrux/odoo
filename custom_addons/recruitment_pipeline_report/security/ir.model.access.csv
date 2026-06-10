@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_pipeline_summary_wizard,recruitment.pipeline.summary.wizard,model_recruitment_pipeline_summary_wizard,hr_recruitment.group_hr_recruitment_user,1,1,1,1
 access_pipeline_summary_view,recruitment.pipeline.summary.view,model_recruitment_pipeline_summary_view,hr_recruitment.group_hr_recruitment_user,1,0,0,0
 access_applicant_tracker_wizard,recruitment.applicant.tracker.wizard,model_recruitment_applicant_tracker_wizard,hr_recruitment.group_hr_recruitment_user,1,1,1,1
+access_assessment_report_wizard,recruitment.assessment.report.wizard,model_recruitment_assessment_report_wizard,hr_recruitment.group_hr_recruitment_user,1,1,1,1

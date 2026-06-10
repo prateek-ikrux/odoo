@@ -42,10 +42,18 @@ class HrApplicant(models.Model):
         readonly=True,
     )
 
-    x_rec_id = fields.Char(
-        related='job_id.x_rec_id',
-        string='Rec ID',
+    x_req_id = fields.Char(
+        related='job_id.x_req_id',
+        string='Req ID',
         store=True,
+        readonly=True,
+    )
+
+    # Deprecated alias — see note in hr_job.py
+    x_rec_id = fields.Char(
+        related='job_id.x_req_id',
+        string='Req ID (deprecated)',
+        store=False,
         readonly=True,
     )
 
@@ -134,6 +142,24 @@ class HrApplicant(models.Model):
     x_offer_in_hand = fields.Char(
         string='Offer in Hand',
         help='Any competing offer the candidate currently holds.',
+    )
+
+    # ── Assessment fields ─────────────────────────────────────────
+    x_assessment_link_received = fields.Selection(
+        selection=[('yes', 'Yes'), ('no', 'No')],
+        string='Assessment Link Received',
+        default='no',
+    )
+
+    x_assessment_taken = fields.Selection(
+        selection=[('yes', 'Yes'), ('no', 'No')],
+        string='Assessment Taken',
+        default='no',
+    )
+
+    x_assessment_feedback = fields.Selection(
+        selection=[('select', 'Select'), ('reject', 'Reject')],
+        string='Assessment Feedback',
     )
 
     # ── Application Details ───────────────────────────────────────

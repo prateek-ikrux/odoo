@@ -11,7 +11,7 @@
                 <attribute name="string">Client</attribute>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_rec_id"          string="Rec ID"/>
+                <field name="x_req_id"          string="Req ID"/>
                 <field name="x_employment_type" string="Employment Type"/>
                 <field name="x_poc_id"          string="Point of Contact (POC)"
                        context="{'default_x_client_department_id': department_id}"/>
@@ -40,7 +40,7 @@
             </xpath>
             <xpath expr="//field[@name='name']" position="after">
                 <field name="x_display_name"    string="Job Position"/>
-                <field name="x_rec_id"          string="Rec ID"           optional="show"/>
+                <field name="x_req_id"          string="Req ID"           optional="show"/>
                 <field name="department_id"     string="Client"           optional="hide"/>
                 <field name="x_employment_type" string="Employment Type"  optional="show"/>
                 <field name="x_poc_id"          string="POC"              optional="show"/>
@@ -69,7 +69,7 @@
                 <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_rec_id"          string="Rec ID"           optional="show"/>
+                <field name="x_req_id"          string="Req ID"           optional="show"/>
                 <field name="x_employment_type" string="Employment Type"  optional="show"/>
                 <field name="x_poc_id"          string="POC"              optional="show"/>
                 <field name="x_role_status"     string="Role Status"      optional="show"/>
@@ -134,7 +134,7 @@
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="x_recruiter_ids" string="Recruiters"/>
-                <field name="x_rec_id"        string="Rec ID"/>
+                <field name="x_req_id"        string="Req ID"/>
             </xpath>
         </field>
     </record>
