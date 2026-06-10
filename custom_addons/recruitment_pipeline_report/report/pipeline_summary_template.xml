@@ -42,9 +42,9 @@
     vertical-align:middle; word-wrap:break-word; }
   .ptbl tbody td.num { text-align:center; }
   .ptbl tbody td.seq { text-align:center; color:#999; font-size:5.5pt; }
-  .w-seq { width:12px; } .w-cl  { width:52px; } .w-poc { width:52px; }
-  .w-rol { width:75px; } .w-rt  { width:38px; } .w-rs  { width:38px; }
-  .w-ss  { width:38px; } .w-np  { width:20px; } .w-num { width:22px; }
+  .w-seq { width:12px; } .w-cl  { width:48px; } .w-poc { width:48px; }
+  .w-rol { width:68px; } .w-rt  { width:34px; } .w-rs  { width:34px; } .w-ss  { width:34px; }
+  .w-np  { width:20px; } .w-num { width:22px; }
   .b-fte { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#e74c3c;color:#fff; }
   .b-con { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#e67e22;color:#fff; }
   .s-act { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#27ae60;color:#fff; }
@@ -78,7 +78,7 @@
             <th class="w-rs">Role Status</th>
             <th class="w-ss">Sub Status</th>
             <th class="w-np">Pos.</th>
-            <th colspan="24" style="background:#1a6b9a;">Pipeline Summary</th>
+            <th colspan="22" style="background:#1a6b9a;">Pipeline Summary</th>
         </tr>
         <tr class="hdr2">
             <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
@@ -152,7 +152,7 @@
             </t>
         </t>
         <t t-else="">
-            <tr><td colspan="32" class="no-data">No data found.</td></tr>
+            <tr><td colspan="30" class="no-data">No data found.</td></tr>
         </t>
     </tbody>
 </table>

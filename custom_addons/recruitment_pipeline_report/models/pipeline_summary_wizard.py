@@ -70,7 +70,6 @@ class PipelineSummaryWizard(models.TransientModel):
             no_of_pos   = job.no_of_recruitment if job else 0
             role_status = job.x_role_status if job else 'active'
             sub_status  = job.x_sub_status if job else False
-
             def count_field(field_key):
                 stage_name = STAGE_BY_FIELD[field_key]
                 sid = stage_map.get(stage_name, -1)

@@ -71,12 +71,10 @@ class HrApplicant(models.Model):
         readonly=True,
     )
 
-    # ── Per-applicant recruiter (many2one) ────────────────────────
-    x_recruiter_id = fields.Many2one(
-        'res.users',
-        string='Recruiter',
-        help='The recruiter handling this applicant. '
-             'Must be one of the recruiters assigned to the job position.',
+    # ── Last Working Day ─────────────────────────────────────────
+    x_lwd = fields.Date(
+        string='LWD',
+        help='Last working day of the candidate.',
     )
 
     # ── Candidate Details ─────────────────────────────────────────
@@ -144,6 +142,41 @@ class HrApplicant(models.Model):
         help='Any competing offer the candidate currently holds.',
     )
 
+    # ── Compensation display (tracker-specific) ───────────────────
+    x_budget_display = fields.Char(
+        string='Budget',
+        compute='_compute_compensation_display',
+        readonly=True,
+        help='Derived budget / bill-rate display based on job type.',
+    )
+
+    x_bill_rate_display = fields.Char(
+        string='Bill Rate',
+        compute='_compute_compensation_display',
+        readonly=True,
+        help='Derived budget / bill-rate display based on job type.',
+    )
+
+    @api.depends('job_id.x_budget', 'job_id.x_employment_type')
+    def _compute_compensation_display(self):
+        """Show the same compensation value in the appropriate column only.
+
+        For FTE jobs:
+            Budget = job.x_budget
+            Bill Rate = N/A
+        For Consulting jobs:
+            Budget = N/A
+            Bill Rate = job.x_budget
+        """
+        for rec in self:
+            budget = rec.job_id.x_budget if rec.job_id else ''
+            if rec.job_id and rec.job_id.x_employment_type == 'consulting':
+                rec.x_budget_display = 'N/A'
+                rec.x_bill_rate_display = budget or ''
+            else:
+                rec.x_budget_display = budget or ''
+                rec.x_bill_rate_display = 'N/A'
+
     # ── Assessment fields ─────────────────────────────────────────
     x_assessment_link_received = fields.Selection(
         selection=[('yes', 'Yes'), ('no', 'No')],
@@ -185,16 +218,16 @@ class HrApplicant(models.Model):
     )
 
     # ── Constraint: hard block saving an invalid recruiter ────────
-    @api.constrains('x_recruiter_id', 'job_id')
+    @api.constrains('user_id', 'job_id')
     def _check_recruiter_belongs_to_job(self):
         for rec in self:
-            if not rec.x_recruiter_id or not rec.job_id:
+            if not rec.user_id or not rec.job_id:
                 continue
             allowed = rec.job_id.x_recruiter_ids
-            if rec.x_recruiter_id not in allowed:
+            if rec.user_id not in allowed:
                 allowed_names = ', '.join(allowed.mapped('name')) or 'none assigned'
                 raise ValidationError(
-                    f'Recruiter "{rec.x_recruiter_id.name}" is not assigned to the job '
+                    f'Recruiter "{rec.user_id.name}" is not assigned to the job '
                     f'position "{rec.job_id.name}".\n'
                     f'Allowed recruiters: {allowed_names}.'
                 )
@@ -204,27 +237,27 @@ class HrApplicant(models.Model):
     def _onchange_job_id_recruiter(self):
         recruiter_ids = self.job_id.x_recruiter_ids.ids if self.job_id else []
 
-        if self.x_recruiter_id and self.x_recruiter_id.id not in recruiter_ids:
-            self.x_recruiter_id = False
+        if self.user_id and self.user_id.id not in recruiter_ids:
+            self.user_id = False
 
-        if not self.x_recruiter_id and recruiter_ids:
-            self.x_recruiter_id = recruiter_ids[0]
+        if not self.user_id and recruiter_ids:
+            self.user_id = recruiter_ids[0]
 
         return {
             'domain': {
-                'x_recruiter_id': [('id', 'in', recruiter_ids)],
+                'user_id': [('id', 'in', recruiter_ids)],
             }
         }
 
     # ── Onchange: validate recruiter immediately when changed directly ──
-    @api.onchange('x_recruiter_id')
+    @api.onchange('user_id')
     def _onchange_recruiter_id_validate(self):
-        if not self.x_recruiter_id or not self.job_id:
+        if not self.user_id or not self.job_id:
             return
         recruiter_ids = self.job_id.x_recruiter_ids.ids
-        if self.x_recruiter_id.id not in recruiter_ids:
+        if self.user_id.id not in recruiter_ids:
             allowed_names = ', '.join(self.job_id.x_recruiter_ids.mapped('name')) or 'none assigned'
-            self.x_recruiter_id = False
+            self.user_id = False
             return {
                 'warning': {
                     'title': 'Invalid Recruiter',
@@ -235,3 +268,24 @@ class HrApplicant(models.Model):
                     ),
                 }
             }
+
+    # ── Export wizard openers (called from list view header buttons) ──────
+    def action_open_tracker_export_wizard(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Export Applicant Tracker',
+            'res_model': 'recruitment.applicant.tracker.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'views': [(False, 'form')],
+        }
+
+    def action_open_assessment_export_wizard(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Export Internal Assessment Report',
+            'res_model': 'recruitment.assessment.report.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'views': [(False, 'form')],
+        }

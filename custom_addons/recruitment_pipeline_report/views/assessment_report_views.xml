@@ -9,6 +9,13 @@
         <field name="arch" type="xml">
             <list string="Internal Assessment Report"
                   create="false" edit="true" delete="false" export_xlsx="0">
+                <header>
+                    <button name="action_open_assessment_export_wizard"
+                            string="Export Excel"
+                            type="object"
+                            class="btn-primary"
+                            display="always"/>
+                </header>
 
                 <field name="x_req_id"                     string="Req ID"                    optional="show" readonly="1"/>
                 <field name="department_id"                string="Client"                    optional="show" readonly="1"/>

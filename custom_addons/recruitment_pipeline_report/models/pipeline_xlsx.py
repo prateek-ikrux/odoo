@@ -62,7 +62,7 @@ def build_pipeline_xlsx(rows):
 
     worksheet.set_column(0, 0, 4)
     worksheet.set_column(1, 3, 18)
-    worksheet.set_column(4, 7, 12)
+    worksheet.set_column(4, 9, 12)
     worksheet.set_column(identity_count, identity_count + measure_count - 1, 14)
     worksheet.freeze_panes(2, 0)
 

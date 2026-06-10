@@ -26,7 +26,7 @@ class ApplicantTrackerWizard(models.TransientModel):
         if self.job_ids:
             domain.append(('job_id', 'in', self.job_ids.ids))
         if self.recruiter_ids:
-            domain.append(('x_recruiter_id', 'in', self.recruiter_ids.ids))
+            domain.append(('user_id', 'in', self.recruiter_ids.ids))
         return domain
 
     def _get_report_data(self):
@@ -41,23 +41,15 @@ class ApplicantTrackerWizard(models.TransientModel):
             dept = app.department_id
             emp_type = job.x_employment_type if job else 'fte'
 
-            # Bill Rate shown for Consulting; Budget/Bill Rate for FTE shown as N/A
-            # and vice-versa: for FTE show budget; for Consulting show N/A for budget column
-            # Per spec: FTE → bill_rate = N/A, budget = value
-            #           Consulting → budget = N/A, bill_rate = value
-            raw_budget = job.x_budget if job and job.x_budget else ''
-            if emp_type == 'fte':
-                bill_rate = 'N/A'
-                budget    = raw_budget or ''
-            else:
-                bill_rate = raw_budget or ''
-                budget    = 'N/A'
+            budget = app.x_budget_display or ''
+            bill_rate = app.x_bill_rate_display or ''
 
             # Current Status = current stage name
             current_status = app.stage_id.name if app.stage_id else ''
 
             # Recruiter display (TE / Recruiter column)
-            recruiter = app.x_recruiter_id.name if app.x_recruiter_id else ''
+            recruiter = app.user_id.name if app.user_id else ''
+            lwd = app.x_lwd.strftime('%d/%m/%Y') if app.x_lwd else ''
 
             # Source
             source = app.source_id.name if app.source_id else ''
@@ -91,9 +83,11 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'current_location':       app.x_current_location    or '',
                 'preferred_location':     app.x_preferred_location  or '',
                 'notice_period':          app.x_notice_period       or '',
+                'lwd':                    lwd,
                 # Compensation
                 'current_ctc':            app.x_current_ctc         or '',
                 'expected_ctc':           app.x_expected_ctc        or '',
+                'budget':                 budget,
                 'bill_rate':              bill_rate,
                 'offer_in_hand':          app.x_offer_in_hand       or '',
                 # Additional Information

@@ -3,6 +3,7 @@ import base64
 
 from odoo import models, fields
 from .assessment_report_xlsx import build_assessment_xlsx
+from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS
 
 
 class AssessmentReportWizard(models.TransientModel):
@@ -26,7 +27,7 @@ class AssessmentReportWizard(models.TransientModel):
         if self.job_ids:
             domain.append(('job_id', 'in', self.job_ids.ids))
         if self.recruiter_ids:
-            domain.append(('x_recruiter_id', 'in', self.recruiter_ids.ids))
+            domain.append(('user_id', 'in', self.recruiter_ids.ids))
         return domain
 
     def _get_report_data(self):
@@ -47,12 +48,8 @@ class AssessmentReportWizard(models.TransientModel):
             client      = dept.name          if dept else ''
             role        = job.name           if job else ''
             role_type   = 'FTE' if (job and job.x_employment_type == 'fte') else 'Consulting'
-            role_status = dict(app._fields['x_role_status'].selection).get(
-                app.x_role_status, ''
-            ) if app.x_role_status else ''
-            sub_status  = dict(app._fields['x_sub_status'].selection).get(
-                app.x_sub_status, ''
-            ) if app.x_sub_status else ''
+            role_status = ROLE_STATUS_LABELS.get(app.x_role_status, '') if app.x_role_status else ''
+            sub_status  = SUB_STATUS_LABELS.get(app.x_sub_status, '') if app.x_sub_status else ''
 
             candidate_name   = app.partner_name or ''
             current_status   = app.stage_id.name if app.stage_id else ''

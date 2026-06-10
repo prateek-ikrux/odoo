@@ -19,9 +19,6 @@
                 <field name="x_sub_status"          string="Sub Status"          readonly="1"/>
                 <field name="x_min_experience"      string="Min Exp (Yrs)"       readonly="1"/>
                 <field name="x_max_experience"      string="Max Exp (Yrs)"       readonly="1"/>
-                <field name="x_recruiter_id"
-                       string="Recruiter"
-                       options="{'no_create': True}"/>
                 <field name="x_client_portal_status" string="Client Portal Status"/>
                 <field name="x_assessment_link_received" string="Assessment Link Received"/>
                 <field name="x_assessment_taken"
@@ -53,12 +50,15 @@
                                 <field name="x_current_location"    string="Current Location"/>
                                 <field name="x_preferred_location"  string="Preferred Location"/>
                                 <field name="x_notice_period"       string="Notice Period"/>
+                                <field name="x_lwd"                 string="LWD"/>
                             </group>
                         </group>
                         <group>
                             <group string="Compensation">
                                 <field name="x_current_ctc"         string="Current CTC"/>
                                 <field name="x_expected_ctc"        string="Expected CTC"/>
+                                <field name="x_budget_display"      string="Budget" readonly="1"/>
+                                <field name="x_bill_rate_display"   string="Bill Rate" readonly="1"/>
                                 <field name="x_offer_in_hand"       string="Offer in Hand"/>
                             </group>
                         </group>
@@ -86,7 +86,7 @@
                 <field name="x_sub_status"           string="Sub Status"           optional="show" readonly="1"/>
                 <field name="x_poc_id"               string="POC"                  optional="show" readonly="1"/>
                 <field name="x_req_id"               string="Req ID"               optional="show" readonly="1"/>
-                <field name="x_recruiter_id"         string="Recruiter"            optional="show"/>
+                <field name="user_id"                string="Recruiter"            optional="show"/>
                 <field name="x_client_portal_status" string="Client Portal Status" optional="show"/>
                 <field name="partner_phone"          string="Candidate Number"     optional="hide"/>
                 <field name="x_skill"                string="Skill"                optional="hide"/>
@@ -111,7 +111,7 @@
 
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="x_poc_id"               string="POC"/>
-                <field name="x_recruiter_id"         string="Recruiter"/>
+                <field name="user_id"                string="Recruiter"/>
                 <field name="x_req_id"               string="Req ID"/>
                 <field name="partner_phone"          string="Candidate Number"/>
                 <field name="x_skill"                string="Skill"/>
@@ -174,7 +174,7 @@
 
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="x_poc_id"               string="POC"/>
-                <field name="x_recruiter_id"         string="Recruiter"/>
+                <field name="user_id"                string="Recruiter"/>
                 <field name="x_req_id"               string="Req ID"/>
                 <field name="partner_phone"          string="Candidate Number"/>
                 <field name="x_skill"                string="Skill"/>

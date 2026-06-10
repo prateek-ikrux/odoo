@@ -35,11 +35,13 @@ TRACKER_COLUMNS = [
     ('Location & Availability', 'Current Location',  'current_location',       18),
     ('',                        'Preferred Location', 'preferred_location',     18),
     ('',                        'Notice Period',      'notice_period',          14),
+    ('',                        'LWD',                'lwd',                    14),
 
     # ── Compensation ─────────────────────────────────────────────
     ('Compensation',         'Current CTC',           'current_ctc',            14),
     ('',                     'Expected CTC',          'expected_ctc',           14),
-    ('',                     'Bill Rate / Budget',    'bill_rate',              16),
+    ('',                     'Budget',                'budget',                 12),
+    ('',                     'Bill Rate',             'bill_rate',              12),
     ('',                     'Offer in Hand',         'offer_in_hand',          14),
 
     # ── Additional Information ───────────────────────────────────
