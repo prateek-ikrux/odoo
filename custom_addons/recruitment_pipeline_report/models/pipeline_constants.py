@@ -30,6 +30,7 @@ SECONDARY_HEADERS = [
     'Offered/Yet to Join',
     'Joined',
     'Declined',
+    'Quit Post Joining',
 ]
 
 MEASURE_FIELDS = [
@@ -57,6 +58,7 @@ MEASURE_FIELDS = [
     'offered',
     'joined',
     'declined',
+    'quit_post_joining',
 ]
 
 # Exact hr.recruitment.stage names as configured in the database (en_US).
@@ -64,7 +66,7 @@ STAGE_BY_FIELD = {
     'profiles_shared':        'Profile Shared',
     'screening_pending':      'Screening Pending',
     'duplicate_profiles':     'Duplicate Profiles',
-    'assessment_link_shared':  'Assessment Link Shared',
+    'assessment_link_shared': 'Assessment Link Shared',
     'assessment_reject':      'Assessment Reject',
     'l1_tbs':                 'L1 TBS',
     'l1_slot_shared':         'L1 Slot Shared',
@@ -85,24 +87,25 @@ STAGE_BY_FIELD = {
     'offered':                'Offered/Yet to Join',
     'joined':                 'Joined',
     'declined':               'Declined',
+    'quit_post_joining':      'Quit Post Joining',
 }
 
 ALL_STAGE_NAMES = list(STAGE_BY_FIELD.values())
 
 ROLE_STATUS_SELECTION = [
-    ('active', 'Active'),
+    ('active',      'Active'),
     ('in_progress', 'In Progress'),
-    ('on_hold', 'On Hold'),
-    ('closed', 'Closed'),
+    ('on_hold',     'On Hold'),
+    ('closed',      'Closed'),
 ]
 
 SUB_STATUS_SELECTION = [
-    ('candidate_drop', 'Candidate Drop'),
-    ('drop_by_client', 'Drop by Client'),
-    ('on_hold_alignment', 'On Hold Due to Alignment'),
-    ('nil', 'N/A'),
+    ('candidate_drop',      'Candidate Drop'),
+    ('drop_by_client',      'Drop by Client'),
+    ('on_hold_alignment',   'On Hold Due to Alignment'),
+    ('nil',                 'N/A'),
 ]
 
-ROLE_STATUS_LABELS = dict(ROLE_STATUS_SELECTION)
-SUB_STATUS_LABELS = dict(SUB_STATUS_SELECTION)
-EMP_TYPE_LABELS = {'fte': 'FTE', 'consulting': 'Consulting'}
+ROLE_STATUS_LABELS  = dict(ROLE_STATUS_SELECTION)
+SUB_STATUS_LABELS   = dict(SUB_STATUS_SELECTION)
+EMP_TYPE_LABELS     = {'fte': 'FTE', 'consulting': 'Consulting'}

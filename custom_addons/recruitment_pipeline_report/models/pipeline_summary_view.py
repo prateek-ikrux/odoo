@@ -60,6 +60,7 @@ class RecruitmentPipelineSummaryView(models.Model):
     offered                = fields.Integer(string='Offered/Yet to Join',            readonly=True)
     joined                 = fields.Integer(string='Joined',                         readonly=True)
     declined               = fields.Integer(string='Declined',                       readonly=True)
+    quit_post_joining      = fields.Integer(string='Quit Post Joining',              readonly=True)
 
     @staticmethod
     def _stage_count_sql_fragments():

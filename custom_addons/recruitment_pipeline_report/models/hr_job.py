@@ -35,6 +35,23 @@ class HrJob(models.Model):
         string='Sub Status',
     )
 
+    # ── New fields ────────────────────────────────────────────────
+    x_rec_id = fields.Char(
+        string='Rec ID',
+        copy=False,
+        help='Unique identifier for this job position.',
+    )
+
+    x_min_experience = fields.Integer(
+        string='Min Experience (Yrs)',
+        default=0,
+    )
+
+    x_max_experience = fields.Integer(
+        string='Max Experience (Yrs)',
+        default=0,
+    )
+
     x_display_name = fields.Char(
         string='Job Position',
         compute='_compute_display_name_with_type',
@@ -49,14 +66,22 @@ class HrJob(models.Model):
         domain="[('share', '=', False)]",
     )
 
+    x_budget = fields.Char(
+        string='Bill Rate / Budget',
+        help='For Consulting roles: the bill rate agreed with the client.\n'
+             'For FTE roles: the approved budget for this position.\n'
+             'Displayed as "N/A" in the Applicant Tracker for the other role type.',
+    )
+
+    # ── Create / write hooks ──────────────────────────────────────
+
     @api.model_create_multi
     def create(self, vals_list):
         jobs = super().create(vals_list)
         for job in jobs:
-            # Sync original user_id with first recruiter in x_recruiter_ids
+            # Keep user_id in sync with recruiter list
             if job.x_recruiter_ids and not job.user_id:
                 job.user_id = job.x_recruiter_ids[0]
-            # If user_id was set directly and x_recruiter_ids is empty, sync back
             elif job.user_id and not job.x_recruiter_ids:
                 job.x_recruiter_ids = [(4, job.user_id.id)]
         return jobs
@@ -66,7 +91,6 @@ class HrJob(models.Model):
         if 'x_recruiter_ids' in vals:
             for job in self:
                 if job.x_recruiter_ids:
-                    # Update primary user_id if not among the selected recruiters
                     if job.user_id not in job.x_recruiter_ids:
                         job.user_id = job.x_recruiter_ids[0]
                 else:
@@ -77,29 +101,47 @@ class HrJob(models.Model):
                     job.x_recruiter_ids = [(4, job.user_id.id)]
         return res
 
-    def _job_display_label(self, name, department, employment_type):
-        """Build a disambiguated label: Role (Client - FTE)."""
-        emp_labels = {'fte': 'FTE', 'consulting': 'Consulting'}
-        parts = []
-        if department:
-            parts.append(department.display_name)
-        emp = emp_labels.get(employment_type)
-        if emp:
-            parts.append(emp)
-        if parts:
-            return f"{name or ''} ({' - '.join(parts)})"
-        return name or ''
+    # ── Display name computation ──────────────────────────────────
 
-    @api.depends('name', 'department_id', 'x_employment_type')
+    def _job_display_label(self, rec_id, name, department, employment_type,
+                           min_exp, max_exp):
+        """
+        Format: [JOB0001] Infosys - Python Developer | FTE | 2-4 Yrs
+        """
+        emp_labels = {'fte': 'FTE', 'consulting': 'Consulting'}
+        prefix = f'[{rec_id}] ' if rec_id else ''
+        client = department.display_name if department else ''
+        role   = name or ''
+        emp    = emp_labels.get(employment_type, '')
+        if min_exp and not max_exp:
+            exp = f'{min_exp}+ Yrs'
+        elif min_exp or max_exp:
+            exp = f'{min_exp}-{max_exp} Yrs'
+        else:
+            exp = ''
+
+        core  = f'{client} - {role}' if client else role
+        label = prefix + core
+        if emp:
+            label += f' | {emp}'
+        if exp:
+            label += f' | {exp}'
+        return label
+
+    @api.depends('name', 'department_id', 'x_employment_type',
+                 'x_rec_id', 'x_min_experience', 'x_max_experience')
     def _compute_display_name(self):
         for rec in self:
             rec.display_name = rec._job_display_label(
-                rec.name, rec.department_id, rec.x_employment_type,
+                rec.x_rec_id, rec.name, rec.department_id,
+                rec.x_employment_type, rec.x_min_experience, rec.x_max_experience,
             )
 
-    @api.depends('name', 'department_id', 'x_employment_type')
+    @api.depends('name', 'department_id', 'x_employment_type',
+                 'x_rec_id', 'x_min_experience', 'x_max_experience')
     def _compute_display_name_with_type(self):
         for rec in self:
             rec.x_display_name = rec._job_display_label(
-                rec.name, rec.department_id, rec.x_employment_type,
+                rec.x_rec_id, rec.name, rec.department_id,
+                rec.x_employment_type, rec.x_min_experience, rec.x_max_experience,
             )

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- FORM — job-position fields shown readonly from linked job -->
+    <!-- FORM — job-position fields shown readonly; recruiter + tracker fields editable -->
     <record id="hr_applicant_form_inherit_pipeline" model="ir.ui.view">
         <field name="name">hr.applicant.form.inherit.pipeline</field>
         <field name="model">hr.applicant</field>
@@ -12,15 +12,56 @@
                 <attribute name="readonly">1</attribute>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_employment_type" string="Employment Type" readonly="1"/>
-                <field name="x_poc_id"          string="POC"             readonly="1"/>
-                <field name="x_role_status"     string="Role Status"     readonly="1"/>
-                <field name="x_sub_status"      string="Sub Status"      readonly="1"/>
+                <field name="x_rec_id"              string="Rec ID"              readonly="1"/>
+                <field name="x_employment_type"     string="Employment Type"     readonly="1"/>
+                <field name="x_poc_id"              string="POC"                 readonly="1"/>
+                <field name="x_role_status"         string="Role Status"         readonly="1"/>
+                <field name="x_sub_status"          string="Sub Status"          readonly="1"/>
+                <field name="x_min_experience"      string="Min Exp (Yrs)"       readonly="1"/>
+                <field name="x_max_experience"      string="Max Exp (Yrs)"       readonly="1"/>
+                <field name="x_recruiter_id"
+                       string="Recruiter"
+                       options="{'no_create': True}"/>
+                <field name="x_client_portal_status" string="Client Portal Status"/>
+            </xpath>
+            <!-- Candidate Details tab / section -->
+            <xpath expr="//sheet" position="inside">
+                <notebook>
+                    <page string="Candidate Details" name="candidate_details">
+                        <group>
+                            <group string="Personal">
+                                <field name="partner_phone"             string="Candidate Number"/>
+                                <field name="x_skill"               string="Skill"/>
+                                <field name="x_total_experience"    string="Total Experience"/>
+                                <field name="x_relevant_experience" string="Relevant Experience"/>
+                                <field name="x_current_organization" string="Current Organization"/>
+                                <field name="x_designation"         string="Designation"/>
+                                <field name="x_education"           string="Education"/>
+                            </group>
+                            <group string="Location &amp; Availability">
+                                <field name="x_current_location"    string="Current Location"/>
+                                <field name="x_preferred_location"  string="Preferred Location"/>
+                                <field name="x_notice_period"       string="Notice Period"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Compensation">
+                                <field name="x_current_ctc"         string="Current CTC"/>
+                                <field name="x_expected_ctc"        string="Expected CTC"/>
+                                <field name="x_offer_in_hand"       string="Offer in Hand"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="x_reason_for_job_change"   string="Reason for Job Change" colspan="2"/>
+                            <field name="x_remarks"                 string="Remarks"               colspan="2"/>
+                        </group>
+                    </page>
+                </notebook>
             </xpath>
         </field>
     </record>
 
-    <!-- LIST — readonly job-position columns -->
+    <!-- LIST — readonly job-position columns + recruiter + portal status -->
     <record id="hr_applicant_list_inherit_pipeline" model="ir.ui.view">
         <field name="name">hr.applicant.list.inherit.pipeline</field>
         <field name="model">hr.applicant</field>
@@ -30,9 +71,18 @@
                 <attribute name="string">Client</attribute>
             </xpath>
             <xpath expr="//field[@name='stage_id']" position="after">
-                <field name="x_role_status" string="Role Status" optional="show" readonly="1"/>
-                <field name="x_sub_status"  string="Sub Status"  optional="show" readonly="1"/>
-                <field name="x_poc_id"      string="POC"         optional="show" readonly="1"/>
+                <field name="x_role_status"          string="Role Status"          optional="show" readonly="1"/>
+                <field name="x_sub_status"           string="Sub Status"           optional="show" readonly="1"/>
+                <field name="x_poc_id"               string="POC"                  optional="show" readonly="1"/>
+                <field name="x_rec_id"               string="Rec ID"               optional="show" readonly="1"/>
+                <field name="x_recruiter_id"         string="Recruiter"            optional="show"/>
+                <field name="x_client_portal_status" string="Client Portal Status" optional="show"/>
+                <field name="partner_phone"          string="Candidate Number"     optional="hide"/>
+                <field name="x_skill"                string="Skill"                optional="hide"/>
+                <field name="x_current_organization" string="Current Organization" optional="hide"/>
+                <field name="x_designation"          string="Designation"          optional="hide"/>
+                <field name="x_current_location"     string="Current Location"     optional="hide"/>
+                <field name="x_notice_period"        string="Notice Period"        optional="hide"/>
             </xpath>
         </field>
     </record>
@@ -49,7 +99,13 @@
             </xpath>
 
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_poc_id" string="POC"/>
+                <field name="x_poc_id"               string="POC"/>
+                <field name="x_recruiter_id"         string="Recruiter"/>
+                <field name="x_rec_id"               string="Rec ID"/>
+                <field name="partner_phone"          string="Candidate Number"/>
+                <field name="x_skill"                string="Skill"/>
+                <field name="x_current_organization" string="Current Organization"/>
+                <field name="email_from"             string="Email"/>
             </xpath>
 
             <xpath expr="//filter[@name='department']" position="attributes">
@@ -70,6 +126,13 @@
                 <filter name="ps_closed"
                         string="Closed"
                         domain="[('x_role_status','=','closed')]"/>
+                <separator/>
+                <filter name="portal_uploaded"
+                        string="Uploaded to Portal"
+                        domain="[('x_client_portal_status','=','uploaded')]"/>
+                <filter name="portal_not_uploaded"
+                        string="Not Uploaded to Portal"
+                        domain="[('x_client_portal_status','=','not_uploaded')]"/>
             </xpath>
 
             <xpath expr="//search/group" position="inside">
@@ -79,12 +142,15 @@
                 <filter name="group_by_emp_type"
                         string="Employment Type"
                         context="{'group_by': 'x_employment_type'}"/>
+                <filter name="group_by_portal_status"
+                        string="Client Portal Status"
+                        context="{'group_by': 'x_client_portal_status'}"/>
             </xpath>
 
         </field>
     </record>
 
-    <!-- SEARCH (main Applications menu — hr_applicant_view_search_bis) -->
+    <!-- SEARCH (main Applications menu) -->
     <record id="hr_applicant_search_bis_inherit_pipeline" model="ir.ui.view">
         <field name="name">hr.applicant.search.bis.inherit.pipeline</field>
         <field name="model">hr.applicant</field>
@@ -96,7 +162,12 @@
             </xpath>
 
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_poc_id" string="POC"/>
+                <field name="x_poc_id"               string="POC"/>
+                <field name="x_recruiter_id"         string="Recruiter"/>
+                <field name="x_rec_id"               string="Rec ID"/>
+                <field name="partner_phone"          string="Candidate Number"/>
+                <field name="x_skill"                string="Skill"/>
+                <field name="x_current_organization" string="Current Organization"/>
             </xpath>
 
             <xpath expr="//search/separator[1]" position="before">
@@ -113,6 +184,13 @@
                 <filter name="ps_closed"
                         string="Closed"
                         domain="[('x_role_status','=','closed')]"/>
+                <separator/>
+                <filter name="portal_uploaded"
+                        string="Uploaded to Portal"
+                        domain="[('x_client_portal_status','=','uploaded')]"/>
+                <filter name="portal_not_uploaded"
+                        string="Not Uploaded to Portal"
+                        domain="[('x_client_portal_status','=','not_uploaded')]"/>
             </xpath>
 
             <xpath expr="//search/group" position="inside">
@@ -125,6 +203,9 @@
                 <filter name="group_by_emp_type"
                         string="Employment Type"
                         context="{'group_by': 'x_employment_type'}"/>
+                <filter name="group_by_portal_status"
+                        string="Client Portal Status"
+                        context="{'group_by': 'x_client_portal_status'}"/>
             </xpath>
 
         </field>
