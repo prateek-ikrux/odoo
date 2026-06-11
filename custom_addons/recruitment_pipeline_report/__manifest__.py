@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Recruitment Pipeline Summary Report',
-    'version': '19.0.2.1.9',
+    'version': '19.0.2.1.10',
     'category': 'Recruitment',
     'summary': 'Pipeline Summary pivot + Excel report with full stage tracking, Applicant Tracker, and Internal Assessment Report',
     'depends': ['hr', 'hr_recruitment'],
