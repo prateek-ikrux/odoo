@@ -49,10 +49,18 @@ class ApplicantTrackerWizard(models.TransientModel):
 
             # Recruiter display (TE / Recruiter column)
             recruiter = app.user_id.name if app.user_id else ''
-            lwd = app.x_lwd.strftime('%d/%m/%Y') if app.x_lwd else ''
 
             # Source
             source = app.source_id.name if app.source_id else ''
+
+            def format_ordinal_date(d):
+                if not d: return ''
+                day = d.day
+                if 4 <= day <= 20 or 24 <= day <= 30:
+                    suf = "th"
+                else:
+                    suf = ["st", "nd", "rd"][day % 10 - 1]
+                return d.strftime(f"{day}{suf} %B %Y")
 
             rows.append({
                 'seq':                    seq,
@@ -64,7 +72,7 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'recruiter':              recruiter,
                 # Application Details
                 'source':                 source,
-                'application_date':       app.create_date.strftime('%d/%m/%Y') if app.create_date else '',
+                'application_date':       format_ordinal_date(app.create_date),
                 'current_status':         current_status,
                 'client_portal_status':   dict(app._fields['x_client_portal_status'].selection).get(
                                               app.x_client_portal_status, 'Not Uploaded'
@@ -83,7 +91,7 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'current_location':       app.x_current_location    or '',
                 'preferred_location':     app.x_preferred_location  or '',
                 'notice_period':          app.x_notice_period       or '',
-                'lwd':                    lwd,
+                'lwd':                    format_ordinal_date(app.x_lwd),
                 # Compensation
                 'current_ctc':            app.x_current_ctc         or '',
                 'expected_ctc':           app.x_expected_ctc        or '',

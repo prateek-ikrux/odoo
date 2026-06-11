@@ -223,6 +223,32 @@ class HrApplicant(models.Model):
         help='Internal recruiter remarks / notes about the candidate.',
     )
 
+    # ── Custom Date Display (Ordinal format like 2nd May 2026) ────
+    x_create_date_display = fields.Char(
+        string='Application Date',
+        compute='_compute_date_displays',
+    )
+
+    x_lwd_display = fields.Char(
+        string='Last Working Date',
+        compute='_compute_date_displays',
+    )
+
+    @api.depends('create_date', 'x_lwd')
+    def _compute_date_displays(self):
+        def format_ordinal_date(d):
+            if not d: return ''
+            day = d.day
+            if 4 <= day <= 20 or 24 <= day <= 30:
+                suf = "th"
+            else:
+                suf = ["st", "nd", "rd"][day % 10 - 1]
+            return d.strftime(f"{day}{suf} %B %Y")
+
+        for rec in self:
+            rec.x_create_date_display = format_ordinal_date(rec.create_date)
+            rec.x_lwd_display = format_ordinal_date(rec.x_lwd)
+
     # ── Constraint: hard block saving an invalid recruiter ────────
     @api.constrains('user_id', 'job_id')
     def _check_recruiter_belongs_to_job(self):

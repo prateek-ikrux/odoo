@@ -26,7 +26,7 @@
 
                 <!-- Application Details -->
                 <field name="source_id"               string="Source"               optional="show"/>
-                <field name="create_date"             string="Application Date"     optional="show" readonly="1"/>
+                <field name="x_create_date_display"   string="Application Date"     optional="show" readonly="1"/>
                 <field name="stage_id"                string="Current Status"       optional="show"/>
                 <field name="x_client_portal_status"  string="Client Portal Status" optional="show"
                        widget="badge"
@@ -48,7 +48,8 @@
                 <field name="x_current_location"      string="Current Location"     optional="show"/>
                 <field name="x_preferred_location"    string="Preferred Location"   optional="hide"/>
                 <field name="x_notice_period"         string="Notice Period"        optional="show"/>
-                <field name="x_lwd"                    string="Last Working Date"                  optional="show"/>
+                <field name="x_lwd"                   column_invisible="True"/>
+                <field name="x_lwd_display"           string="Last Working Date"    optional="show"/>
 
                 <!-- Compensation -->
                 <field name="x_current_ctc"           string="Current CTC"          optional="show"/>
