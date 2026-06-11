@@ -8,9 +8,6 @@ from .pipeline_constants import (
     ROLE_STATUS_LABELS,
     SUB_STATUS_LABELS,
     EMP_TYPE_LABELS,
-    STAGE_BY_FIELD,
-    MEASURE_FIELDS,
-    ALL_STAGE_NAMES,
 )
 from .pipeline_xlsx import build_pipeline_xlsx
 
@@ -23,10 +20,6 @@ class PipelineSummaryWizard(models.TransientModel):
     date_to        = fields.Date(string='Date To')
     department_ids = fields.Many2many('hr.department', string='Clients')
     job_ids        = fields.Many2many('hr.job',        string='Roles')
-
-    def _build_stage_map(self):
-        stages = self.env['hr.recruitment.stage'].search([('name', 'in', ALL_STAGE_NAMES)])
-        return {s.name: s.id for s in stages}
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -41,7 +34,8 @@ class PipelineSummaryWizard(models.TransientModel):
         return domain
 
     def _get_report_data(self):
-        stage_map = self._build_stage_map()
+        stages = self.env['hr.recruitment.stage'].search([], order='sequence')
+        stage_names = [s.name for s in stages]
         applicants = self.env['hr.applicant'].search(self._base_domain())
 
         groups = defaultdict(list)
@@ -70,10 +64,8 @@ class PipelineSummaryWizard(models.TransientModel):
             no_of_pos   = job.no_of_recruitment if job else 0
             role_status = job.x_role_status if job else 'active'
             sub_status  = job.x_sub_status if job else False
-            def count_field(field_key):
-                stage_name = STAGE_BY_FIELD[field_key]
-                sid = stage_map.get(stage_name, -1)
-                return sum(1 for a in apps if a.stage_id.id == sid)
+            def count_stage(stage_id):
+                return sum(1 for a in apps if a.stage_id.id == stage_id)
 
             row = {
                 'seq':             seq,
@@ -86,13 +78,14 @@ class PipelineSummaryWizard(models.TransientModel):
                 'role_status_key': role_status,
                 'sub_status':      SUB_STATUS_LABELS.get(sub_status, sub_status or ''),
                 'no_of_positions': no_of_pos,
+                'stage_counts':    {},
             }
-            for field_key in MEASURE_FIELDS:
-                row[field_key] = count_field(field_key)
+            for s in stages:
+                row['stage_counts'][s.name] = count_stage(s.id)
             rows.append(row)
             seq += 1
 
-        return rows
+        return rows, stage_names
 
     def action_print_report(self):
         return self.env.ref(
@@ -101,8 +94,8 @@ class PipelineSummaryWizard(models.TransientModel):
 
     def action_export_xlsx(self):
         """Export filtered pipeline summary to Excel with two-row headers."""
-        rows = self._get_report_data()
-        xlsx_data = build_pipeline_xlsx(rows)
+        rows, stages = self._get_report_data()
+        xlsx_data = build_pipeline_xlsx(rows, stages)
         attachment = self.env['ir.attachment'].create({
             'name': 'Pipeline_Summary.xlsx',
             'type': 'binary',

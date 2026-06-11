@@ -26,29 +26,8 @@
                        decoration-muted="role_status == 'closed'"/>
                 <field name="sub_status"             string="Role Status Remarks"/>
                 <field name="no_of_positions"        string="No. of Positions"              sum="Total"/>
-                <field name="profiles_shared"        string="Profiles Shared"               sum="Total"/>
-                <field name="screening_pending"      string="Screening Pending"             sum="Total"/>
-                <field name="duplicate_profiles"     string="Duplicate Profiles"            sum="Total"/>
-                <field name="l1_tbs"                 string="L1 TBS"                        sum="Total"/>
-                <field name="l1_slot_shared"         string="L1 Slot Shared"                sum="Total"/>
-                <field name="l1_scheduled"           string="L1 Scheduled"                  sum="Total"/>
-                <field name="l1_feedback_pending"    string="L1 Feedback Pending"           sum="Total"/>
-                <field name="l1_reject"              string="L1 Reject"                     sum="Total"/>
-                <field name="l2_tbs"                 string="L2 TBS"                        sum="Total"/>
-                <field name="l2_slot_shared"         string="L2 Slot Shared"                sum="Total"/>
-                <field name="l2_scheduled"           string="L2 Scheduled"                  sum="Total"/>
-                <field name="l2_feedback_pending"    string="L2 Feedback Pending"           sum="Total"/>
-                <field name="l2_reject"              string="L2 Reject"                     sum="Total"/>
-                <field name="cr_tbs"                 string="Client Round TBS"              sum="Total"/>
-                <field name="cr_slot_shared"         string="Client Round Slot Shared"      sum="Total"/>
-                <field name="cr_scheduled"           string="Client Round Scheduled"        sum="Total"/>
-                <field name="cr_feedback_pending"    string="Client Round Feedback Pending" sum="Total"/>
-                <field name="cr_reject"              string="Client Round Reject"           sum="Total"/>
-                <field name="tbo"                    string="TBO"                           sum="Total"/>
-                <field name="offered"                string="Offered/Yet to Join"           sum="Total"/>
-                <field name="joined"                 string="Joined"                        sum="Total"/>
-                <field name="declined"               string="Declined"                      sum="Total"/>
-                <field name="quit_post_joining"      string="Quit Post Joining"             sum="Total"/>
+                <field name="stage_id"               string="Stage"/>
+                <field name="applicant_count"        string="Applicants"                    sum="Total"/>
             </list>
         </field>
     </record>
@@ -58,36 +37,16 @@
         <field name="name">recruitment.pipeline.summary.view.pivot</field>
         <field name="model">recruitment.pipeline.summary.view</field>
         <field name="arch" type="xml">
-            <pivot string="Pipeline Summary" display_quantity="true">
+            <pivot string="Pipeline Summary" display_quantity="false">
                 <field name="client"                 type="row"/>
                 <field name="poc"                    type="row"/>
                 <field name="role"                   type="row"/>
                 <field name="role_type"              type="row"/>
                 <field name="role_status"            type="row"/>
                 <field name="sub_status"             type="row"/>
+                <field name="stage_id"               type="col"/>
                 <field name="no_of_positions"        type="measure"/>
-                <field name="profiles_shared"        type="measure"/>
-                <field name="screening_pending"      type="measure"/>
-                <field name="l1_tbs"                 type="measure"/>
-                <field name="l1_slot_shared"         type="measure"/>
-                <field name="l1_scheduled"           type="measure"/>
-                <field name="l1_feedback_pending"    type="measure"/>
-                <field name="l1_reject"              type="measure"/>
-                <field name="l2_tbs"                 type="measure"/>
-                <field name="l2_slot_shared"         type="measure"/>
-                <field name="l2_scheduled"           type="measure"/>
-                <field name="l2_feedback_pending"    type="measure"/>
-                <field name="l2_reject"              type="measure"/>
-                <field name="cr_tbs"                 type="measure"/>
-                <field name="cr_slot_shared"         type="measure"/>
-                <field name="cr_scheduled"           type="measure"/>
-                <field name="cr_feedback_pending"    type="measure"/>
-                <field name="cr_reject"              type="measure"/>
-                <field name="tbo"                    type="measure"/>
-                <field name="offered"                type="measure"/>
-                <field name="joined"                 type="measure"/>
-                <field name="declined"               type="measure"/>
-                <field name="quit_post_joining"      type="measure"/>
+                <field name="applicant_count"        type="measure"/>
             </pivot>
         </field>
     </record>

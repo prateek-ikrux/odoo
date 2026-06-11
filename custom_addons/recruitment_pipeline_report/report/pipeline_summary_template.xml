@@ -18,7 +18,9 @@
 <template id="report_pipeline_summary_document">
 <t t-call="web.html_container">
 <t t-foreach="docs" t-as="o">
-<t t-set="rows" t-value="o._get_report_data()"/>
+<t t-set="data_tuple" t-value="o._get_report_data()"/>
+<t t-set="rows" t-value="data_tuple[0]"/>
+<t t-set="stages" t-value="data_tuple[1]"/>
 <t t-call="web.external_layout">
 <div class="page">
 <style>
@@ -78,32 +80,15 @@
             <th class="w-rs">Role Status</th>
             <th class="w-ss">Role Status Remarks</th>
             <th class="w-np">Pos.</th>
-            <th colspan="22" style="background:#1a6b9a;">Pipeline Summary</th>
+            <t t-if="len(stages) &gt; 0">
+                <th t-att-colspan="len(stages)" style="background:#1a6b9a;">Pipeline Summary</th>
+            </t>
         </tr>
         <tr class="hdr2">
             <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
-            <th>Profiles Shared</th>
-            <th>Screening Pending</th>
-            <th>Duplicate Profiles</th>
-            <th>L1 TBS</th>
-            <th>L1 Slot Shared</th>
-            <th>L1 Scheduled</th>
-            <th>L1 Feedback Pending</th>
-            <th>L1 Reject</th>
-            <th>L2 TBS</th>
-            <th>L2 Slot Shared</th>
-            <th>L2 Scheduled</th>
-            <th>L2 Feedback Pending</th>
-            <th>L2 Reject</th>
-            <th>Client Round TBS</th>
-            <th>Client Round Slot Shared</th>
-            <th>Client Round Scheduled</th>
-            <th>Client Round FP</th>
-            <th>Client Round Reject</th>
-            <th>TBO</th>
-            <th>Offered/ Yet to Join</th>
-            <th>Joined</th>
-            <th>Declined</th>
+            <t t-foreach="stages" t-as="stg">
+                <th t-esc="stg"/>
+            </t>
         </tr>
     </thead>
     <tbody>
@@ -126,33 +111,14 @@
                     </td>
                     <td t-esc="row['sub_status']"/>
                     <td class="num" t-esc="row['no_of_positions']"/>
-                    <td class="num" t-esc="row['profiles_shared']"/>
-                    <td class="num" t-esc="row['screening_pending']"/>
-                    <td class="num" t-esc="row['duplicate_profiles']"/>
-                    <td class="num" t-esc="row['l1_tbs']"/>
-                    <td class="num" t-esc="row['l1_slot_shared']"/>
-                    <td class="num" t-esc="row['l1_scheduled']"/>
-                    <td class="num" t-esc="row['l1_feedback_pending']"/>
-                    <td class="num" t-esc="row['l1_reject']"/>
-                    <td class="num" t-esc="row['l2_tbs']"/>
-                    <td class="num" t-esc="row['l2_slot_shared']"/>
-                    <td class="num" t-esc="row['l2_scheduled']"/>
-                    <td class="num" t-esc="row['l2_feedback_pending']"/>
-                    <td class="num" t-esc="row['l2_reject']"/>
-                    <td class="num" t-esc="row['cr_tbs']"/>
-                    <td class="num" t-esc="row['cr_slot_shared']"/>
-                    <td class="num" t-esc="row['cr_scheduled']"/>
-                    <td class="num" t-esc="row['cr_feedback_pending']"/>
-                    <td class="num" t-esc="row['cr_reject']"/>
-                    <td class="num" t-esc="row['tbo']"/>
-                    <td class="num" t-esc="row['offered']"/>
-                    <td class="num" t-esc="row['joined']"/>
-                    <td class="num" t-esc="row['declined']"/>
+                    <t t-foreach="stages" t-as="stg">
+                        <td class="num" t-esc="row['stage_counts'].get(stg, 0)"/>
+                    </t>
                 </tr>
             </t>
         </t>
         <t t-else="">
-            <tr><td colspan="30" class="no-data">No data found.</td></tr>
+            <tr><td t-att-colspan="8 + len(stages)" class="no-data">No data found.</td></tr>
         </t>
     </tbody>
 </table>
