@@ -35,8 +35,8 @@
 
                 <!-- Candidate Details -->
                 <field name="partner_name"            string="Candidate Name"       optional="show"/>
-                <field name="partner_phone"           string="Candidate Number"     optional="show"/>
-                <field name="email_from"              string="Candidate Email"      optional="show"/>
+                <field name="partner_phone"           string="Contact Number"     optional="show"/>
+                <field name="email_from"              string="Email ID"      optional="show"/>
                 <field name="x_skill"                 string="Skill"                optional="show"/>
                 <field name="x_total_experience"      string="Total Exp"            optional="show"/>
                 <field name="x_relevant_experience"   string="Relevant Exp"         optional="show"/>
@@ -48,7 +48,7 @@
                 <field name="x_current_location"      string="Current Location"     optional="show"/>
                 <field name="x_preferred_location"    string="Preferred Location"   optional="hide"/>
                 <field name="x_notice_period"         string="Notice Period"        optional="show"/>
-                <field name="x_lwd"                    string="LWD"                  optional="show"/>
+                <field name="x_lwd"                    string="Last Working Date"                  optional="show"/>
 
                 <!-- Compensation -->
                 <field name="x_current_ctc"           string="Current CTC"          optional="show"/>
@@ -142,8 +142,8 @@
     <menuitem
         id="menu_applicant_tracker"
         name="Applicant Tracker"
-        parent="hr_recruitment.menu_hr_recruitment_root"
+        parent="menu_recruitment_reporting_root"
         action="action_applicant_tracker_list"
-        sequence="99"/>
+        sequence="2"/>
 
 </odoo>

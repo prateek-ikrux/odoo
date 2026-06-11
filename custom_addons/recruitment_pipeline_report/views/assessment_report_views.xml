@@ -27,7 +27,7 @@
                        decoration-info="x_role_status == 'in_progress'"
                        decoration-warning="x_role_status == 'on_hold'"
                        decoration-muted="x_role_status == 'closed'"/>
-                <field name="x_sub_status"                 string="Sub Status"                optional="show" readonly="1"/>
+                <field name="x_sub_status"                 string="Role Status Remarks"                optional="show" readonly="1"/>
                 <field name="partner_name"                 string="Candidate Name"            optional="show"/>
                 <field name="x_assessment_link_received"   string="Assessment Link Received"  optional="show"
                        widget="badge"
@@ -121,8 +121,8 @@
     <menuitem
         id="menu_assessment_report"
         name="Internal Assessment Report"
-        parent="hr_recruitment.menu_hr_recruitment_root"
+        parent="menu_recruitment_reporting_root"
         action="action_assessment_report_list"
-        sequence="100"/>
+        sequence="3"/>
 
 </odoo>

@@ -24,7 +24,7 @@
                        decoration-info="role_status == 'in_progress'"
                        decoration-warning="role_status == 'on_hold'"
                        decoration-muted="role_status == 'closed'"/>
-                <field name="sub_status"             string="Sub Status"/>
+                <field name="sub_status"             string="Role Status Remarks"/>
                 <field name="no_of_positions"        string="No. of Positions"              sum="Total"/>
                 <field name="profiles_shared"        string="Profiles Shared"               sum="Total"/>
                 <field name="screening_pending"      string="Screening Pending"             sum="Total"/>
@@ -149,12 +149,19 @@
         <field name="code">action = env['recruitment.pipeline.summary.view'].action_open_export_wizard()</field>
     </record>
 
-    <!-- Menu -->
+    <!-- Menu — Pipeline Summary under native Reporting -->
+    <!-- Reporting parent menu (self-contained; safe if hr_recruitment omits it) -->
+    <menuitem
+        id="menu_recruitment_reporting_root"
+        name="Reporting"
+        parent="hr_recruitment.menu_hr_recruitment_root"
+        sequence="10"/>
+
     <menuitem
         id="menu_pipeline_summary_pivot"
         name="Pipeline Summary"
-        parent="hr_recruitment.menu_hr_recruitment_root"
+        parent="menu_recruitment_reporting_root"
         action="action_pipeline_summary_pivot"
-        sequence="98"/>
+        sequence="2"/>
 
 </odoo>
