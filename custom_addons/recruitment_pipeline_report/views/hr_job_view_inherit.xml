@@ -26,6 +26,10 @@
                        string="Recruiters"
                        options="{'no_create': True}"/>
             </xpath>
+            <!-- Hide native contract type group -->
+            <xpath expr="//group[@name='contract']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 
@@ -136,6 +140,9 @@
                 <field name="x_recruiter_ids" string="Recruiters"/>
                 <field name="x_req_id"        string="Req ID"/>
             </xpath>
+            <xpath expr="//filter[@name='employment_type']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 
@@ -149,6 +156,14 @@
                 <attribute name="string">Client</attribute>
             </xpath>
         </field>
+    </record>
+
+    <!-- Hide native Employment Types menu -->
+    <record id="hr.menu_view_hr_contract_type" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="hr_recruitment.menu_hr_recruitment_contract_type" model="ir.ui.menu">
+        <field name="active" eval="False"/>
     </record>
 
 </odoo>
