@@ -150,17 +150,10 @@
     </record>
 
     <!-- Menu — Pipeline Summary under native Reporting -->
-    <!-- Reporting parent menu (self-contained; safe if hr_recruitment omits it) -->
-    <menuitem
-        id="menu_recruitment_reporting_root"
-        name="Reporting"
-        parent="hr_recruitment.menu_hr_recruitment_root"
-        sequence="10"/>
-
     <menuitem
         id="menu_pipeline_summary_pivot"
         name="Pipeline Summary"
-        parent="menu_recruitment_reporting_root"
+        parent="hr_recruitment.report_hr_recruitment"
         action="action_pipeline_summary_pivot"
         sequence="2"/>
 

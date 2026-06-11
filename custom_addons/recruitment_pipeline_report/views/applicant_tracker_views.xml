@@ -142,7 +142,7 @@
     <menuitem
         id="menu_applicant_tracker"
         name="Applicant Tracker"
-        parent="menu_recruitment_reporting_root"
+        parent="hr_recruitment.report_hr_recruitment"
         action="action_applicant_tracker_list"
         sequence="2"/>
 

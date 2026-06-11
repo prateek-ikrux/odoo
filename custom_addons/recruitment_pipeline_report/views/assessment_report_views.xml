@@ -121,7 +121,7 @@
     <menuitem
         id="menu_assessment_report"
         name="Internal Assessment Report"
-        parent="menu_recruitment_reporting_root"
+        parent="hr_recruitment.report_hr_recruitment"
         action="action_assessment_report_list"
         sequence="3"/>
 
