@@ -84,6 +84,7 @@
                             <field name="recruiter_ids"  widget="many2many_tags"
                                    string="Recruiters"
                                    domain="[('share','=',False)]"/>
+                            <field name="role_status" string="Role Status"/>
                         </group>
                     </group>
                 </sheet>

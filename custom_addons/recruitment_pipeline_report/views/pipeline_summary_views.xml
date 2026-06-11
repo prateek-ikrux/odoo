@@ -79,6 +79,7 @@
                                    string="Clients"/>
                             <field name="job_ids" widget="many2many_tags"
                                    string="Roles"/>
+                            <field name="role_status" string="Role Status"/>
                         </group>
                     </group>
                 </sheet>

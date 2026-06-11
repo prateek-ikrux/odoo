@@ -14,6 +14,15 @@ class ApplicantTrackerWizard(models.TransientModel):
     department_ids = fields.Many2many('hr.department', string='Clients')
     job_ids        = fields.Many2many('hr.job',        string='Roles')
     recruiter_ids  = fields.Many2many('res.users',     string='Recruiters')
+    role_status    = fields.Selection(
+        [
+            ('active',      'Active'),
+            ('in_progress', 'In Progress'),
+            ('on_hold',     'On Hold'),
+            ('closed',      'Closed'),
+        ],
+        string='Role Status'
+    )
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -27,6 +36,8 @@ class ApplicantTrackerWizard(models.TransientModel):
             domain.append(('job_id', 'in', self.job_ids.ids))
         if self.recruiter_ids:
             domain.append(('user_id', 'in', self.recruiter_ids.ids))
+        if self.role_status:
+            domain.append(('job_id.x_role_status', '=', self.role_status))
         return domain
 
     def _get_report_data(self):
