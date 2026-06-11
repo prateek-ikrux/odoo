@@ -7,6 +7,12 @@ class HrApplicant(models.Model):
     _inherit = 'hr.applicant'
 
     # ── Readonly mirrors from job position ────────────────────────
+    x_job_location_ids = fields.Many2many(
+        related='job_id.x_location_ids',
+        string='Job Available Locations',
+        readonly=True,
+    )
+
     x_role_status = fields.Selection(
         related='job_id.x_role_status',
         string='Role Status',
@@ -80,9 +86,12 @@ class HrApplicant(models.Model):
     # ── Candidate Details ─────────────────────────────────────────
     # Candidate Number = partner_phone (native hr.applicant field)
 
-    x_skill = fields.Char(
+    x_skill_ids = fields.Many2many(
+        'recruitment.skill',
+        'hr_applicant_skill_rel',
+        'applicant_id', 'skill_id',
         string='Skill',
-        help='Primary skill set of the candidate.',
+        help='Candidate Skills selected from the shared skill master.'
     )
 
     x_total_experience = fields.Char(
@@ -111,14 +120,24 @@ class HrApplicant(models.Model):
     )
 
     # ── Location & Availability ───────────────────────────────────
-    x_current_location = fields.Char(
+    x_current_location_id = fields.Many2one(
+        'recruitment.city',
         string='Current Location',
-        help='City/region where the candidate currently resides.',
+        help='City where the candidate currently resides.',
     )
 
-    x_preferred_location = fields.Char(
+    x_preferred_location_ids = fields.Many2many(
+        'recruitment.city',
+        'hr_applicant_preferred_city_rel',
+        'applicant_id', 'city_id',
         string='Preferred Location',
-        help='City/region the candidate prefers to work in.',
+        help='Cities the candidate prefers to work in. Should be filtered by available job locations.',
+    )
+
+    x_open_to_anywhere = fields.Boolean(
+        string='Open to Anywhere',
+        default=False,
+        help='Indicates if the candidate is open to relocating anywhere.',
     )
 
     x_notice_period = fields.Selection(

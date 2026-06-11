@@ -92,16 +92,17 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'candidate_name':         app.partner_name          or '',
                 'candidate_number':       app.partner_phone         or '',
                 'candidate_email':        app.email_from            or '',
-                'skill':                  app.x_skill               or '',
+                'skill':                  ', '.join(app.x_skill_ids.mapped('name')) if app.x_skill_ids else '',
                 'total_experience':       app.x_total_experience    or '',
                 'relevant_experience':    app.x_relevant_experience or '',
                 'current_organization':   app.x_current_organization or '',
-                'designation':            app.x_designation          or '',
-                'education':              app.x_education            or '',
+                'designation':            app.x_designation         or '',
+                'education':              app.x_education           or '',
+                
                 # Location & Availability
-                'current_location':       app.x_current_location    or '',
-                'preferred_location':     app.x_preferred_location  or '',
-                'notice_period':          app.x_notice_period       or '',
+                'current_location':       app.x_current_location_id.name if app.x_current_location_id else '',
+                'preferred_location':     'Anywhere' if app.x_open_to_anywhere else (', '.join(app.x_preferred_location_ids.mapped('name')) if app.x_preferred_location_ids else ''),
+                'notice_period':          dict(app._fields['x_notice_period'].selection).get(app.x_notice_period, '') if app.x_notice_period else '',
                 'lwd':                    format_ordinal_date(app.x_lwd),
                 # Compensation
                 'current_ctc':            app.x_current_ctc         or '',

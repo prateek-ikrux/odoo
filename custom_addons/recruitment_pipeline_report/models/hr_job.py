@@ -63,6 +63,20 @@ class HrJob(models.Model):
         default=0,
     )
 
+    x_location_ids = fields.Many2many(
+        'recruitment.city',
+        'hr_job_city_rel',
+        'job_id', 'city_id',
+        string='Job Locations'
+    )
+
+    x_skill_ids = fields.Many2many(
+        'recruitment.skill',
+        'hr_job_skill_rel',
+        'job_id', 'skill_id',
+        string='Required Skills'
+    )
+
     x_display_name = fields.Char(
         string='Job Position',
         compute='_compute_display_name_with_type',

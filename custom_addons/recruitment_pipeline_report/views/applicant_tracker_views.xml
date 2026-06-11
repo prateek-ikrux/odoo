@@ -36,18 +36,19 @@
                 <!-- Candidate Details -->
                 <field name="partner_name"            string="Candidate Name"       optional="show"/>
                 <field name="partner_phone"           string="Contact Number"     optional="show"/>
-                <field name="email_from"              string="Email ID"      optional="show"/>
-                <field name="x_skill"                 string="Skill"                optional="show"/>
-                <field name="x_total_experience"      string="Total Exp"            optional="show"/>
-                <field name="x_relevant_experience"   string="Relevant Exp"         optional="show"/>
-                <field name="x_current_organization"  string="Current Org"          optional="show"/>
-                <field name="x_designation"           string="Designation"          optional="show"/>
-                <field name="x_education"             string="Education"            optional="hide"/>
+                <field name="email_from"                string="Email ID"             optional="show"/>
+                <field name="x_skill_ids"               widget="many2many_tags" string="Skill" optional="show"/>
+                <field name="x_total_experience"        string="Total Exp"            optional="show"/>
+                <field name="x_relevant_experience"     string="Relevant Exp"         optional="show"/>
+                <field name="x_current_organization"    string="Current Org"          optional="show"/>
+                <field name="x_designation"             string="Designation"          optional="show"/>
+                <field name="x_education"               string="Education"            optional="show"/>
 
                 <!-- Location & Availability -->
-                <field name="x_current_location"      string="Current Location"     optional="show"/>
-                <field name="x_preferred_location"    string="Preferred Location"   optional="hide"/>
-                <field name="x_notice_period"         string="Notice Period"        optional="show"/>
+                <field name="x_current_location_id"     string="Current Location"     optional="show"/>
+                <field name="x_preferred_location_ids"  widget="many2many_tags" string="Preferred Location" optional="hide"/>
+                <field name="x_open_to_anywhere"        string="Open to Anywhere"     optional="hide"/>
+                <field name="x_notice_period"           string="Notice Period"        optional="show"/>
                 <field name="x_lwd"                   column_invisible="True"/>
                 <field name="x_lwd_display"           string="Last Working Date"    optional="show"/>
 
