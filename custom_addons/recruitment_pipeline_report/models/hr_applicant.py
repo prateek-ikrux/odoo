@@ -6,6 +6,22 @@ from odoo.exceptions import ValidationError
 class HrApplicant(models.Model):
     _inherit = 'hr.applicant'
 
+    # ── 5-star evaluation (overrides native 0–3 priority) ────────
+    # Odoo's widget="priority" renders one star per non-zero option.
+    # Extending the selection to 0–5 gives exactly 5 clickable stars.
+    priority = fields.Selection(
+        selection=[
+            ('0', 'Normal'),
+            ('1', '1 Star'),
+            ('2', '2 Stars'),
+            ('3', '3 Stars'),
+            ('4', '4 Stars'),
+            ('5', '5 Stars'),
+        ],
+        string='Evaluation',
+        default='0',
+    )
+
     # ── Readonly mirrors from job position ────────────────────────
     x_job_location_ids = fields.Many2many(
         related='job_id.x_location_ids',
@@ -146,6 +162,7 @@ class HrApplicant(models.Model):
             ('60_days',           '60 Days'),
             ('90_days',           '90 Days'),
             ('immediate_joiner',  'Immediate Joiner'),
+            ('serving_notice',    'Serving Notice Period'),
         ],
         string='Notice Period',
         help='Notice period of the candidate.',
@@ -269,6 +286,13 @@ class HrApplicant(models.Model):
         for rec in self:
             rec.x_create_date_display = format_ordinal_date(rec.create_date)
             rec.x_lwd_display = format_ordinal_date(rec.x_lwd)
+
+    @api.onchange('x_notice_period')
+    def _onchange_notice_period_clear_lwd(self):
+        """Clear Last Working Date when the notice period type doesn't need it.
+        Keeps the value only for 'Serving Notice Period' and 'Immediate Joiner'."""
+        if self.x_notice_period not in ('serving_notice', 'immediate_joiner'):
+            self.x_lwd = False
 
     # ── Constraint: hard block saving an invalid recruiter ────────
     @api.constrains('user_id', 'job_id')

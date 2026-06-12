@@ -100,7 +100,7 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'current_location':       app.x_current_location_id.name if app.x_current_location_id else '',
                 'preferred_location':     'Anywhere' if app.x_open_to_anywhere else (', '.join(app.x_preferred_location_ids.mapped('name')) if app.x_preferred_location_ids else ''),
                 'notice_period':          dict(app._fields['x_notice_period'].selection).get(app.x_notice_period, '') if app.x_notice_period else '',
-                'lwd':                    format_ordinal_date(app.x_lwd),
+                'lwd':                    format_ordinal_date(app.x_lwd) if app.x_notice_period in ('serving_notice', 'immediate_joiner') else 'N/A',
                 # Compensation
                 'current_ctc':            app.x_current_ctc_lpa     if app.x_current_ctc_lpa else '',
                 'expected_ctc':           app.x_expected_ctc_lpa    if app.x_expected_ctc_lpa else '',

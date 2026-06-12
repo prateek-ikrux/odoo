@@ -175,3 +175,18 @@ class HrJob(models.Model):
                 rec.x_req_id, rec.name, rec.department_id,
                 rec.x_employment_type, rec.x_min_experience, rec.x_max_experience,
             )
+
+    def create_action(self):
+        """After creating a Job Position, redirect to its config/form page
+        instead of the default applicant-stage kanban view."""
+        self.ensure_one()
+        form_view_id = self.env.ref('hr.view_hr_job_form').id
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.display_name or self.name,
+            'res_model': 'hr.job',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'views': [(form_view_id, 'form')],
+            'target': 'current',
+        }

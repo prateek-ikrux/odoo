@@ -84,7 +84,9 @@
                         <field name="x_preferred_location_ids"   widget="many2many_tags" string="Preferred Location" domain="[('id', 'in', x_job_location_ids)]" options="{'no_create_edit': True}"/>
                         <field name="x_open_to_anywhere"         string="Open to Anywhere"/>
                         <field name="x_notice_period"            string="Notice Period"/>
-                        <field name="x_lwd"                       string="Last Working Date"/>
+                        <field name="x_lwd"
+                               string="Last Working Date"
+                               invisible="x_notice_period not in ('serving_notice', 'immediate_joiner')"/>
                     </group>
                 </group>
                 <group>
