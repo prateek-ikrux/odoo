@@ -40,6 +40,17 @@
                 <field name="x_client_portal_status" string="Client Portal Status"/>
             </xpath>
 
+            <!-- Add LinkedIn button next to the field -->
+            <xpath expr="//field[@name='linkedin_profile']" position="replace">
+                <label for="linkedin_profile"/>
+                <div class="o_row">
+                    <field name="linkedin_profile" placeholder="e.g. https://www.linkedin.com/in/..." widget="url"/>
+                    <button name="action_open_linkedin" type="object" class="btn btn-sm btn-link" invisible="not linkedin_profile" title="Open LinkedIn">
+                        <img src="/recruitment_pipeline_report/static/src/img/linkedin_logo.png" alt="LinkedIn Logo" style="height: 24px; object-fit: contain;"/>
+                    </button>
+                </div>
+            </xpath>
+
             <!-- Candidate Details tab -->
             <xpath expr="//sheet" position="inside">
                 <notebook>

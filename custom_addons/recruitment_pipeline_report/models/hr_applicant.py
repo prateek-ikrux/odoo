@@ -192,6 +192,18 @@ class HrApplicant(models.Model):
                 rec.x_budget_lpa_display = 0.0
                 rec.x_bill_rate_lpm_display = 0.0
 
+    def action_open_linkedin(self):
+        self.ensure_one()
+        if self.linkedin_profile:
+            url = self.linkedin_profile
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            return {
+                'type': 'ir.actions.act_url',
+                'url': url,
+                'target': 'new',
+            }
+
     # ── Assessment fields ─────────────────────────────────────────
     x_assessment_link_received = fields.Selection(
         selection=[('yes', 'Yes'), ('no', 'No')],
