@@ -52,9 +52,6 @@ class ApplicantTrackerWizard(models.TransientModel):
             dept = app.department_id
             emp_type = job.x_employment_type if job else 'fte'
 
-            budget = app.x_budget_display or ''
-            bill_rate = app.x_bill_rate_display or ''
-
             # Current Status = current stage name
             current_status = app.stage_id.name if app.stage_id else ''
 
