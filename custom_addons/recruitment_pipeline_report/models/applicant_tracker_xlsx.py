@@ -38,11 +38,11 @@ TRACKER_COLUMNS = [
     ('',                        'Last Working Date',                'lwd',                    14),
 
     # ── Compensation ─────────────────────────────────────────────
-    ('Compensation',         'Current CTC',           'current_ctc',            14),
-    ('',                     'Expected CTC',          'expected_ctc',           14),
-    ('',                     'Budget',                'budget',                 12),
-    ('',                     'Bill Rate',             'bill_rate',              12),
-    ('',                     'Offer in Hand',         'offer_in_hand',          14),
+    ('Compensation',         'Current CTC (LPA)',     'current_ctc',            14),
+    ('',                     'Expected CTC (LPA)',    'expected_ctc',           14),
+    ('',                     'Budget (LPA)',          'budget',                 14),
+    ('',                     'Bill Rate (LPM)',       'bill_rate',              14),
+    ('',                     'Offer in Hand (LPA)',   'offer_in_hand',          14),
 
     # ── Additional Information ───────────────────────────────────
     ('Additional Information', 'Reason for Job Change', 'reason_for_job_change', 28),

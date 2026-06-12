@@ -53,11 +53,11 @@
                 <field name="x_lwd_display"           string="Last Working Date"    optional="show"/>
 
                 <!-- Compensation -->
-                <field name="x_current_ctc"           string="Current CTC"          optional="show"/>
-                <field name="x_expected_ctc"          string="Expected CTC"         optional="show"/>
-                <field name="x_budget_display"        string="Budget"               optional="show" readonly="1"/>
-                <field name="x_bill_rate_display"     string="Bill Rate"            optional="show" readonly="1"/>
-                <field name="x_offer_in_hand"         string="Offer in Hand"        optional="hide"/>
+                <field name="x_current_ctc_lpa"         string="Current CTC (LPA)"     optional="show"/>
+                <field name="x_expected_ctc_lpa"        string="Expected CTC (LPA)"    optional="show"/>
+                <field name="x_budget_lpa_display"      string="Budget (LPA)"          optional="show" readonly="1"/>
+                <field name="x_bill_rate_lpm_display"   string="Bill Rate (LPM)"       optional="show" readonly="1"/>
+                <field name="x_offer_in_hand_ids"       widget="many2many_tags" options="{'no_open': True}" string="Offer in Hand (LPA)" optional="hide"/>
 
                 <!-- Additional -->
                 <field name="x_remarks"               string="Remarks"              optional="hide"/>

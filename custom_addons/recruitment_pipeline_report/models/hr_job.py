@@ -91,11 +91,16 @@ class HrJob(models.Model):
         domain="[('share', '=', False)]",
     )
 
-    x_budget = fields.Char(
-        string='Bill Rate / Budget',
-        help='For Consulting roles: the bill rate agreed with the client.\n'
-             'For FTE roles: the approved budget for this position.\n'
-             'Displayed as "N/A" in the Applicant Tracker for the other role type.',
+
+
+    x_budget_lpa = fields.Float(
+        string='Budget (LPA)',
+        help='Approved budget for FTE roles in Lakhs Per Annum.'
+    )
+
+    x_bill_rate_lpm = fields.Float(
+        string='Bill Rate (LPM)',
+        help='Agreed bill rate for Consulting roles in Lakhs Per Month.'
     )
 
     # ── Create / write hooks ──────────────────────────────────────

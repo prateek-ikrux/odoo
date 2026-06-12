@@ -105,11 +105,11 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'notice_period':          dict(app._fields['x_notice_period'].selection).get(app.x_notice_period, '') if app.x_notice_period else '',
                 'lwd':                    format_ordinal_date(app.x_lwd),
                 # Compensation
-                'current_ctc':            app.x_current_ctc         or '',
-                'expected_ctc':           app.x_expected_ctc        or '',
-                'budget':                 budget,
-                'bill_rate':              bill_rate,
-                'offer_in_hand':          app.x_offer_in_hand       or '',
+                'current_ctc':            app.x_current_ctc_lpa     if app.x_current_ctc_lpa else '',
+                'expected_ctc':           app.x_expected_ctc_lpa    if app.x_expected_ctc_lpa else '',
+                'budget':                 app.x_budget_lpa_display  if app.x_budget_lpa_display else '',
+                'bill_rate':              app.x_bill_rate_lpm_display if app.x_bill_rate_lpm_display else '',
+                'offer_in_hand':          ', '.join(app.x_offer_in_hand_ids.mapped('name')) if app.x_offer_in_hand_ids else '',
                 # Additional Information
                 'reason_for_job_change':  app.x_reason_for_job_change or '',
                 'remarks':                app.x_remarks              or '',

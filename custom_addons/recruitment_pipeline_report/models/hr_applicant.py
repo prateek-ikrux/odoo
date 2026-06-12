@@ -152,55 +152,45 @@ class HrApplicant(models.Model):
     )
 
     # ── Compensation ──────────────────────────────────────────────
-    x_current_ctc = fields.Char(
-        string='Current CTC',
-        help='Current cost-to-company of the candidate.',
+    x_current_ctc_lpa = fields.Float(
+        string='Current CTC (LPA)',
     )
 
-    x_expected_ctc = fields.Char(
-        string='Expected CTC',
-        help='Expected cost-to-company requested by the candidate.',
+    x_expected_ctc_lpa = fields.Float(
+        string='Expected CTC (LPA)',
     )
 
-    x_offer_in_hand = fields.Char(
-        string='Offer in Hand',
-        help='Any competing offer the candidate currently holds.',
+    x_offer_in_hand_ids = fields.Many2many(
+        'hr.applicant.offer.tag',
+        string='Offer in Hand (LPA)',
+        help='Any competing offers the candidate currently holds (multiple values allowed).',
     )
 
-    # ── Compensation display (tracker-specific) ───────────────────
-    x_budget_display = fields.Char(
-        string='Budget',
-        compute='_compute_compensation_display',
-        readonly=True,
-        help='Derived budget / bill-rate display based on job type.',
+    x_budget_lpa_display = fields.Float(
+        string='Budget (LPA)',
+        compute='_compute_budget_bill_rate_display_new',
+        store=True,
     )
 
-    x_bill_rate_display = fields.Char(
-        string='Bill Rate',
-        compute='_compute_compensation_display',
-        readonly=True,
-        help='Derived budget / bill-rate display based on job type.',
+    x_bill_rate_lpm_display = fields.Float(
+        string='Bill Rate (LPM)',
+        compute='_compute_budget_bill_rate_display_new',
+        store=True,
     )
 
-    @api.depends('job_id.x_budget', 'job_id.x_employment_type')
-    def _compute_compensation_display(self):
-        """Show the same compensation value in the appropriate column only.
-
-        For FTE jobs:
-            Budget = job.x_budget
-            Bill Rate = N/A
-        For Consulting jobs:
-            Budget = N/A
-            Bill Rate = job.x_budget
-        """
+    @api.depends('job_id.x_budget_lpa', 'job_id.x_bill_rate_lpm', 'job_id.x_employment_type')
+    def _compute_budget_bill_rate_display_new(self):
         for rec in self:
-            budget = rec.job_id.x_budget if rec.job_id else ''
-            if rec.job_id and rec.job_id.x_employment_type == 'consulting':
-                rec.x_budget_display = 'N/A'
-                rec.x_bill_rate_display = budget or ''
+            emp_type = rec.job_id.x_employment_type
+            if emp_type == 'fte':
+                rec.x_budget_lpa_display = rec.job_id.x_budget_lpa
+                rec.x_bill_rate_lpm_display = 0.0
+            elif emp_type == 'consulting':
+                rec.x_budget_lpa_display = 0.0
+                rec.x_bill_rate_lpm_display = rec.job_id.x_bill_rate_lpm
             else:
-                rec.x_budget_display = budget or ''
-                rec.x_bill_rate_display = 'N/A'
+                rec.x_budget_lpa_display = 0.0
+                rec.x_bill_rate_lpm_display = 0.0
 
     # ── Assessment fields ─────────────────────────────────────────
     x_assessment_link_received = fields.Selection(

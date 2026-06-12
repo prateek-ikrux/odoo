@@ -73,11 +73,12 @@
                         </group>
                         <group>
                             <group string="Compensation">
-                                <field name="x_current_ctc"              string="Current CTC"/>
-                                <field name="x_expected_ctc"             string="Expected CTC"/>
-                                <field name="x_budget_display"           string="Budget"    readonly="1"/>
-                                <field name="x_bill_rate_display"        string="Bill Rate" readonly="1"/>
-                                <field name="x_offer_in_hand"            string="Offer in Hand"/>
+                                <field name="x_current_ctc_lpa"          string="Current CTC (LPA)"/>
+                                <field name="x_expected_ctc_lpa"         string="Expected CTC (LPA)"/>
+                                <field name="x_offer_in_hand_ids"        widget="many2many_tags" options="{'no_open': True}" string="Offer in Hand (LPA)"/>
+
+                                <field name="x_budget_lpa_display"       string="Budget (LPA)"     invisible="x_budget_lpa_display == 0.0" readonly="1"/>
+                                <field name="x_bill_rate_lpm_display"    string="Bill Rate (LPM)"  invisible="x_bill_rate_lpm_display == 0.0" readonly="1"/>
                             </group>
                         </group>
                         <group>

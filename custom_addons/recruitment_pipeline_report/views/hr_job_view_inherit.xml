@@ -19,7 +19,8 @@
                 <field name="x_sub_status"      string="Role Status Remarks"/>
                 <field name="x_min_experience"  string="Min Experience (Yrs)"/>
                 <field name="x_max_experience"  string="Max Experience (Yrs)"/>
-                <field name="x_budget"          string="Bill Rate / Budget"/>
+                <field name="x_budget_lpa"      invisible="x_employment_type != 'fte'"/>
+                <field name="x_bill_rate_lpm"   invisible="x_employment_type != 'consulting'"/>
                 <field name="x_location_ids"    widget="many2many_tags" string="Job Locations" options="{'no_create_edit': True}"/>
                 <field name="x_skill_ids"       widget="many2many_tags" string="Required Skills" options="{'no_create_edit': True}"/>
             </xpath>

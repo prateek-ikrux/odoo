@@ -5,3 +5,4 @@ access_applicant_tracker_wizard,recruitment.applicant.tracker.wizard,model_recru
 access_assessment_report_wizard,recruitment.assessment.report.wizard,model_recruitment_assessment_report_wizard,hr_recruitment.group_hr_recruitment_user,1,1,1,1
 access_recruitment_city,recruitment.city,model_recruitment_city,hr_recruitment.group_hr_recruitment_user,1,1,1,1
 access_recruitment_skill,recruitment.skill,model_recruitment_skill,hr_recruitment.group_hr_recruitment_user,1,1,1,1
+access_hr_applicant_offer_tag,hr.applicant.offer.tag,model_hr_applicant_offer_tag,hr_recruitment.group_hr_recruitment_user,1,1,1,1
