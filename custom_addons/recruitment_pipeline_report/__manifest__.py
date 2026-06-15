@@ -4,7 +4,7 @@
     'version': '19.0.2.1.16',
     'category': 'Recruitment',
     'summary': 'Pipeline Summary pivot + Excel report with full stage tracking, Applicant Tracker, and Internal Assessment Report',
-    'depends': ['hr', 'hr_recruitment'],
+    'depends': ['hr', 'hr_recruitment', 'hr_skills'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_view_inherit.xml',
