@@ -26,7 +26,6 @@
                        decoration-muted="role_status == 'closed'"/>
                 <field name="sub_status"             string="Role Status Remarks"/>
                 <field name="no_of_positions"        string="No. of Positions"              sum="Total"/>
-                <field name="stage_id"               string="Stage"/>
                 <field name="applicant_count"        string="Applicants"                    sum="Total"/>
             </list>
         </field>
