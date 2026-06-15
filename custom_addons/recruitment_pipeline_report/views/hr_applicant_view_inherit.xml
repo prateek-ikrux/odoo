@@ -118,8 +118,8 @@
             <xpath expr="//field[@name='type_id']/ancestor::group[1]" position="after">
                 <group string="Assessment">
                     <field name="x_assessment_link_received" string="Assessment Link Received"/>
-                    <field name="x_assessment_taken"         string="Assessment Taken"/>
-                    <field name="x_assessment_feedback"      string="Assessment Feedback"/>
+                    <field name="x_assessment_taken"         string="Assessment Taken" invisible="x_assessment_link_received == 'no'"/>
+                    <field name="x_assessment_feedback"      string="Assessment Feedback" invisible="x_assessment_link_received == 'no' or x_assessment_taken == 'no'"/>
                 </group>
             </xpath>
 
