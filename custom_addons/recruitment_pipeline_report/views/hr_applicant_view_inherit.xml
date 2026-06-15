@@ -59,6 +59,11 @@
                 </div>
             </xpath>
 
+            <!-- Rename Phone to Contact Number in the top section -->
+            <xpath expr="//field[@name='partner_phone']" position="attributes">
+                <attribute name="string">Contact Number</attribute>
+            </xpath>
+
             <!-- Merge candidate-detail fields into the existing "Details" tab
                  (application_details) instead of adding a separate
                  "Candidate Details" tab. The Applicant/Job, Salary Package,
@@ -69,7 +74,6 @@
             <xpath expr="//page[@name='application_details']" position="inside">
                 <group>
                     <group string="Personal">
-                        <field name="partner_phone"              string="Contact Number"/>
                         <!-- source_id moved here from Sourcing section -->
                         <field name="source_id"                  string="Source"/>
                         <field name="x_skill_ids"                widget="many2many_tags" string="Skill" options="{'no_create_edit': True}"/>
