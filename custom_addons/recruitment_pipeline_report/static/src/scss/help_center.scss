@@ -1,0 +1,603 @@
+/* ============================================================
+   Recruitment Help Center — Systray + Panel styles
+   Scoped under .o_recruitment_hc_* to avoid collisions
+   ============================================================ */
+
+/* ---------- Tabler icons CDN (loaded via assets bundle) ---------- */
+
+/* ── Systray trigger button ───────────────────────────────────── */
+.o_recruitment_hc_systray_wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.o_recruitment_hc_trigger {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--o-navbar-color, #fff);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+
+    i {
+        font-size: 17px;
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.12);
+    }
+
+    &.active {
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+}
+
+.o_recruitment_hc_label {
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+}
+
+/* ── Click-away backdrop ─────────────────────────────────────── */
+.o_recruitment_hc_backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(1px);
+    animation: hc-fade-in 0.15s ease;
+}
+
+/* ── Panel ───────────────────────────────────────────────────── */
+.o_recruitment_hc_panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 780px;
+    max-width: 96vw;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background-primary, #fff);
+    box-shadow: -4px 0 32px rgba(0, 0, 0, 0.14);
+    animation: hc-slide-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    font-family: var(--font-family-base, inherit);
+}
+
+@keyframes hc-slide-in {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes hc-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Panel header ────────────────────────────────────────────── */
+.o_hc_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+    flex-shrink: 0;
+    background: var(--color-background-secondary, #f9fafb);
+}
+
+.o_hc_header_left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.o_hc_logo {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #EEEDFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #534AB7;
+    font-size: 16px;
+}
+
+.o_hc_title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary, #111827);
+    letter-spacing: -0.01em;
+}
+
+.o_hc_close {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border-tertiary, #e5e7eb);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary, #6b7280);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.12s, color 0.12s;
+
+    &:hover {
+        background: var(--color-background-primary, #fff);
+        color: var(--color-text-primary, #111827);
+    }
+}
+
+/* ── Body layout ─────────────────────────────────────────────── */
+.o_hc_body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.o_hc_sidebar {
+    width: 200px;
+    min-width: 200px;
+    flex-shrink: 0;
+    background: var(--color-background-secondary, #f9fafb);
+    border-right: 1px solid var(--color-border-tertiary, #e5e7eb);
+    padding: 16px 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow-y: auto;
+}
+
+.o_hc_nav_label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-tertiary, #9ca3af);
+    padding: 8px 16px 4px;
+    margin: 0;
+}
+
+.o_hc_nav_item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 16px;
+    font-size: 13px;
+    color: var(--color-text-secondary, #4b5563);
+    background: transparent;
+    border: none;
+    border-right: 2px solid transparent;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.1s, color 0.1s;
+
+    i { font-size: 15px; flex-shrink: 0; }
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.04);
+        color: var(--color-text-primary, #111827);
+    }
+
+    &.active {
+        background: var(--color-background-primary, #fff);
+        color: #534AB7;
+        font-weight: 500;
+        border-right-color: #534AB7;
+    }
+}
+
+.o_hc_divider {
+    height: 1px;
+    background: var(--color-border-tertiary, #e5e7eb);
+    margin: 8px 16px;
+}
+
+/* ── Content area ────────────────────────────────────────────── */
+.o_hc_content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 32px 40px;
+    scroll-behavior: smooth;
+}
+
+/* ── Page sections ───────────────────────────────────────────── */
+.o_hc_page {}
+
+.o_hc_hero {
+    margin-bottom: 20px;
+
+    h1 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--color-text-primary, #111827);
+        margin: 0 0 6px;
+        letter-spacing: -0.02em;
+    }
+
+    p {
+        font-size: 13.5px;
+        color: var(--color-text-secondary, #4b5563);
+        line-height: 1.65;
+        margin: 0;
+        max-width: 520px;
+    }
+}
+
+.o_hc_sep {
+    height: 1px;
+    background: var(--color-border-tertiary, #e5e7eb);
+    margin: 20px 0;
+}
+
+.o_hc_section_label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-tertiary, #9ca3af);
+    margin: 0 0 10px;
+}
+
+/* ── Role badge ──────────────────────────────────────────────── */
+.o_hc_role_badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+
+    &.tl { background: #EEEDFE; color: #3C3489; }
+    &.rec { background: #E1F5EE; color: #085041; }
+}
+
+/* ── Tip boxes ───────────────────────────────────────────────── */
+.o_hc_tip {
+    border-left: 3px solid #888780;
+    border-radius: 0 6px 6px 0;
+    background: var(--color-background-secondary, #f9fafb);
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--color-text-secondary, #4b5563);
+    line-height: 1.6;
+
+    &.tl  { border-left-color: #534AB7; }
+    &.rec { border-left-color: #0F6E56; }
+    &.warn { border-left-color: #BA7517; background: #FFFBF0; }
+    &.neutral { border-left-color: #888780; }
+}
+
+/* ── Steps ───────────────────────────────────────────────────── */
+.o_hc_steps {
+    display: flex;
+    flex-direction: column;
+}
+
+.o_hc_step {
+    display: flex;
+    gap: 0;
+
+    &.last .o_hc_step_line { display: none; }
+}
+
+.o_hc_step_left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    margin-right: 14px;
+}
+
+.o_hc_step_num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+
+    &.tl  { background: #EEEDFE; color: #3C3489; }
+    &.rec { background: #E1F5EE; color: #085041; }
+}
+
+.o_hc_step_line {
+    width: 1px;
+    flex: 1;
+    min-height: 16px;
+    background: var(--color-border-tertiary, #e5e7eb);
+    margin: 4px 0;
+}
+
+.o_hc_step_body {
+    flex: 1;
+    padding-bottom: 20px;
+
+    h3 {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: var(--color-text-primary, #111827);
+        margin: 3px 0 4px;
+    }
+
+    p {
+        font-size: 13px;
+        color: var(--color-text-secondary, #4b5563);
+        line-height: 1.6;
+        margin: 0;
+    }
+}
+
+/* ── Field lists ─────────────────────────────────────────────── */
+.o_hc_field_list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+.o_hc_field_row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--color-text-secondary, #4b5563);
+    line-height: 1.5;
+
+    i { font-size: 12px; color: var(--color-text-tertiary, #9ca3af); flex-shrink: 0; }
+
+    code {
+        background: var(--color-background-secondary, #f3f4f6);
+        border: 0.5px solid var(--color-border-tertiary, #e5e7eb);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 11.5px;
+        font-family: var(--font-mono, monospace);
+        color: var(--color-text-secondary, #374151);
+        flex-shrink: 0;
+
+        &.stage-hired { background: #EAF3DE; color: #27500A; border-color: #C0DD97; }
+        &.stage-exit  { background: #FCEBEB; color: #791F1F; border-color: #F7C1C1; }
+    }
+}
+
+/* ── Cannot list ─────────────────────────────────────────────── */
+.o_hc_cannot_list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.o_hc_cannot_item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--color-text-secondary, #4b5563);
+
+    i { color: #993C1D; font-size: 14px; flex-shrink: 0; }
+}
+
+/* ── Overview cards ──────────────────────────────────────────── */
+.o_hc_overview_cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 6px;
+}
+
+.o_hc_ov_card {
+    border: 1px solid var(--color-border-tertiary, #e5e7eb);
+    border-radius: 10px;
+    padding: 18px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+
+    &:hover {
+        border-color: #AFA9EC;
+        box-shadow: 0 2px 12px rgba(83, 74, 183, 0.1);
+    }
+}
+
+.o_hc_ov_card_header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+
+    h3 {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--color-text-primary, #111827);
+        margin: 0;
+    }
+}
+
+.o_hc_ov_icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+
+    &.tl  { background: #EEEDFE; color: #3C3489; }
+    &.rec { background: #E1F5EE; color: #085041; }
+}
+
+.o_hc_ov_card p {
+    font-size: 12.5px;
+    color: var(--color-text-secondary, #4b5563);
+    line-height: 1.6;
+    margin: 0 0 10px;
+}
+
+.o_hc_ov_link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #534AB7;
+    font-weight: 500;
+    cursor: pointer;
+
+    i { font-size: 13px; }
+}
+
+/* ── Pipeline stage groups ───────────────────────────────────── */
+.o_hc_pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.o_hc_stage_group {
+    margin-bottom: 18px;
+}
+
+.o_hc_stage_group_label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-tertiary, #9ca3af);
+    margin: 0 0 6px;
+}
+
+.o_hc_stage_row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.o_hc_stage_pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 0.5px solid var(--color-border-tertiary, #e5e7eb);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--color-text-secondary, #4b5563);
+    background: var(--color-background-primary, #fff);
+
+    &.active-stage { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; }
+    &.warn-stage   { background: #FAEEDA; border-color: #FAC775; color: #633806; }
+    &.end-stage    { background: #EAF3DE; border-color: #C0DD97; color: #27500A; }
+    &.exit-stage   { background: #FCEBEB; border-color: #F7C1C1; color: #791F1F; }
+
+    i { font-size: 12px; }
+}
+
+.o_hc_stage_arrow {
+    color: var(--color-text-tertiary, #9ca3af);
+    font-size: 13px;
+}
+
+.o_hc_stage_desc {
+    font-size: 11.5px;
+    color: var(--color-text-tertiary, #9ca3af);
+    margin: 5px 0 0 2px;
+}
+
+/* ── Hired badge ─────────────────────────────────────────────── */
+.o_hc_hired_badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #EAF3DE;
+    border: 0.5px solid #C0DD97;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 10.5px;
+    color: #27500A;
+    font-weight: 500;
+
+    i { font-size: 11px; }
+}
+
+/* ── Permissions grid ────────────────────────────────────────── */
+.o_hc_perm_grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.o_hc_perm_card {
+    background: var(--color-background-secondary, #f9fafb);
+    border: 1px solid var(--color-border-tertiary, #e5e7eb);
+    border-radius: 10px;
+    padding: 16px;
+
+    h4 {
+        font-size: 13px;
+        font-weight: 500;
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+}
+
+.o_hc_perm_item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--color-text-secondary, #4b5563);
+    margin-bottom: 6px;
+    line-height: 1.5;
+
+    i { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+    &.can i    { color: #0F6E56; }
+    &.cannot i { color: #993C1D; }
+}
+
+/* ── Responsive: narrow panels ───────────────────────────────── */
+@media (max-width: 700px) {
+    .o_recruitment_hc_panel {
+        width: 100vw;
+    }
+
+    .o_hc_sidebar {
+        width: 170px;
+        min-width: 170px;
+    }
+
+    .o_hc_content {
+        padding: 20px 18px 32px;
+    }
+
+    .o_hc_overview_cards,
+    .o_hc_perm_grid {
+        grid-template-columns: 1fr;
+    }
+
+    .o_recruitment_hc_label {
+        display: none;
+    }
+}

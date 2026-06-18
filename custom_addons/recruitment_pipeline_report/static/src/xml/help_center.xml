@@ -1,0 +1,480 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- ───────────────────────────────────────────────────
+         Systray button — ? icon in the top-right menu bar
+    ─────────────────────────────────────────────────────── -->
+    <t t-name="recruitment_pipeline_report.HelpCenterSystray">
+        <div class="o_recruitment_hc_systray_wrap">
+
+            <!-- Trigger button -->
+            <button
+                class="o_recruitment_hc_trigger btn"
+                t-att-class="{ active: state.open }"
+                t-on-click="toggle"
+                title="Help Center"
+                aria-label="Open Help Center"
+            >
+                <i class="ti ti-help-circle" aria-hidden="true"/>
+                <span class="o_recruitment_hc_label">Help</span>
+            </button>
+
+            <!-- Overlay + panel -->
+            <t t-if="state.open">
+                <!-- Click-away backdrop -->
+                <div class="o_recruitment_hc_backdrop" t-on-click="close"/>
+
+                <HelpCenterDialog onClose="() => this.close()"/>
+            </t>
+        </div>
+    </t>
+
+    <!-- ───────────────────────────────────────────────────
+         Full help center panel
+    ─────────────────────────────────────────────────────── -->
+    <t t-name="recruitment_pipeline_report.HelpCenterDialog">
+        <aside class="o_recruitment_hc_panel" role="dialog" aria-modal="true" aria-label="Help Center">
+
+            <!-- ── Panel header ── -->
+            <div class="o_hc_header">
+                <div class="o_hc_header_left">
+                    <span class="o_hc_logo"><i class="ti ti-lifebuoy"/></span>
+                    <span class="o_hc_title">Help Center</span>
+                </div>
+                <button class="o_hc_close btn" t-on-click="props.onClose" aria-label="Close">
+                    <i class="ti ti-x"/>
+                </button>
+            </div>
+
+            <!-- ── Layout: sidebar + content ── -->
+            <div class="o_hc_body">
+
+                <!-- Sidebar nav -->
+                <nav class="o_hc_sidebar" aria-label="Help center navigation">
+                    <p class="o_hc_nav_label">General</p>
+                    <button
+                        class="o_hc_nav_item"
+                        t-att-class="{ active: isActive('overview') }"
+                        t-on-click="() => this.show('overview')"
+                    >
+                        <i class="ti ti-layout-grid" aria-hidden="true"/>
+                        <span>Overview</span>
+                    </button>
+
+                    <div class="o_hc_divider"/>
+                    <p class="o_hc_nav_label">Workflows</p>
+                    <button
+                        class="o_hc_nav_item"
+                        t-att-class="{ active: isActive('teamlead') }"
+                        t-on-click="() => this.show('teamlead')"
+                    >
+                        <i class="ti ti-briefcase" aria-hidden="true"/>
+                        <span>Team Lead</span>
+                    </button>
+                    <button
+                        class="o_hc_nav_item"
+                        t-att-class="{ active: isActive('recruiter') }"
+                        t-on-click="() => this.show('recruiter')"
+                    >
+                        <i class="ti ti-users" aria-hidden="true"/>
+                        <span>Recruiter</span>
+                    </button>
+
+                    <div class="o_hc_divider"/>
+                    <p class="o_hc_nav_label">Reference</p>
+                    <button
+                        class="o_hc_nav_item"
+                        t-att-class="{ active: isActive('stages') }"
+                        t-on-click="() => this.show('stages')"
+                    >
+                        <i class="ti ti-arrow-right-circle" aria-hidden="true"/>
+                        <span>Pipeline Stages</span>
+                    </button>
+                    <button
+                        class="o_hc_nav_item"
+                        t-att-class="{ active: isActive('permissions') }"
+                        t-on-click="() => this.show('permissions')"
+                    >
+                        <i class="ti ti-shield-check" aria-hidden="true"/>
+                        <span>Permissions</span>
+                    </button>
+                </nav>
+
+                <!-- Content area — scrollable -->
+                <main class="o_hc_content">
+
+                    <!-- ── OVERVIEW ── -->
+                    <section t-if="isActive('overview')" class="o_hc_page">
+                        <div class="o_hc_hero">
+                            <h1>Recruitment platform guide</h1>
+                            <p>This platform manages your full hiring pipeline — from creating job positions to closing offers. Your role determines what you can do. Select a workflow below to get started.</p>
+                        </div>
+
+                        <div class="o_hc_overview_cards">
+                            <div class="o_hc_ov_card" t-on-click="() => this.show('teamlead')">
+                                <div class="o_hc_ov_card_header">
+                                    <span class="o_hc_ov_icon tl"><i class="ti ti-briefcase"/></span>
+                                    <h3>Team Lead</h3>
+                                </div>
+                                <p>You own job positions. Create roles, define requirements, assign recruiters, and update candidate stages at key decision points.</p>
+                                <span class="o_hc_ov_link">View workflow <i class="ti ti-arrow-right"/></span>
+                            </div>
+                            <div class="o_hc_ov_card" t-on-click="() => this.show('recruiter')">
+                                <div class="o_hc_ov_card_header">
+                                    <span class="o_hc_ov_icon rec"><i class="ti ti-users"/></span>
+                                    <h3>Recruiter</h3>
+                                </div>
+                                <p>You manage the full applicant lifecycle for jobs you're assigned to — from Profile Shared all the way through to Joined or Quit Post Joining.</p>
+                                <span class="o_hc_ov_link">View workflow <i class="ti ti-arrow-right"/></span>
+                            </div>
+                        </div>
+
+                        <div class="o_hc_sep"/>
+                        <p class="o_hc_section_label">Key rule</p>
+                        <div class="o_hc_tip neutral">Everyone can view all records. Your role only controls what actions you can take — not what you can see.</div>
+                    </section>
+
+                    <!-- ── TEAM LEAD ── -->
+                    <section t-if="isActive('teamlead')" class="o_hc_page">
+                        <div class="o_hc_hero">
+                            <h1>Team Lead workflow</h1>
+                            <p>You set up job positions and decide who recruits for them. Once a job is live and recruiters are assigned, you can also move candidates between stages as needed.</p>
+                        </div>
+                        <span class="o_hc_role_badge tl"><i class="ti ti-briefcase"/> Team Lead</span>
+                        <p class="o_hc_section_label">Step-by-step</p>
+
+                        <div class="o_hc_steps">
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num tl">1</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Create a job position</h3>
+                                    <p>Go to <strong>Recruitment → Job Positions</strong> and click New. All fields you fill here auto-populate as read-only on every applicant under this job.</p>
+                                    <div class="o_hc_field_list">
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Req ID</code> Unique requisition reference (e.g. REQ-2025-001)</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Client</code> The department or business unit hiring for this role</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Employment Type</code> FTE or Consulting</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Role Status</code> Active, In Progress, On Hold, or Closed</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Experience</code> Min and max years required</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Job Locations</code> Cities where this role is available</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Budget / Bill Rate</code> FTE → Budget (LPA) · Consulting → Bill Rate (LPM)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num tl">2</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Assign recruiters</h3>
+                                    <p>On the job form, use the <code>Recruiters</code> field to add one or more team members. Only listed recruiters can create and manage applicants for this job.</p>
+                                    <div class="o_hc_tip tl">Multiple recruiters can share a single job — all of them will have equal access to all applicants under that position.</div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num tl">3</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Monitor the pipeline</h3>
+                                    <p>Open any job to see its applicants in kanban or list view. You can review candidate details, assessments, compensation info, and current stage at any time.</p>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step last">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num tl">4</span>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Update candidate stages when needed</h3>
+                                    <p>You can move applicants between stages — useful for reflecting key decisions like offer approvals, holds, or closures. Stages range from <strong>Profile Shared</strong> all the way to <strong>Joined</strong> or <strong>Quit Post Joining</strong>.</p>
+                                    <div class="o_hc_tip tl">Day-to-day stage updates are handled by Recruiters. Use your stage access for high-level milestones or decisions made outside the system.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="o_hc_sep"/>
+                        <p class="o_hc_section_label">What you cannot do</p>
+                        <div class="o_hc_cannot_list">
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Edit job positions created by other Team Leads</div>
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Create or edit applicant records directly</div>
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Reassign an applicant to a different job</div>
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Access system configuration or employee records</div>
+                        </div>
+                    </section>
+
+                    <!-- ── RECRUITER ── -->
+                    <section t-if="isActive('recruiter')" class="o_hc_page">
+                        <div class="o_hc_hero">
+                            <h1>Recruiter workflow</h1>
+                            <p>You own the full applicant pipeline for every job you're assigned to. Your job is to source candidates, log their details, and move them stage by stage until a final decision is made.</p>
+                        </div>
+                        <span class="o_hc_role_badge rec"><i class="ti ti-users"/> Recruiter</span>
+                        <p class="o_hc_section_label">Step-by-step</p>
+
+                        <div class="o_hc_steps">
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">1</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Check your assigned jobs</h3>
+                                    <p>Go to <strong>Recruitment → Job Positions</strong>. You can only add applicants to jobs where your name appears in the Recruiters field. Contact your Team Lead if you're missing access to a role.</p>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">2</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Add a new candidate</h3>
+                                    <p>Open a job and click <strong>New Application</strong>. The job's details auto-fill as read-only. Complete the candidate's profile:</p>
+                                    <div class="o_hc_field_list">
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Name + Contact Number</code></div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Current Organization / Designation</code></div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Total / Relevant Experience</code></div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Skills</code> Select from the shared skills master</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Current + Preferred Location</code></div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Notice Period / Last Working Date</code></div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Current CTC / Expected CTC (LPA)</code></div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>LinkedIn Profile</code> Use the LinkedIn button to open directly</div>
+                                    </div>
+                                    <div class="o_hc_tip rec">The first stage for a new candidate is <strong>Profile Shared</strong>. Set this immediately when adding them — it signals that the profile has been sourced and submitted.</div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">3</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Screen the candidate</h3>
+                                    <p>Move the applicant to <strong>Screening Pending</strong> once you've reviewed the profile. If the candidate is a duplicate, move them to <strong>Duplicate Profile</strong> and stop further processing.</p>
+                                    <div class="o_hc_tip rec">Use <strong>Duplicate Profile</strong> immediately if you spot the same candidate applied before — this keeps your pipeline clean and avoids wasted effort.</div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">4</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Schedule and track interviews (L1 → L2 → L3)</h3>
+                                    <p>Each interview round follows the same four-step pattern. Move through these stages in order for each round:</p>
+                                    <div class="o_hc_field_list" style="margin-top:8px;">
+                                        <div class="o_hc_field_row"><code>X To be Scheduled</code> Round confirmed, slot not yet shared</div>
+                                        <div class="o_hc_field_row"><code>X Slot Shared</code> Interview time sent to candidate</div>
+                                        <div class="o_hc_field_row"><code>X Scheduled</code> Candidate confirmed the slot</div>
+                                        <div class="o_hc_field_row"><code>X Feedback Pending</code> Interview done, waiting for interviewer feedback</div>
+                                    </div>
+                                    <div class="o_hc_tip rec">Repeat this pattern for L1, L2, and L3. Not all roles will go through all three rounds — move to the offer stage as soon as the last required round is cleared.</div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">5</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Log assessment details</h3>
+                                    <p>If an assessment is part of the process, update these fields on the applicant form:</p>
+                                    <div class="o_hc_field_list">
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Assessment Link Received</code> Yes / No</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Assessment Taken</code> Appears once link is received</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Assessment Feedback</code> Select or Reject</div>
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Client Portal Status</code> Uploaded / Not Uploaded</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">6</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Move to offer stage</h3>
+                                    <p>Once all interview rounds are cleared, move the applicant to <strong>To be Offered</strong>. When the offer letter is issued, move to <strong>Offered / Yet to Join</strong> and track the candidate's response.</p>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">7</span>
+                                    <div class="o_hc_step_line"/>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Close the applicant</h3>
+                                    <p>Move to the appropriate final stage based on the outcome:</p>
+                                    <div class="o_hc_field_list" style="margin-top:8px;">
+                                        <div class="o_hc_field_row"><code class="stage-hired">Joined</code> Candidate accepted and started — this is the Hired Stage <span class="o_hc_hired_badge"><i class="ti ti-check"/> Hired</span></div>
+                                        <div class="o_hc_field_row"><code class="stage-exit">Declined</code> Candidate or client declined the offer</div>
+                                        <div class="o_hc_field_row"><code class="stage-exit">Quit Post Joining</code> Candidate joined but left shortly after</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="o_hc_step last">
+                                <div class="o_hc_step_left">
+                                    <span class="o_hc_step_num rec">8</span>
+                                </div>
+                                <div class="o_hc_step_body">
+                                    <h3>Add remarks and star rating</h3>
+                                    <p>Use the <code>Remarks</code> field for internal notes. Rate the candidate 1–5 stars to help the team prioritise shortlists. Export the <strong>Applicant Tracker</strong> or <strong>Internal Assessment Report</strong> from the list view when needed.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="o_hc_sep"/>
+                        <p class="o_hc_section_label">What you cannot do</p>
+                        <div class="o_hc_cannot_list">
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Create or edit job positions</div>
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Access applicants on jobs you are not assigned to</div>
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Reassign an applicant to a different job</div>
+                            <div class="o_hc_cannot_item"><i class="ti ti-x"/> Modify employee records or system settings</div>
+                        </div>
+                    </section>
+
+                    <!-- ── PIPELINE STAGES ── -->
+                    <section t-if="isActive('stages')" class="o_hc_page">
+                        <div class="o_hc_hero">
+                            <h1>Pipeline stages</h1>
+                            <p>There are 20 stages in total. Every candidate starts at Profile Shared and moves forward. Keep stages up to date — all pipeline reports pull directly from this data.</p>
+                        </div>
+
+                        <div class="o_hc_pipeline">
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Entry</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill active-stage"><i class="ti ti-user-plus"/> Profile Shared</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">Screening Pending</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill warn-stage">Duplicate Profile</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Profile Shared = candidate sourced and submitted. Duplicate Profile = stop, do not proceed.</p>
+                            </div>
+
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Round 1 — L1 Interview</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill">L1 To be Scheduled</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L1 Slot Shared</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L1 Scheduled</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L1 Feedback Pending</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Move through all four steps in order. Only advance to L2 once L1 feedback is received and positive.</p>
+                            </div>
+
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Round 2 — L2 Interview</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill">L2 To be Scheduled</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L2 Slot Shared</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L2 Scheduled</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L2 Feedback Pending</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Same pattern as L1. Skip to offer stages if L2 is the final round for this role.</p>
+                            </div>
+
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Round 3 — L3 Interview</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill">L3 To be Scheduled</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L3 Slot Shared</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L3 Scheduled</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">L3 Feedback Pending</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Only used when a third interview round is required. Not all roles will reach L3.</p>
+                            </div>
+
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Offer</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill">To be Offered</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">Offered / Yet to Join</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Move to To be Offered once all rounds are cleared. Move to Offered once the letter is issued.</p>
+                            </div>
+
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Final outcome</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill end-stage"><i class="ti ti-check"/> Joined <span class="o_hc_hired_badge" style="margin-left:4px">Hired</span></span>
+                                    <span class="o_hc_stage_arrow" style="margin:0 8px">·</span>
+                                    <span class="o_hc_stage_pill exit-stage">Declined</span>
+                                    <span class="o_hc_stage_arrow" style="margin:0 8px">·</span>
+                                    <span class="o_hc_stage_pill exit-stage">Quit Post Joining</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Joined is the only Hired Stage in the system. Declined and Quit Post Joining are negative close-outs.</p>
+                            </div>
+                        </div>
+
+                        <div class="o_hc_sep"/>
+                        <div class="o_hc_tip warn">Role Status (Active, On Hold, Closed…) is set on the <strong>job position</strong> by the Team Lead. Applicant Stage is set on each individual <strong>candidate record</strong> by the Recruiter. They are completely separate fields.</div>
+                    </section>
+
+                    <!-- ── PERMISSIONS ── -->
+                    <section t-if="isActive('permissions')" class="o_hc_page">
+                        <div class="o_hc_hero">
+                            <h1>Permissions at a glance</h1>
+                            <p>Quick reference for what each role can and cannot do across the platform.</p>
+                        </div>
+
+                        <div class="o_hc_perm_grid">
+                            <div class="o_hc_perm_card">
+                                <h4><span class="o_hc_role_badge tl" style="margin:0 0 10px 0"><i class="ti ti-briefcase"/> Team Lead</span></h4>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Create job positions</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Edit jobs you created</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Assign recruiters to jobs</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> View all applicants</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Update applicant stages</div>
+                                <div class="o_hc_perm_item cannot"><i class="ti ti-x"/> Edit other Team Leads' jobs</div>
+                                <div class="o_hc_perm_item cannot"><i class="ti ti-x"/> Create or edit applicant records</div>
+                                <div class="o_hc_perm_item cannot"><i class="ti ti-x"/> Access system settings</div>
+                            </div>
+                            <div class="o_hc_perm_card">
+                                <h4><span class="o_hc_role_badge rec" style="margin:0 0 10px 0"><i class="ti ti-users"/> Recruiter</span></h4>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Create, edit, delete applicants</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Move applicants through all 20 stages</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Log assessments and remarks</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Export applicant tracker and reports</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> View all jobs and applicants</div>
+                                <div class="o_hc_perm_item cannot"><i class="ti ti-x"/> Create or edit job positions</div>
+                                <div class="o_hc_perm_item cannot"><i class="ti ti-x"/> Work on jobs not assigned to you</div>
+                                <div class="o_hc_perm_item cannot"><i class="ti ti-x"/> Reassign applicants to other jobs</div>
+                            </div>
+                        </div>
+
+                        <div class="o_hc_sep"/>
+                        <div class="o_hc_tip neutral">Everyone can view all records. Restrictions only apply to creating, editing, or deleting — not viewing.</div>
+                    </section>
+
+                </main>
+            </div>
+        </aside>
+    </t>
+
+</templates>
