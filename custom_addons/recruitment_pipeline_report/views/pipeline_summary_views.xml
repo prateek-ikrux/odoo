@@ -79,6 +79,8 @@
                             <field name="job_ids" widget="many2many_tags"
                                    string="Roles"/>
                             <field name="role_status" string="Role Status"/>
+                            <field name="stage_ids" widget="many2many_tags"
+                                   string="Stages"/>
                         </group>
                     </group>
                 </sheet>

@@ -24,6 +24,7 @@ class PipelineSummaryWizard(models.TransientModel):
         ROLE_STATUS_LABELS.items(),
         string='Role Status'
     )
+    stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -37,6 +38,8 @@ class PipelineSummaryWizard(models.TransientModel):
             domain.append(('job_id', 'in', self.job_ids.ids))
         if self.role_status:
             domain.append(('job_id.x_role_status', '=', self.role_status))
+        if self.stage_ids:
+            domain.append(('stage_id', 'in', self.stage_ids.ids))
         return domain
 
     def _get_report_data(self):

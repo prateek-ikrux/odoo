@@ -24,6 +24,7 @@ class AssessmentReportWizard(models.TransientModel):
         ],
         string='Role Status'
     )
+    stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -39,6 +40,8 @@ class AssessmentReportWizard(models.TransientModel):
             domain.append(('user_id', 'in', self.recruiter_ids.ids))
         if self.role_status:
             domain.append(('job_id.x_role_status', '=', self.role_status))
+        if self.stage_ids:
+            domain.append(('stage_id', 'in', self.stage_ids.ids))
         return domain
 
     def _get_report_data(self):
