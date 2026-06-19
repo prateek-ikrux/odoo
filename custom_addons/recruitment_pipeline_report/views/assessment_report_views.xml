@@ -71,28 +71,74 @@
         <field name="arch" type="xml">
             <form string="Export Internal Assessment Report">
                 <sheet>
-                    <group>
-                        <group string="Date Range">
-                            <field name="date_from"/>
-                            <field name="date_to"/>
+                    <div class="alert alert-info text-center" role="alert">
+                        <strong>Internal Assessment Report Export</strong>
+                        <br/>
+                        <small class="text-muted">Apply filters below to narrow down your export. Leave empty to include all records.</small>
+                    </div>
+
+                    <group string="📅 Date Range">
+                        <group>
+                            <field name="date_from" string="From"
+                                   placeholder="Start date..."/>
                         </group>
-                        <group string="Filters">
+                        <group>
+                            <field name="date_to" string="To"
+                                   placeholder="End date..."/>
+                        </group>
+                    </group>
+
+                    <group string="🏢 Role Filters">
+                        <group>
                             <field name="department_ids" widget="many2many_tags"
-                                   string="Clients"/>
-                            <field name="job_ids"        widget="many2many_tags"
-                                   string="Roles"/>
-                            <field name="recruiter_ids"  widget="many2many_tags"
+                                   string="Clients"
+                                   placeholder="All clients..."
+                                   options="{'no_create_edit': True}"/>
+                            <field name="job_ids_domain" invisible="1"/>
+                            <field name="job_ids" widget="many2many_tags"
+                                   string="Roles"
+                                   placeholder="All roles..."
+                                   domain="job_ids_domain"
+                                   options="{'no_create_edit': True}"/>
+                            <field name="recruiter_ids" widget="many2many_tags"
                                    string="Recruiters"
-                                   domain="[('share','=',False)]"/>
-                            <field name="role_status" string="Role Status"/>
-                            <field name="stage_ids"      widget="many2many_tags"
-                                   string="Stages"/>
+                                   placeholder="All recruiters..."
+                                   domain="[('share','=',False)]"
+                                   options="{'no_create_edit': True}"/>
+                        </group>
+                        <group>
+                            <field name="role_status" string="Role Status"
+                                   placeholder="Any status..."/>
+                            <field name="sub_status" string="Status Remarks"
+                                   placeholder="Any remarks..."/>
+                            <field name="employment_type" string="Employment Type"
+                                   placeholder="FTE / Consulting..."/>
+                            <field name="stage_ids" widget="many2many_tags"
+                                   string="Stages"
+                                   placeholder="All stages..."
+                                   options="{'no_create_edit': True}"/>
+                        </group>
+                    </group>
+
+                    <group string="📝 Assessment Filters">
+                        <group>
+                            <field name="assessment_link_received"
+                                   string="Link Received"
+                                   placeholder="Yes / No..."/>
+                            <field name="assessment_taken"
+                                   string="Assessment Taken"
+                                   placeholder="Yes / No..."/>
+                        </group>
+                        <group>
+                            <field name="assessment_feedback"
+                                   string="Feedback"
+                                   placeholder="Select / Reject..."/>
                         </group>
                     </group>
                 </sheet>
                 <footer>
                     <button name="action_export_xlsx"
-                            string="Export Excel"
+                            string="⬇ Export Excel"
                             type="object"
                             class="btn-primary"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>

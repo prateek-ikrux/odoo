@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 import base64
 
-from odoo import models, fields
+from odoo import models, fields, api
 from .assessment_report_xlsx import build_assessment_xlsx
-from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS
+from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS, SUB_STATUS_SELECTION
 
 
 class AssessmentReportWizard(models.TransientModel):
     _name = 'recruitment.assessment.report.wizard'
     _description = 'Internal Assessment Report Export Wizard'
 
+    # ── Date Range ────────────────────────────────────────────────
     date_from      = fields.Date(string='Date From')
     date_to        = fields.Date(string='Date To')
+
+    # ── Role Filters ──────────────────────────────────────────────
     department_ids = fields.Many2many('hr.department', string='Clients')
     job_ids        = fields.Many2many('hr.job',        string='Roles')
+    job_ids_domain = fields.Binary(compute='_compute_job_ids_domain')
     recruiter_ids  = fields.Many2many('res.users',     string='Recruiters')
     role_status    = fields.Selection(
         [
@@ -22,9 +26,40 @@ class AssessmentReportWizard(models.TransientModel):
             ('on_hold',     'On Hold'),
             ('closed',      'Closed'),
         ],
-        string='Role Status'
+        string='Role Status',
+    )
+    sub_status     = fields.Selection(
+        SUB_STATUS_SELECTION,
+        string='Role Status Remarks',
+    )
+    employment_type = fields.Selection(
+        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        string='Employment Type',
     )
     stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
+
+    # ── Assessment Filters ────────────────────────────────────────
+    assessment_link_received = fields.Selection(
+        [('yes', 'Yes'), ('no', 'No')],
+        string='Assessment Link Received',
+    )
+    assessment_taken = fields.Selection(
+        [('yes', 'Yes'), ('no', 'No')],
+        string='Assessment Taken',
+    )
+    assessment_feedback = fields.Selection(
+        [('select', 'Select'), ('reject', 'Reject')],
+        string='Assessment Feedback',
+    )
+
+    # ── Dynamic domains ──────────────────────────────────────────
+    @api.depends('department_ids')
+    def _compute_job_ids_domain(self):
+        for rec in self:
+            if rec.department_ids:
+                rec.job_ids_domain = [('department_id', 'in', rec.department_ids.ids)]
+            else:
+                rec.job_ids_domain = []
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -40,8 +75,18 @@ class AssessmentReportWizard(models.TransientModel):
             domain.append(('user_id', 'in', self.recruiter_ids.ids))
         if self.role_status:
             domain.append(('job_id.x_role_status', '=', self.role_status))
+        if self.sub_status:
+            domain.append(('job_id.x_sub_status', '=', self.sub_status))
+        if self.employment_type:
+            domain.append(('job_id.x_employment_type', '=', self.employment_type))
         if self.stage_ids:
             domain.append(('stage_id', 'in', self.stage_ids.ids))
+        if self.assessment_link_received:
+            domain.append(('x_assessment_link_received', '=', self.assessment_link_received))
+        if self.assessment_taken:
+            domain.append(('x_assessment_taken', '=', self.assessment_taken))
+        if self.assessment_feedback:
+            domain.append(('x_assessment_feedback', '=', self.assessment_feedback))
         return domain
 
     def _get_report_data(self):
@@ -120,3 +165,4 @@ class AssessmentReportWizard(models.TransientModel):
             'url': f'/web/content/{attachment.id}?download=true',
             'target': 'self',
         }
+

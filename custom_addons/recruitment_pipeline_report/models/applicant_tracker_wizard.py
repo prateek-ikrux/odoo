@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 
-from odoo import models, fields
+from odoo import models, fields, api
 from .applicant_tracker_xlsx import build_tracker_xlsx
 
 
@@ -9,10 +9,14 @@ class ApplicantTrackerWizard(models.TransientModel):
     _name = 'recruitment.applicant.tracker.wizard'
     _description = 'Applicant Tracker Export Wizard'
 
+    # ── Date Range ────────────────────────────────────────────────
     date_from      = fields.Date(string='Date From')
     date_to        = fields.Date(string='Date To')
+
+    # ── Role Filters ──────────────────────────────────────────────
     department_ids = fields.Many2many('hr.department', string='Clients')
     job_ids        = fields.Many2many('hr.job',        string='Roles')
+    job_ids_domain = fields.Binary(compute='_compute_job_ids_domain')
     recruiter_ids  = fields.Many2many('res.users',     string='Recruiters')
     role_status    = fields.Selection(
         [
@@ -21,9 +25,44 @@ class ApplicantTrackerWizard(models.TransientModel):
             ('on_hold',     'On Hold'),
             ('closed',      'Closed'),
         ],
-        string='Role Status'
+        string='Role Status',
+    )
+    employment_type = fields.Selection(
+        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        string='Employment Type',
     )
     stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
+
+    # ── Candidate Filters ─────────────────────────────────────────
+    source_ids     = fields.Many2many('utm.source', string='Sources')
+    location_ids   = fields.Many2many('recruitment.city', string='Current Locations')
+    skill_ids      = fields.Many2many('recruitment.skill', string='Skills')
+    notice_period  = fields.Selection(
+        [
+            ('30_days',          '30 Days'),
+            ('60_days',          '60 Days'),
+            ('90_days',          '90 Days'),
+            ('immediate_joiner', 'Immediate Joiner'),
+            ('serving_notice',   'Serving Notice Period'),
+        ],
+        string='Notice Period',
+    )
+    client_portal_status = fields.Selection(
+        [
+            ('uploaded',     'Uploaded'),
+            ('not_uploaded', 'Not Uploaded'),
+        ],
+        string='Client Portal Status',
+    )
+
+    # ── Dynamic domains ──────────────────────────────────────────
+    @api.depends('department_ids')
+    def _compute_job_ids_domain(self):
+        for rec in self:
+            if rec.department_ids:
+                rec.job_ids_domain = [('department_id', 'in', rec.department_ids.ids)]
+            else:
+                rec.job_ids_domain = []
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -39,8 +78,20 @@ class ApplicantTrackerWizard(models.TransientModel):
             domain.append(('user_id', 'in', self.recruiter_ids.ids))
         if self.role_status:
             domain.append(('job_id.x_role_status', '=', self.role_status))
+        if self.employment_type:
+            domain.append(('job_id.x_employment_type', '=', self.employment_type))
         if self.stage_ids:
             domain.append(('stage_id', 'in', self.stage_ids.ids))
+        if self.source_ids:
+            domain.append(('source_id', 'in', self.source_ids.ids))
+        if self.location_ids:
+            domain.append(('x_current_location_id', 'in', self.location_ids.ids))
+        if self.skill_ids:
+            domain.append(('x_skill_ids', 'in', self.skill_ids.ids))
+        if self.notice_period:
+            domain.append(('x_notice_period', '=', self.notice_period))
+        if self.client_portal_status:
+            domain.append(('x_client_portal_status', '=', self.client_portal_status))
         return domain
 
     def _get_report_data(self):
@@ -132,3 +183,4 @@ class ApplicantTrackerWizard(models.TransientModel):
             'url': f'/web/content/{attachment.id}?download=true',
             'target': 'self',
         }
+

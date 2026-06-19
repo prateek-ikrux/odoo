@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
 
-from odoo import models, fields
+from odoo import models, fields, api
 from collections import defaultdict
 
 from .pipeline_constants import (
     ROLE_STATUS_LABELS,
     SUB_STATUS_LABELS,
+    SUB_STATUS_SELECTION,
     EMP_TYPE_LABELS,
 )
 from .pipeline_xlsx import build_pipeline_xlsx
@@ -16,15 +17,49 @@ class PipelineSummaryWizard(models.TransientModel):
     _name = 'recruitment.pipeline.summary.wizard'
     _description = 'Pipeline Summary Report Wizard'
 
+    # ── Date Range ────────────────────────────────────────────────
     date_from      = fields.Date(string='Date From')
     date_to        = fields.Date(string='Date To')
+
+    # ── Role Filters ──────────────────────────────────────────────
     department_ids = fields.Many2many('hr.department', string='Clients')
     job_ids        = fields.Many2many('hr.job',        string='Roles')
+    job_ids_domain = fields.Binary(compute='_compute_job_ids_domain')
+    poc_ids        = fields.Many2many('res.partner',   string='POC')
+    poc_ids_domain = fields.Binary(compute='_compute_poc_ids_domain')
     role_status    = fields.Selection(
         ROLE_STATUS_LABELS.items(),
-        string='Role Status'
+        string='Role Status',
     )
+    sub_status     = fields.Selection(
+        SUB_STATUS_SELECTION,
+        string='Role Status Remarks',
+    )
+    employment_type = fields.Selection(
+        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        string='Employment Type',
+    )
+
+    # ── Candidate / Pipeline Filters ──────────────────────────────
+    recruiter_ids  = fields.Many2many('res.users', string='Recruiters')
     stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
+
+    # ── Dynamic domains ──────────────────────────────────────────
+    @api.depends('department_ids')
+    def _compute_job_ids_domain(self):
+        for rec in self:
+            if rec.department_ids:
+                rec.job_ids_domain = [('department_id', 'in', rec.department_ids.ids)]
+            else:
+                rec.job_ids_domain = []
+
+    @api.depends('department_ids')
+    def _compute_poc_ids_domain(self):
+        for rec in self:
+            if rec.department_ids:
+                rec.poc_ids_domain = [('x_client_department_id', 'in', rec.department_ids.ids)]
+            else:
+                rec.poc_ids_domain = [('x_client_department_id', '!=', False)]
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
@@ -36,8 +71,16 @@ class PipelineSummaryWizard(models.TransientModel):
             domain.append(('department_id', 'in', self.department_ids.ids))
         if self.job_ids:
             domain.append(('job_id', 'in', self.job_ids.ids))
+        if self.poc_ids:
+            domain.append(('job_id.x_poc_id', 'in', self.poc_ids.ids))
         if self.role_status:
             domain.append(('job_id.x_role_status', '=', self.role_status))
+        if self.sub_status:
+            domain.append(('job_id.x_sub_status', '=', self.sub_status))
+        if self.employment_type:
+            domain.append(('job_id.x_employment_type', '=', self.employment_type))
+        if self.recruiter_ids:
+            domain.append(('user_id', 'in', self.recruiter_ids.ids))
         if self.stage_ids:
             domain.append(('stage_id', 'in', self.stage_ids.ids))
         return domain
