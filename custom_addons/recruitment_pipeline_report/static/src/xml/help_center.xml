@@ -153,6 +153,7 @@
                                     <h3>Create a job position</h3>
                                     <p>Go to <strong>Recruitment → Job Positions</strong> and click New. All fields you fill here auto-populate as read-only on every applicant under this job.</p>
                                     <div class="o_hc_field_list">
+                                        <div class="o_hc_field_row"><i class="ti ti-point"/><code>Req ID Available?</code> Choose "Yes" to type a Req ID yourself, or "No" to have one generated automatically when you save (format: REQ-2026-00001, always unique)</div>
                                         <div class="o_hc_field_row"><i class="ti ti-point"/><code>Req ID</code> Unique requisition reference (e.g. REQ-2025-001)</div>
                                         <div class="o_hc_field_row"><i class="ti ti-point"/><code>Client</code> The department or business unit hiring for this role</div>
                                         <div class="o_hc_field_row"><i class="ti ti-point"/><code>Employment Type</code> FTE or Consulting</div>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Fixed Source value for all applicants. The Source field on the
+         Applicant form is read-only and always shows this record;
+         models/hr_applicant.py enforces this value server-side too. -->
+    <record id="utm_source_ikrux_engineering" model="utm.source">
+        <field name="name">iKrux Engineering</field>
+    </record>
+
+</odoo>

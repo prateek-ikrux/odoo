@@ -74,8 +74,10 @@
             <xpath expr="//page[@name='application_details']" position="inside">
                 <group>
                     <group string="Personal">
-                        <!-- source_id moved here from Sourcing section -->
-                        <field name="source_id"                  string="Source"/>
+                        <!-- source_id moved here from Sourcing section.
+                             Always "iKrux Engineering" — readonly, value
+                             enforced server-side in models/hr_applicant.py -->
+                        <field name="source_id"                  string="Source" readonly="1"/>
                         <field name="x_skill_ids"                widget="many2many_tags" string="Skill" options="{'no_create_edit': True}"/>
                         <field name="x_total_experience"         string="Total Experience"/>
                         <field name="x_relevant_experience"      string="Relevant Experience"/>

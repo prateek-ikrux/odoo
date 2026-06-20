@@ -11,7 +11,10 @@
                 <attribute name="string">Client</attribute>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_req_id"          string="Req ID"/>
+                <field name="x_req_id_available" string="Req ID Available?" widget="radio" options="{'horizontal': true}"/>
+                <field name="x_req_id"          string="Req ID"
+                       readonly="x_req_id_available == 'no'"
+                       placeholder="Auto-generated on save"/>
                 <field name="x_employment_type" string="Employment Type"/>
                 <field name="x_poc_id"          string="Point of Contact (POC)"
                        context="{'default_x_client_department_id': department_id}"/>

@@ -22,6 +22,32 @@ class HrApplicant(models.Model):
         default='0',
     )
 
+    # ── Fixed Source value ────────────────────────────────────────
+    # Source is always "iKrux Engineering" — the field is readonly in the
+    # view, defaulted here, and re-applied in create/write below so it
+    # can't be changed via API, import, or by removing the readonly
+    # attribute client-side.
+    def _get_fixed_source_id(self):
+        source = self.env.ref('recruitment_pipeline_report.utm_source_ikrux_engineering', raise_if_not_found=False)
+        return source.id if source else False
+
+    source_id = fields.Many2one(default=lambda self: self._get_fixed_source_id())
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        fixed_source_id = self._get_fixed_source_id()
+        if fixed_source_id:
+            for vals in vals_list:
+                vals['source_id'] = fixed_source_id
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'source_id' in vals:
+            fixed_source_id = self._get_fixed_source_id()
+            if fixed_source_id:
+                vals = dict(vals, source_id=fixed_source_id)
+        return super().write(vals)
+
     # ── Readonly mirrors from job position ────────────────────────
     x_job_location_ids = fields.Many2many(
         related='job_id.x_location_ids',

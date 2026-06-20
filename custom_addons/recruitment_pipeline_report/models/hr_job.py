@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 from .pipeline_constants import ROLE_STATUS_SELECTION, SUB_STATUS_SELECTION
 
 
@@ -36,11 +37,25 @@ class HrJob(models.Model):
     )
 
     # ── New fields ────────────────────────────────────────────────
+    x_req_id_available = fields.Selection(
+        selection=[('yes', 'Yes'), ('no', 'No')],
+        string='Req ID Available?',
+        default='yes',
+        help='Select "Yes" if you already have a Requisition ID to enter manually. '
+             'Select "No" to have one generated automatically when the job position is saved '
+             '(format: REQ-2026-00001).',
+    )
+
     x_req_id = fields.Char(
         string='Req ID',
         copy=False,
-        help='Manually entered Requisition ID for this job position (e.g. REQ-2024-001). Can be any value chosen by the user.',
+        help='Requisition ID for this job position. Enter manually (e.g. REQ-2024-001) '
+             'if available, or set "Req ID Available?" to "No" to auto-generate one on save.',
     )
+
+    _sql_constraints = [
+        ('x_req_id_uniq', 'unique (x_req_id)', 'Req ID must be unique! This Req ID is already assigned to another job position.'),
+    ]
 
     # Deprecated alias — kept only so existing ir.ui.view records that still
     # reference x_rec_id pass ORM validation during the upgrade. Odoo will
@@ -105,8 +120,29 @@ class HrJob(models.Model):
 
     # ── Create / write hooks ──────────────────────────────────────
 
+    def _generate_unique_req_id(self):
+        """Generate a unique Req ID using the ir.sequence, in the format
+        REQ-2026-00001. Retries on the rare chance the sequence-issued
+        number is already in use (defense-in-depth on top of the
+        x_req_id_uniq SQL constraint), so every generated value is
+        guaranteed unique."""
+        Sequence = self.env['ir.sequence']
+        for _attempt in range(100):
+            candidate = Sequence.next_by_code('hr.job.x_req_id')
+            if not candidate:
+                raise ValidationError(
+                    'Could not generate a Req ID automatically: the '
+                    '"Job Req ID" sequence is missing. Please contact your administrator.'
+                )
+            if not self.env['hr.job'].sudo().search_count([('x_req_id', '=', candidate)]):
+                return candidate
+        raise ValidationError('Could not generate a unique Req ID. Please try again.')
+
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('x_req_id_available') == 'no' and not vals.get('x_req_id'):
+                vals['x_req_id'] = self._generate_unique_req_id()
         jobs = super().create(vals_list)
         for job in jobs:
             # Keep user_id in sync with recruiter list
@@ -117,7 +153,21 @@ class HrJob(models.Model):
         return jobs
 
     def write(self, vals):
-        res = super().write(vals)
+        # Auto-generate Req ID per-record when "Req ID Available?" is set to
+        # "No" and no Req ID was explicitly supplied in this write. Handled
+        # record-by-record so each job that needs one gets its own unique
+        # value (relevant when writing on multiple jobs at once).
+        wants_auto_req_id = vals.get('x_req_id_available') == 'no' and not vals.get('x_req_id')
+        if wants_auto_req_id:
+            for job in self:
+                job_vals = vals
+                if not job.x_req_id:
+                    job_vals = dict(vals, x_req_id=self._generate_unique_req_id())
+                super(HrJob, job).write(job_vals)
+            res = True
+        else:
+            res = super().write(vals)
+
         if 'x_recruiter_ids' in vals:
             for job in self:
                 if job.x_recruiter_ids:

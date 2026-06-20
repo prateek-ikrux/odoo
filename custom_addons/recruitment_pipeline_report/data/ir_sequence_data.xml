@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Sequence used to auto-generate Req IDs (format: REQ-2026-00001)
+         when the user indicates no Req ID is available yet on a Job
+         Position. %(year)s gives the 4-digit year and the padding gives
+         a 5-digit running number, resetting each year. -->
+    <record id="seq_hr_job_x_req_id" model="ir.sequence">
+        <field name="name">Job Req ID</field>
+        <field name="code">hr.job.x_req_id</field>
+        <field name="prefix">REQ-%(year)s-</field>
+        <field name="padding">5</field>
+        <field name="number_increment">1</field>
+        <field name="number_next">1</field>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+</odoo>
