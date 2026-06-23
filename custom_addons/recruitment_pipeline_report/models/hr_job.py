@@ -78,6 +78,20 @@ class HrJob(models.Model):
         default=0,
     )
 
+    @api.constrains('x_min_experience', 'x_max_experience')
+    def _check_experience_range(self):
+        for rec in self:
+            if rec.x_min_experience < 0:
+                raise ValidationError('Min Experience (Yrs) cannot be negative.')
+            if rec.x_max_experience < 0:
+                raise ValidationError('Max Experience (Yrs) cannot be negative.')
+            # Max = 0 is treated as "not specified" (the field's default),
+            # so it's skipped here rather than flagged as Min > Max.
+            if rec.x_max_experience and rec.x_min_experience > rec.x_max_experience:
+                raise ValidationError(
+                    'Min Experience (Yrs) cannot be greater than Max Experience (Yrs).'
+                )
+
     x_location_ids = fields.Many2many(
         'recruitment.city',
         'hr_job_city_rel',
@@ -117,6 +131,14 @@ class HrJob(models.Model):
         string='Bill Rate (LPM)',
         help='Agreed bill rate for Consulting roles in Lakhs Per Month.'
     )
+
+    @api.constrains('x_budget_lpa', 'x_bill_rate_lpm')
+    def _check_budget_bill_rate_not_negative(self):
+        for rec in self:
+            if rec.x_budget_lpa < 0:
+                raise ValidationError('Budget (LPA) cannot be negative.')
+            if rec.x_bill_rate_lpm < 0:
+                raise ValidationError('Bill Rate (LPM) cannot be negative.')
 
     # ── Create / write hooks ──────────────────────────────────────
 

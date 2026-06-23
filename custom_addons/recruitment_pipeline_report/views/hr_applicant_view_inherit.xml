@@ -42,7 +42,7 @@
                 <field name="x_min_experience"       string="Min Exp (Yrs)"       readonly="1"/>
                 <field name="x_max_experience"       string="Max Exp (Yrs)"       readonly="1"/>
                 <field name="x_job_location_ids"     invisible="1"/>
-                <field name="x_client_portal_status" string="Client Portal Status"/>
+                <field name="x_client_portal_status" string="Client Portal Status" required="1"/>
             </xpath>
 
             <!-- LinkedIn profile field with custom logo button.
@@ -59,9 +59,26 @@
                 </div>
             </xpath>
 
-            <!-- Rename Phone to Contact Number in the top section -->
+            <!-- ── Mandatory fields: Applicant Details ──────────────────
+                 Name (Candidate), Email, Job Position, Recruiter required.
+                 Evaluation (priority) stays optional per spec. -->
+            <xpath expr="//field[@name='partner_name']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='email_from']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='job_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <!-- Rename Phone to Contact Number in the top section, mandatory -->
             <xpath expr="//field[@name='partner_phone']" position="attributes">
                 <attribute name="string">Contact Number</attribute>
+                <attribute name="required">1</attribute>
             </xpath>
 
             <!-- Merge candidate-detail fields into the existing "Details" tab
@@ -78,35 +95,53 @@
                              Always "iKrux Engineering" — readonly, value
                              enforced server-side in models/hr_applicant.py -->
                         <field name="source_id"                  string="Source" readonly="1"/>
-                        <field name="x_skill_ids"                widget="many2many_tags" string="Skill" options="{'no_create_edit': True}"/>
-                        <field name="x_total_experience"         string="Total Experience"/>
-                        <field name="x_relevant_experience"      string="Relevant Experience"/>
-                        <field name="x_current_organization"     string="Current Organization"/>
+                        <field name="x_skill_ids"                widget="many2many_tags" string="Skill" options="{'no_create_edit': True}" required="1"/>
+                        <field name="x_total_experience"         string="Total Experience (Yrs)" required="1"/>
+                        <field name="x_relevant_experience"      string="Relevant Experience (Yrs)" required="1"/>
+                        <field name="x_current_organization"     string="Current Organization" required="1"/>
                         <field name="x_designation"              string="Designation"/>
                         <field name="x_education"                string="Education"/>
                     </group>
                     <group string="Location &amp; Availability">
-                        <field name="x_current_location_id"      string="Current Location" options="{'no_create_edit': True}"/>
-                        <field name="x_preferred_location_ids"   widget="many2many_tags" string="Preferred Location" domain="[('id', 'in', x_job_location_ids)]" options="{'no_create_edit': True}"/>
+                        <field name="x_current_location_id"      string="Current Location" options="{'no_create_edit': True}" required="1"/>
+                        <field name="x_preferred_location_ids"   widget="many2many_tags" string="Preferred Location" domain="[('id', 'in', x_job_location_ids)]" options="{'no_create_edit': True}" required="1"/>
                         <field name="x_open_to_anywhere"         string="Open to Anywhere"/>
-                        <field name="x_notice_period"            string="Notice Period"/>
+                        <field name="x_notice_period"            string="Notice Period" required="1"/>
                         <field name="x_lwd"
                                string="Last Working Date"
-                               invisible="x_notice_period not in ('serving_notice', 'immediate_joiner')"/>
+                               invisible="x_notice_period not in ('serving_notice', 'immediate_joiner')"
+                               required="x_notice_period in ('serving_notice', 'immediate_joiner')"/>
                     </group>
                 </group>
                 <group>
                     <group string="Compensation">
-                        <field name="x_current_ctc_lpa"          string="Current CTC (LPA)"/>
-                        <field name="x_expected_ctc_lpa"         string="Expected CTC (LPA)"/>
+                        <field name="x_current_ctc_lpa"          string="Current CTC (LPA)" required="1"/>
+                        <field name="x_expected_ctc_lpa"         string="Expected CTC (LPA)" required="1"/>
                         <field name="x_offer_in_hand_ids"        widget="many2many_tags" options="{'no_open': True}" string="Offer in Hand (LPA)"/>
 
                         <field name="x_budget_lpa_display"       string="Budget (LPA)"     invisible="x_budget_lpa_display == 0.0" readonly="1"/>
                         <field name="x_bill_rate_lpm_display"    string="Bill Rate (LPM)"  invisible="x_bill_rate_lpm_display == 0.0" readonly="1"/>
                     </group>
                     <group string="Additional Information">
-                        <field name="x_reason_for_job_change" string="Reason for Job Change" colspan="2"/>
+                        <field name="x_reason_for_job_change" string="Reason for Job Change" colspan="2" required="1"/>
                         <field name="x_remarks"               string="Remarks"               colspan="2"/>
+                    </group>
+                </group>
+
+                <!-- ── Others: CV Upload (dedicated, mandatory) ───────────
+                     Separate from the chatter paperclip (still available
+                     for other documents). Single-file binary widget;
+                     re-uploading replaces the previous file (see
+                     _sync_cv_attachment in models/hr_applicant.py), and the
+                     same file is mirrored to a normal attachment so it also
+                     shows up in the chatter Files panel / Documents app. -->
+                <group>
+                    <group string="Others">
+                        <field name="x_cv_upload_filename" invisible="1"/>
+                        <field name="x_cv_upload"
+                               string="CV Upload"
+                               filename="x_cv_upload_filename"
+                               required="1"/>
                     </group>
                 </group>
             </xpath>

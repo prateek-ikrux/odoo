@@ -39,14 +39,22 @@ class HrApplicant(models.Model):
         if fixed_source_id:
             for vals in vals_list:
                 vals['source_id'] = fixed_source_id
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.x_cv_upload:
+                rec._sync_cv_attachment()
+        return records
 
     def write(self, vals):
         if 'source_id' in vals:
             fixed_source_id = self._get_fixed_source_id()
             if fixed_source_id:
                 vals = dict(vals, source_id=fixed_source_id)
-        return super().write(vals)
+        res = super().write(vals)
+        if 'x_cv_upload' in vals:
+            for rec in self:
+                rec._sync_cv_attachment()
+        return res
 
     # ── Readonly mirrors from job position ────────────────────────
     x_job_location_ids = fields.Many2many(
@@ -125,6 +133,18 @@ class HrApplicant(models.Model):
         help='Last working day of the candidate.',
     )
 
+    @api.constrains('x_lwd', 'x_notice_period')
+    def _check_lwd_not_past_for_serving_notice(self):
+        """Only checked for 'Serving Notice Period': that date is a future
+        commitment, so it shouldn't be in the past. 'Immediate Joiner' is
+        exempt — that candidate may have already left their last job, so
+        a past or today's date is legitimate there."""
+        for rec in self:
+            if rec.x_notice_period == 'serving_notice' and rec.x_lwd and rec.x_lwd < fields.Date.context_today(rec):
+                raise ValidationError(
+                    'Last Working Date cannot be in the past for a candidate Serving Notice Period.'
+                )
+
     # ── Candidate Details ─────────────────────────────────────────
     # Candidate Number = partner_phone (native hr.applicant field)
 
@@ -136,15 +156,27 @@ class HrApplicant(models.Model):
         help='Candidate Skills selected from the shared skill master.'
     )
 
-    x_total_experience = fields.Char(
-        string='Total Experience',
-        help='Total years of professional experience (e.g. "5.5 Yrs").',
+    x_total_experience = fields.Float(
+        string='Total Experience (Yrs)',
+        help='Total years of professional experience (e.g. 5.5).',
     )
 
-    x_relevant_experience = fields.Char(
-        string='Relevant Experience',
-        help='Years of experience relevant to the applied role.',
+    x_relevant_experience = fields.Float(
+        string='Relevant Experience (Yrs)',
+        help='Years of experience relevant to the applied role (e.g. 3.5).',
     )
+
+    @api.constrains('x_total_experience', 'x_relevant_experience')
+    def _check_experience_values(self):
+        for rec in self:
+            if rec.x_total_experience < 0:
+                raise ValidationError('Total Experience (Yrs) cannot be negative.')
+            if rec.x_relevant_experience < 0:
+                raise ValidationError('Relevant Experience (Yrs) cannot be negative.')
+            if rec.x_relevant_experience > rec.x_total_experience:
+                raise ValidationError(
+                    'Relevant Experience (Yrs) cannot be greater than Total Experience (Yrs).'
+                )
 
     x_current_organization = fields.Char(
         string='Current Organization',
@@ -202,6 +234,14 @@ class HrApplicant(models.Model):
     x_expected_ctc_lpa = fields.Float(
         string='Expected CTC (LPA)',
     )
+
+    @api.constrains('x_current_ctc_lpa', 'x_expected_ctc_lpa')
+    def _check_ctc_not_negative(self):
+        for rec in self:
+            if rec.x_current_ctc_lpa < 0:
+                raise ValidationError('Current CTC (LPA) cannot be negative.')
+            if rec.x_expected_ctc_lpa < 0:
+                raise ValidationError('Expected CTC (LPA) cannot be negative.')
 
     x_offer_in_hand_ids = fields.Many2many(
         'hr.applicant.offer.tag',
@@ -264,6 +304,65 @@ class HrApplicant(models.Model):
         selection=[('select', 'Select'), ('reject', 'Reject')],
         string='Assessment Feedback',
     )
+
+    # ── CV Upload (dedicated field, separate from the general
+    #    chatter paperclip which remains available for other files) ──
+    # Stored as a Binary so it shows as its own mandatory upload widget
+    # on the form. On write/create it is also mirrored into a real
+    # ir.attachment record (res_model='hr.applicant', res_id=applicant.id)
+    # so the file is visible in the chatter "Files" panel and the
+    # Documents app, exactly like any attachment added via the paperclip.
+    # Re-uploading replaces the previous CV attachment (single CV per
+    # applicant) rather than accumulating multiple CV attachments.
+    x_cv_upload = fields.Binary(
+        string='CV Upload',
+        attachment=False,
+        help='Upload the candidate\'s CV/resume. This is mandatory and is '
+             'also stored as a regular attachment so it appears in the '
+             'chatter and Documents app.',
+    )
+    x_cv_upload_filename = fields.Char(string='CV Filename')
+
+    # Tracks the ir.attachment created/updated for x_cv_upload so a
+    # re-upload can replace it instead of creating duplicates.
+    x_cv_attachment_id = fields.Many2one(
+        'ir.attachment',
+        string='CV Attachment',
+        copy=False,
+        readonly=True,
+    )
+
+    def _sync_cv_attachment(self):
+        """Mirror x_cv_upload into a real ir.attachment on this applicant
+        so it shows up in the chatter/Documents alongside files added via
+        the paperclip. Replaces the previously synced CV attachment (if
+        any) instead of leaving stale copies behind."""
+        self.ensure_one()
+        Attachment = self.env['ir.attachment'].sudo()
+
+        old_attachment = self.x_cv_attachment_id
+        if not self.x_cv_upload:
+            if old_attachment:
+                old_attachment.unlink()
+                self.x_cv_attachment_id = False
+            return
+
+        filename = self.x_cv_upload_filename or 'CV_%s' % (self.partner_name or self.name or 'applicant')
+        attachment_vals = {
+            'name': filename,
+            'datas': self.x_cv_upload,
+            'res_model': 'hr.applicant',
+            'res_id': self.id,
+            'mimetype': 'application/octet-stream',
+        }
+
+        if old_attachment:
+            old_attachment.write(attachment_vals)
+            new_attachment = old_attachment
+        else:
+            new_attachment = Attachment.create(attachment_vals)
+
+        self.x_cv_attachment_id = new_attachment.id
 
     # ── Application Details ───────────────────────────────────────
     x_client_portal_status = fields.Selection(
