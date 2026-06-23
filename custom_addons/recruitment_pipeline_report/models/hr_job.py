@@ -132,13 +132,21 @@ class HrJob(models.Model):
         help='Agreed bill rate for Consulting roles in Lakhs Per Month.'
     )
 
-    @api.constrains('x_budget_lpa', 'x_bill_rate_lpm')
-    def _check_budget_bill_rate_not_negative(self):
+    # @api.constrains('x_budget_lpa', 'x_bill_rate_lpm')
+    # def _check_budget_bill_rate_not_negative(self):
+    #     for rec in self:
+    #         if rec.x_budget_lpa < 0:
+    #             raise ValidationError('Budget (LPA) cannot be negative.')
+    #         if rec.x_bill_rate_lpm < 0:
+    #             raise ValidationError('Bill Rate (LPM) cannot be negative.')
+
+    @api.constrains('x_budget_lpa', 'x_bill_rate_lpm', 'x_employment_type')
+    def _check_budget_bill_rate_positive(self):
         for rec in self:
-            if rec.x_budget_lpa < 0:
-                raise ValidationError('Budget (LPA) cannot be negative.')
-            if rec.x_bill_rate_lpm < 0:
-                raise ValidationError('Bill Rate (LPM) cannot be negative.')
+            if rec.x_employment_type == 'fte' and rec.x_budget_lpa <= 0:
+                raise ValidationError('Budget (LPA) must be greater than zero for FTE roles.')
+            if rec.x_employment_type == 'consulting' and rec.x_bill_rate_lpm <= 0:
+                raise ValidationError('Bill Rate (LPM) must be greater than zero for Consulting roles.')
 
     # ── Create / write hooks ──────────────────────────────────────
 
