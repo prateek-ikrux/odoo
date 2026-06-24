@@ -279,7 +279,7 @@
                                         <div class="o_hc_field_row"><code>X Scheduled</code> Candidate confirmed the slot</div>
                                         <div class="o_hc_field_row"><code>X Feedback Pending</code> Interview done, waiting for interviewer feedback</div>
                                     </div>
-                                    <div class="o_hc_tip rec">Repeat this pattern for L1, L2, and L3. Not all roles will go through all three rounds — move to the offer stage as soon as the last required round is cleared.</div>
+                                    <div class="o_hc_tip rec">Repeat this pattern for L1, L2, and L3. If feedback is negative at any round, move to that round's Reject stage (L1 Reject / L2 Reject / L3 Reject) and stop. Not all roles will go through all three rounds — move to Documentation Stage as soon as the last required round is cleared.</div>
                                 </div>
                             </div>
 
@@ -306,8 +306,8 @@
                                     <div class="o_hc_step_line"/>
                                 </div>
                                 <div class="o_hc_step_body">
-                                    <h3>Move to offer stage</h3>
-                                    <p>Once all interview rounds are cleared, move the applicant to <strong>To be Offered</strong>. When the offer letter is issued, move to <strong>Offered / Yet to Join</strong> and track the candidate's response.</p>
+                                    <h3>Complete documentation, HR round, and move to offer</h3>
+                                    <p>Once all interview rounds are cleared, move the applicant to <strong>Documentation Stage</strong> to collect and verify documents, then to <strong>HR Round</strong>. Once that's done, move to <strong>To Be Offered</strong>. When the offer letter is issued, move to <strong>Offered/Yet To Join</strong> and track the candidate's response.</p>
                                 </div>
                             </div>
 
@@ -352,7 +352,7 @@
                     <section t-if="isActive('stages')" class="o_hc_page">
                         <div class="o_hc_hero">
                             <h1>Pipeline stages</h1>
-                            <p>There are 20 stages in total. Every candidate starts at Profile Shared and moves forward. Keep stages up to date — all pipeline reports pull directly from this data.</p>
+                            <p>There are 25 stages in total. Every candidate starts at Profile Shared and moves forward. Keep stages up to date — all pipeline reports pull directly from this data.</p>
                         </div>
 
                         <div class="o_hc_pipeline">
@@ -371,53 +371,69 @@
                             <div class="o_hc_stage_group">
                                 <p class="o_hc_stage_group_label">Round 1 — L1 Interview</p>
                                 <div class="o_hc_stage_row">
-                                    <span class="o_hc_stage_pill">L1 To be Scheduled</span>
+                                    <span class="o_hc_stage_pill">L1 To Be Scheduled</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L1 Slot Shared</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L1 Scheduled</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L1 Feedback Pending</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill warn-stage">L1 Reject</span>
                                 </div>
-                                <p class="o_hc_stage_desc">Move through all four steps in order. Only advance to L2 once L1 feedback is received and positive.</p>
+                                <p class="o_hc_stage_desc">Move through all four steps in order. Only advance to L2 once L1 feedback is received and positive — otherwise move to L1 Reject.</p>
                             </div>
 
                             <div class="o_hc_stage_group">
                                 <p class="o_hc_stage_group_label">Round 2 — L2 Interview</p>
                                 <div class="o_hc_stage_row">
-                                    <span class="o_hc_stage_pill">L2 To be Scheduled</span>
+                                    <span class="o_hc_stage_pill">L2 To Be Scheduled</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L2 Slot Shared</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L2 Scheduled</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L2 Feedback Pending</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill warn-stage">L2 Reject</span>
                                 </div>
-                                <p class="o_hc_stage_desc">Same pattern as L1. Skip to offer stages if L2 is the final round for this role.</p>
+                                <p class="o_hc_stage_desc">Same pattern as L1. Skip to Documentation/Offer stages if L2 is the final round for this role, or move to L2 Reject if unsuccessful.</p>
                             </div>
 
                             <div class="o_hc_stage_group">
                                 <p class="o_hc_stage_group_label">Round 3 — L3 Interview</p>
                                 <div class="o_hc_stage_row">
-                                    <span class="o_hc_stage_pill">L3 To be Scheduled</span>
+                                    <span class="o_hc_stage_pill">L3 To Be Scheduled</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L3 Slot Shared</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L3 Scheduled</span>
                                     <span class="o_hc_stage_arrow">→</span>
                                     <span class="o_hc_stage_pill">L3 Feedback Pending</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill warn-stage">L3 Reject</span>
                                 </div>
-                                <p class="o_hc_stage_desc">Only used when a third interview round is required. Not all roles will reach L3.</p>
+                                <p class="o_hc_stage_desc">Only used when a third interview round is required. Not all roles will reach L3. Move to L3 Reject if unsuccessful.</p>
+                            </div>
+
+                            <div class="o_hc_stage_group">
+                                <p class="o_hc_stage_group_label">Documentation &amp; HR</p>
+                                <div class="o_hc_stage_row">
+                                    <span class="o_hc_stage_pill">Documentation Stage</span>
+                                    <span class="o_hc_stage_arrow">→</span>
+                                    <span class="o_hc_stage_pill">HR Round</span>
+                                </div>
+                                <p class="o_hc_stage_desc">Once interviews are cleared, collect and verify documents, then complete the HR round before moving to the offer stages.</p>
                             </div>
 
                             <div class="o_hc_stage_group">
                                 <p class="o_hc_stage_group_label">Offer</p>
                                 <div class="o_hc_stage_row">
-                                    <span class="o_hc_stage_pill">To be Offered</span>
+                                    <span class="o_hc_stage_pill">To Be Offered</span>
                                     <span class="o_hc_stage_arrow">→</span>
-                                    <span class="o_hc_stage_pill">Offered / Yet to Join</span>
+                                    <span class="o_hc_stage_pill">Offered/Yet To Join</span>
                                 </div>
-                                <p class="o_hc_stage_desc">Move to To be Offered once all rounds are cleared. Move to Offered once the letter is issued.</p>
+                                <p class="o_hc_stage_desc">Move to To Be Offered once all rounds, documentation, and the HR round are cleared. Move to Offered once the letter is issued.</p>
                             </div>
 
                             <div class="o_hc_stage_group">
@@ -459,7 +475,7 @@
                             <div class="o_hc_perm_card">
                                 <h4><span class="o_hc_role_badge rec" style="margin:0 0 10px 0"><i class="ti ti-users"/> Recruiter</span></h4>
                                 <div class="o_hc_perm_item can"><i class="ti ti-check"/> Create, edit, delete applicants</div>
-                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Move applicants through all 20 stages</div>
+                                <div class="o_hc_perm_item can"><i class="ti ti-check"/> Move applicants through all 25 stages</div>
                                 <div class="o_hc_perm_item can"><i class="ti ti-check"/> Log assessments and remarks</div>
                                 <div class="o_hc_perm_item can"><i class="ti ti-check"/> Export applicant tracker and reports</div>
                                 <div class="o_hc_perm_item can"><i class="ti ti-check"/> View all jobs and applicants</div>

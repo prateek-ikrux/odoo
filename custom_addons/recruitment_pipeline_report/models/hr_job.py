@@ -15,7 +15,6 @@ class HrJob(models.Model):
             ('consulting', 'Consulting'),
         ],
         string='Employment Type',
-        default='fte',
     )
 
     x_poc_id = fields.Many2one(
