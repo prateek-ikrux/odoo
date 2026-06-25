@@ -40,9 +40,6 @@ class HrApplicant(models.Model):
             for vals in vals_list:
                 vals['source_id'] = fixed_source_id
         records = super().create(vals_list)
-        for rec in records:
-            if rec.x_cv_upload:
-                rec._sync_cv_attachment()
         return records
 
     def write(self, vals):
@@ -51,9 +48,6 @@ class HrApplicant(models.Model):
             if fixed_source_id:
                 vals = dict(vals, source_id=fixed_source_id)
         res = super().write(vals)
-        if 'x_cv_upload' in vals:
-            for rec in self:
-                rec._sync_cv_attachment()
         return res
 
     # ── Readonly mirrors from job position ────────────────────────
@@ -304,65 +298,6 @@ class HrApplicant(models.Model):
         selection=[('select', 'Select'), ('reject', 'Reject')],
         string='Assessment Feedback',
     )
-
-    # ── CV Upload (dedicated field, separate from the general
-    #    chatter paperclip which remains available for other files) ──
-    # Stored as a Binary so it shows as its own mandatory upload widget
-    # on the form. On write/create it is also mirrored into a real
-    # ir.attachment record (res_model='hr.applicant', res_id=applicant.id)
-    # so the file is visible in the chatter "Files" panel and the
-    # Documents app, exactly like any attachment added via the paperclip.
-    # Re-uploading replaces the previous CV attachment (single CV per
-    # applicant) rather than accumulating multiple CV attachments.
-    x_cv_upload = fields.Binary(
-        string='CV Upload',
-        attachment=False,
-        help='Upload the candidate\'s CV/resume. This is mandatory and is '
-             'also stored as a regular attachment so it appears in the '
-             'chatter and Documents app.',
-    )
-    x_cv_upload_filename = fields.Char(string='CV Filename')
-
-    # Tracks the ir.attachment created/updated for x_cv_upload so a
-    # re-upload can replace it instead of creating duplicates.
-    x_cv_attachment_id = fields.Many2one(
-        'ir.attachment',
-        string='CV Attachment',
-        copy=False,
-        readonly=True,
-    )
-
-    def _sync_cv_attachment(self):
-        """Mirror x_cv_upload into a real ir.attachment on this applicant
-        so it shows up in the chatter/Documents alongside files added via
-        the paperclip. Replaces the previously synced CV attachment (if
-        any) instead of leaving stale copies behind."""
-        self.ensure_one()
-        Attachment = self.env['ir.attachment'].sudo()
-
-        old_attachment = self.x_cv_attachment_id
-        if not self.x_cv_upload:
-            if old_attachment:
-                old_attachment.unlink()
-                self.x_cv_attachment_id = False
-            return
-
-        filename = self.x_cv_upload_filename or 'CV_%s' % (self.partner_name or self.name or 'applicant')
-        attachment_vals = {
-            'name': filename,
-            'datas': self.x_cv_upload,
-            'res_model': 'hr.applicant',
-            'res_id': self.id,
-            'mimetype': 'application/octet-stream',
-        }
-
-        if old_attachment:
-            old_attachment.write(attachment_vals)
-            new_attachment = old_attachment
-        else:
-            new_attachment = Attachment.create(attachment_vals)
-
-        self.x_cv_attachment_id = new_attachment.id
 
     # ── Application Details ───────────────────────────────────────
     x_client_portal_status = fields.Selection(

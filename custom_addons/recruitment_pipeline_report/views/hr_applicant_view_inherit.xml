@@ -128,22 +128,6 @@
                     </group>
                 </group>
 
-                <!-- ── Others: CV Upload (dedicated, mandatory) ───────────
-                     Separate from the chatter paperclip (still available
-                     for other documents). Single-file binary widget;
-                     re-uploading replaces the previous file (see
-                     _sync_cv_attachment in models/hr_applicant.py), and the
-                     same file is mirrored to a normal attachment so it also
-                     shows up in the chatter Files panel / Documents app. -->
-                <group>
-                    <group string="Others">
-                        <field name="x_cv_upload_filename" invisible="1"/>
-                        <field name="x_cv_upload"
-                               string="CV Upload"
-                               filename="x_cv_upload_filename"
-                               required="1"/>
-                    </group>
-                </group>
             </xpath>
 
             <!-- ── Fill the empty half of the "Job" group ───────────────
