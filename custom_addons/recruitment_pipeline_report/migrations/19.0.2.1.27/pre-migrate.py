@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-import base64
 import logging
+
+from odoo import api, SUPERUSER_ID
 
 _logger = logging.getLogger(__name__)
 
@@ -32,6 +33,15 @@ def migrate(cr, version):
     whose inline x_cv_upload bytes were never synced to an attachment, so
     that data is preserved as a normal ir.attachment instead of vanishing
     when the column is dropped.
+
+    Uses the ORM (env['ir.attachment'].create) rather than raw SQL: an
+    ir.attachment's actual byte storage is not a simple `datas` column - it's
+    either a `db_datas` column or a file on disk via `store_fname`,
+    depending on the instance's storage config. Only ir.attachment.create()
+    handles either case correctly. The base ir.attachment model is part of
+    Odoo core and is already loaded by the time any addon's pre-migrate
+    script runs, so it's safe to use here even though this addon's own
+    models aren't loaded yet at the pre-migrate stage.
     """
     if not _column_exists(cr, 'hr_applicant', 'x_cv_upload'):
         return
@@ -60,25 +70,26 @@ def migrate(cr, version):
         )
         return
 
+    env = api.Environment(cr, SUPERUSER_ID, {})
+    Attachment = env['ir.attachment']
+
     preserved = 0
     for applicant_id, data, filename in rows:
-        if isinstance(data, bytes):
-            try:
-                base64.b64decode(data, validate=True)
-                b64_str = data.decode('ascii')
-            except Exception:
-                b64_str = base64.b64encode(data).decode('ascii')
-        else:
-            b64_str = data
-
-        cr.execute("""
-            INSERT INTO ir_attachment
-                (name, datas, res_model, res_id, type, create_date, write_date)
-            VALUES
-                (%s, %s, 'hr.applicant', %s, 'binary', now(), now())
-        """, (filename or 'CV_%s' % applicant_id, b64_str, applicant_id))
+        # The hr_applicant.x_cv_upload column holds the same base64 text the
+        # ORM's Binary field API exposes (Binary columns are stored as
+        # base64 text in PostgreSQL), so it can be passed straight through
+        # as 'datas' on create - ir.attachment.create() expects base64
+        # there and handles routing it to db_datas or the filestore itself.
+        Attachment.create({
+            'name': filename or 'CV_%s' % applicant_id,
+            'datas': data,
+            'res_model': 'hr.applicant',
+            'res_id': applicant_id,
+            'type': 'binary',
+        })
         preserved += 1
 
+    cr.commit()
     _logger.info(
         'Preserved %s CV(s) as ir.attachment ahead of removing the x_cv_upload '
         'field; these now appear via the standard chatter paperclip / '
