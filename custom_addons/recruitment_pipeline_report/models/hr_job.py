@@ -119,6 +119,28 @@ class HrJob(models.Model):
         domain="[('share', '=', False)]",
     )
 
+    x_recruiter_team_id = fields.Many2one(
+        'recruiter.team',
+        string='Recruiter Group',
+        help='Pick a saved Recruiter Group to fill Recruiters and Team Lead in one step. '
+             'If you edit Recruiters afterwards, the Recruiter Group link is cleared '
+             'automatically (the job keeps whichever recruiters are listed).',
+    )
+
+    @api.onchange('x_recruiter_team_id')
+    def _onchange_x_recruiter_team_id(self):
+        if self.x_recruiter_team_id:
+            self.x_recruiter_ids = self.x_recruiter_team_id.member_ids
+            self.user_id = self.x_recruiter_team_id.team_lead_id
+
+    @api.onchange('x_recruiter_ids')
+    def _onchange_x_recruiter_ids_detach_team(self):
+        # If recruiters no longer match the linked group's members, detach
+        # the group link rather than blocking the save — the group was a
+        # one-time fill helper, not a permanent constraint.
+        if self.x_recruiter_team_id and set(self.x_recruiter_ids.ids) != set(self.x_recruiter_team_id.member_ids.ids):
+            self.x_recruiter_team_id = False
+
 
 
     x_budget_lpa = fields.Float(
@@ -174,6 +196,8 @@ class HrJob(models.Model):
                 vals['x_req_id'] = self._generate_unique_req_id()
         jobs = super().create(vals_list)
         for job in jobs:
+            if job.x_recruiter_team_id:
+                continue  # group owns both fields; nothing to reconcile
             # Keep user_id in sync with recruiter list
             if job.x_recruiter_ids and not job.user_id:
                 job.user_id = job.x_recruiter_ids[0]
@@ -199,6 +223,8 @@ class HrJob(models.Model):
 
         if 'x_recruiter_ids' in vals:
             for job in self:
+                if job.x_recruiter_team_id:
+                    continue  # group owns both fields; nothing to reconcile
                 if job.x_recruiter_ids:
                     if job.user_id not in job.x_recruiter_ids:
                         job.user_id = job.x_recruiter_ids[0]
@@ -206,6 +232,8 @@ class HrJob(models.Model):
                     job.user_id = False
         elif 'user_id' in vals:
             for job in self:
+                if job.x_recruiter_team_id:
+                    continue  # group owns both fields; nothing to reconcile
                 if job.user_id and job.user_id not in job.x_recruiter_ids:
                     job.x_recruiter_ids = [(4, job.user_id.id)]
         return res

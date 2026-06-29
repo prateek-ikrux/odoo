@@ -37,6 +37,11 @@
                 <field name="x_skill_ids"       widget="many2many_tags" string="Required Skills" options="{'no_create_edit': True}" required="1"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="replace">
+                <field name="x_recruiter_team_id"
+                       string="Recruiter Group"
+                       options="{'no_create_edit': True}"
+                       context="{'form_view_ref': 'recruitment_pipeline_report.view_recruiter_team_form'}"
+                       placeholder="Select a group to auto-fill Recruiters below…"/>
                 <field name="x_recruiter_ids" widget="many2many_tags"
                        string="Recruiters"
                        options="{'no_create': True}"
