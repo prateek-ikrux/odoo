@@ -210,6 +210,7 @@ class HrApplicant(models.Model):
 
     x_notice_period = fields.Selection(
         selection=[
+            ('15_days',           '15 Days'),
             ('30_days',           '30 Days'),
             ('60_days',           '60 Days'),
             ('90_days',           '90 Days'),

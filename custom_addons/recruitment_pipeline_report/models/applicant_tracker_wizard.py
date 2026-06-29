@@ -39,6 +39,7 @@ class ApplicantTrackerWizard(models.TransientModel):
     skill_ids      = fields.Many2many('recruitment.skill', string='Skills')
     notice_period  = fields.Selection(
         [
+            ('15_days',          '15 Days'),
             ('30_days',          '30 Days'),
             ('60_days',          '60 Days'),
             ('90_days',          '90 Days'),
