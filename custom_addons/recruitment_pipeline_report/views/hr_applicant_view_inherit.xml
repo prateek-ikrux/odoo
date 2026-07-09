@@ -127,6 +127,15 @@
                         <field name="x_remarks"               string="Remarks"               colspan="2"/>
                     </group>
                 </group>
+                <group>
+                    <group string="Referral">
+                        <field name="x_is_referral"      string="Is Referral"/>
+                        <field name="x_referred_by_id"   string="Referred By"
+                               invisible="not x_is_referral"
+                               required="x_is_referral"
+                               options="{'no_create_edit': True}"/>
+                    </group>
+                </group>
 
             </xpath>
 

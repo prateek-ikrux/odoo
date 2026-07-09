@@ -36,9 +36,16 @@ class HrApplicant(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         fixed_source_id = self._get_fixed_source_id()
-        if fixed_source_id:
-            for vals in vals_list:
+        for vals in vals_list:
+            if fixed_source_id:
                 vals['source_id'] = fixed_source_id
+            # Keep Client (department_id) in sync with the Job Position even
+            # when job_id is set outside the applicant form (e.g. moving a
+            # candidate from a Talent Pool onto a job), where the form's
+            # onchange never runs.
+            if vals.get('job_id') and not vals.get('department_id'):
+                job = self.env['hr.job'].browse(vals['job_id'])
+                vals['department_id'] = job.department_id.id
         records = super().create(vals_list)
         return records
 
@@ -47,8 +54,17 @@ class HrApplicant(models.Model):
             fixed_source_id = self._get_fixed_source_id()
             if fixed_source_id:
                 vals = dict(vals, source_id=fixed_source_id)
+        if vals.get('job_id') and 'department_id' not in vals:
+            job = self.env['hr.job'].browse(vals['job_id'])
+            vals = dict(vals, department_id=job.department_id.id)
         res = super().write(vals)
         return res
+
+    # ── Onchange: keep Client (department_id) synced with Job Position ────
+    @api.onchange('job_id')
+    def _onchange_job_id_department(self):
+        if self.job_id:
+            self.department_id = self.job_id.department_id
 
     # ── Readonly mirrors from job position ────────────────────────
     x_job_location_ids = fields.Many2many(
@@ -321,6 +337,33 @@ class HrApplicant(models.Model):
         string='Remarks',
         help='Internal recruiter remarks / notes about the candidate.',
     )
+
+    # ── Referral Attribution ──────────────────────────────────────
+    x_is_referral = fields.Boolean(
+        string='Is Referral',
+        default=False,
+        help='Check this if the candidate was referred by an employee.',
+    )
+
+    x_referred_by_id = fields.Many2one(
+        'hr.employee',
+        string='Referred By',
+        domain="[('user_id.share', '=', False)]",
+        help='Internal employee who referred this candidate.',
+    )
+
+    @api.constrains('x_is_referral', 'x_referred_by_id')
+    def _check_referred_by_required(self):
+        for rec in self:
+            if rec.x_is_referral and not rec.x_referred_by_id:
+                raise ValidationError(
+                    'Please select "Referred By" when marking a candidate as a referral.'
+                )
+
+    @api.onchange('x_is_referral')
+    def _onchange_is_referral_clear_referrer(self):
+        if not self.x_is_referral:
+            self.x_referred_by_id = False
 
     # ── Custom Date Display (Ordinal format like 2nd May 2026) ────
     x_create_date_display = fields.Char(
