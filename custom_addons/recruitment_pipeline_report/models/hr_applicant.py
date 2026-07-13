@@ -178,11 +178,19 @@ class HrApplicant(models.Model):
 
     @api.constrains('x_total_experience', 'x_relevant_experience')
     def _check_experience_values(self):
+        # Enforced as "> 0" rather than ">= 0" for the same reason as the
+        # CTC fields below: required="1" on a Float widget doesn't stop a
+        # user from saving with the pre-filled 0.0 left untouched, so
+        # rejecting 0 here is what actually makes the field mandatory.
         for rec in self:
             if rec.x_total_experience < 0:
                 raise ValidationError('Total Experience (Yrs) cannot be negative.')
             if rec.x_relevant_experience < 0:
                 raise ValidationError('Relevant Experience (Yrs) cannot be negative.')
+            if rec.x_total_experience == 0:
+                raise ValidationError('Total Experience (Yrs) is required and cannot be 0.')
+            if rec.x_relevant_experience == 0:
+                raise ValidationError('Relevant Experience (Yrs) is required and cannot be 0.')
             if rec.x_relevant_experience > rec.x_total_experience:
                 raise ValidationError(
                     'Relevant Experience (Yrs) cannot be greater than Total Experience (Yrs).'
@@ -248,11 +256,20 @@ class HrApplicant(models.Model):
 
     @api.constrains('x_current_ctc_lpa', 'x_expected_ctc_lpa')
     def _check_ctc_not_negative(self):
+        # Enforced as "> 0" rather than ">= 0": these fields are marked
+        # required="1" in the form, but a Float widget is pre-filled with
+        # 0.0 as soon as the record is opened, so "required" alone never
+        # catches a user who leaves the default untouched. Rejecting 0
+        # here is what actually makes the field mandatory in practice.
         for rec in self:
             if rec.x_current_ctc_lpa < 0:
                 raise ValidationError('Current CTC (LPA) cannot be negative.')
             if rec.x_expected_ctc_lpa < 0:
                 raise ValidationError('Expected CTC (LPA) cannot be negative.')
+            if rec.x_current_ctc_lpa == 0:
+                raise ValidationError('Current CTC (LPA) is required and cannot be 0.')
+            if rec.x_expected_ctc_lpa == 0:
+                raise ValidationError('Expected CTC (LPA) is required and cannot be 0.')
 
     x_offer_in_hand_ids = fields.Many2many(
         'hr.applicant.offer.tag',
