@@ -236,6 +236,19 @@ class HrJob(models.Model):
                     continue  # group owns both fields; nothing to reconcile
                 if job.user_id and job.user_id not in job.x_recruiter_ids:
                     job.x_recruiter_ids = [(4, job.user_id.id)]
+
+        # Keep already-linked applicants' Client (department_id) in sync
+        # whenever the Job Position's own Client changes. Without this,
+        # an applicant only picks up the job's Client at the moment
+        # job_id is set on it (see hr_applicant.py create/write); if the
+        # Client is added or corrected on the job afterwards, existing
+        # applicants would otherwise be left with a stale or blank Client.
+        if 'department_id' in vals:
+            for job in self:
+                applicants = self.env['hr.applicant'].search([('job_id', '=', job.id)])
+                if applicants:
+                    applicants.write({'department_id': job.department_id.id})
+
         return res
 
     # ── Display name computation ──────────────────────────────────
