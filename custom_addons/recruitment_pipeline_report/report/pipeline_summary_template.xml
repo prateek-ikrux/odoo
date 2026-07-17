@@ -46,9 +46,11 @@
   .ptbl tbody td.seq { text-align:center; color:#999; font-size:5.5pt; }
   .w-seq { width:12px; } .w-cl  { width:48px; } .w-poc { width:48px; }
   .w-rol { width:68px; } .w-rt  { width:34px; } .w-rs  { width:34px; } .w-ss  { width:34px; }
+  .w-rrd { width:34px; } .w-rod { width:34px; }
   .w-np  { width:20px; } .w-num { width:22px; }
   .b-fte { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#e74c3c;color:#fff; }
   .b-con { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#e67e22;color:#fff; }
+  .b-ftc { display:inline-block;padding:0 3px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#8e44ad;color:#fff; }
   .s-act { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#27ae60;color:#fff; }
   .s-inp { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#2980b9;color:#fff; }
   .s-hld { display:inline-block;padding:0 4px;border-radius:2px;font-size:5.5pt;font-weight:700;background:#f39c12;color:#fff; }
@@ -79,13 +81,15 @@
             <th class="w-rt">Role Type</th>
             <th class="w-rs">Role Status</th>
             <th class="w-ss">Role Status Remarks</th>
+            <th class="w-rrd">Role Received from Client</th>
+            <th class="w-rod">Role Opened to Team</th>
             <th class="w-np">Pos.</th>
             <t t-if="len(stages) &gt; 0">
                 <th t-att-colspan="len(stages)" style="background:#1a6b9a;">Pipeline Summary</th>
             </t>
         </tr>
         <tr class="hdr2">
-            <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+            <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
             <t t-foreach="stages" t-as="stg">
                 <th t-esc="stg"/>
             </t>
@@ -101,6 +105,7 @@
                     <td t-esc="row['role']"/>
                     <td>
                         <t t-if="row['role_type_key'] == 'fte'"><span class="b-fte">FTE</span></t>
+                        <t t-elif="row['role_type_key'] == 'fte_consulting'"><span class="b-ftc">FTE/Consulting</span></t>
                         <t t-else=""><span class="b-con">Consulting</span></t>
                     </td>
                     <td>
@@ -110,6 +115,8 @@
                         <t t-else=""><span class="s-cls">Closed</span></t>
                     </td>
                     <td t-esc="row['sub_status']"/>
+                    <td class="num" t-esc="row['role_received_date']"/>
+                    <td class="num" t-esc="row['role_opened_date']"/>
                     <td class="num" t-esc="row['no_of_positions']"/>
                     <t t-foreach="stages" t-as="stg">
                         <td class="num" t-esc="row['stage_counts'].get(stg, 0)"/>
@@ -118,7 +125,7 @@
             </t>
         </t>
         <t t-else="">
-            <tr><td t-att-colspan="8 + len(stages)" class="no-data">No data found.</td></tr>
+            <tr><td t-att-colspan="10 + len(stages)" class="no-data">No data found.</td></tr>
         </t>
     </tbody>
 </table>

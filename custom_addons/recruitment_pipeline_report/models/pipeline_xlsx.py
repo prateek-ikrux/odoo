@@ -53,10 +53,12 @@ def build_pipeline_xlsx(rows, stages):
             row.get('role_type', ''),
             row.get('role_status', ''),
             row.get('sub_status', ''),
+            row.get('role_received_date', ''),
+            row.get('role_opened_date', ''),
             row.get('no_of_positions', 0),
         ]
         for col, val in enumerate(identity_values):
-            fmt = num_fmt if col in (0, 7) else cell_fmt
+            fmt = num_fmt if col in (0, identity_count - 1) else cell_fmt
             worksheet.write(row_idx, col, val, fmt)
             
         stage_counts = row.get('stage_counts', {})

@@ -2,7 +2,8 @@
 """Shared column definitions for Pipeline Summary (PDF, Excel, list)."""
 
 PRIMARY_HEADERS = [
-    '#', 'Client', 'POC', 'Role', 'Role Type', 'Role Status', 'Role Status Remarks', 'No. of positions',
+    '#', 'Client', 'POC', 'Role', 'Role Type', 'Role Status', 'Role Status Remarks',
+    'Role Received from Client', 'Role Opened to Team', 'No. of positions',
 ]
 
 
@@ -22,4 +23,4 @@ SUB_STATUS_SELECTION = [
 
 ROLE_STATUS_LABELS  = dict(ROLE_STATUS_SELECTION)
 SUB_STATUS_LABELS   = dict(SUB_STATUS_SELECTION)
-EMP_TYPE_LABELS     = {'fte': 'FTE', 'consulting': 'Consulting'}
+EMP_TYPE_LABELS     = {'fte': 'FTE', 'consulting': 'Consulting', 'fte_consulting': 'FTE/Consulting'}

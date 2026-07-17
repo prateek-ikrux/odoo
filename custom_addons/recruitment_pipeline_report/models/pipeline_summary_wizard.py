@@ -36,7 +36,7 @@ class PipelineSummaryWizard(models.TransientModel):
         string='Role Status Remarks',
     )
     employment_type = fields.Selection(
-        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        list(EMP_TYPE_LABELS.items()),
         string='Employment Type',
     )
 
@@ -116,21 +116,25 @@ class PipelineSummaryWizard(models.TransientModel):
             no_of_pos   = job.no_of_recruitment if job else 0
             role_status = job.x_role_status if job else 'active'
             sub_status  = job.x_sub_status if job else False
+            role_received_date = job.x_role_received_date if job else False
+            role_opened_date   = job.x_role_opened_date   if job else False
             def count_stage(stage_id):
                 return sum(1 for a in apps if a.stage_id.id == stage_id)
 
             row = {
-                'seq':             seq,
-                'client':          dept.name if dept else '-',
-                'poc':             poc.name  if poc  else '-',
-                'role':            job.name  if job  else '-',
-                'role_type':       EMP_TYPE_LABELS.get(emp_type, emp_type),
-                'role_type_key':   emp_type,
-                'role_status':     ROLE_STATUS_LABELS.get(role_status, role_status),
-                'role_status_key': role_status,
-                'sub_status':      SUB_STATUS_LABELS.get(sub_status, sub_status or ''),
-                'no_of_positions': no_of_pos,
-                'stage_counts':    {},
+                'seq':                 seq,
+                'client':              dept.name if dept else '-',
+                'poc':                 poc.name  if poc  else '-',
+                'role':                job.name  if job  else '-',
+                'role_type':           EMP_TYPE_LABELS.get(emp_type, emp_type),
+                'role_type_key':       emp_type,
+                'role_status':         ROLE_STATUS_LABELS.get(role_status, role_status),
+                'role_status_key':     role_status,
+                'sub_status':          SUB_STATUS_LABELS.get(sub_status, sub_status or ''),
+                'role_received_date':  role_received_date.strftime('%d-%b-%Y') if role_received_date else '',
+                'role_opened_date':    role_opened_date.strftime('%d-%b-%Y')   if role_opened_date   else '',
+                'no_of_positions':     no_of_pos,
+                'stage_counts':        {},
             }
             for s in stages:
                 row['stage_counts'][s.name] = count_stage(s.id)

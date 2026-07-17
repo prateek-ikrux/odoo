@@ -6,6 +6,7 @@ from psycopg2 import sql as psql
 from .pipeline_constants import (
     ROLE_STATUS_SELECTION,
     SUB_STATUS_SELECTION,
+    EMP_TYPE_LABELS,
 )
 
 
@@ -19,7 +20,7 @@ class RecruitmentPipelineSummaryView(models.Model):
     poc             = fields.Char(string='POC',            readonly=True)
     role            = fields.Char(string='Role',           readonly=True)
     role_type       = fields.Selection(
-        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        list(EMP_TYPE_LABELS.items()),
         string='Role Type', readonly=True,
     )
     role_status     = fields.Selection(
@@ -30,6 +31,8 @@ class RecruitmentPipelineSummaryView(models.Model):
         SUB_STATUS_SELECTION,
         string='Role Status Remarks', readonly=True,
     )
+    role_received_date = fields.Date(string='Role Received from Client', readonly=True)
+    role_opened_date   = fields.Date(string='Role Opened to Team',       readonly=True)
     no_of_positions = fields.Integer(string='No. of Positions', readonly=True, group_operator='max')
     department_id   = fields.Many2one('hr.department', readonly=True)
     job_id          = fields.Many2one('hr.job',        readonly=True)
@@ -54,6 +57,8 @@ class RecruitmentPipelineSummaryView(models.Model):
                     COALESCE(j.x_employment_type, 'fte')       AS role_type,
                     COALESCE(j.x_role_status, 'active')        AS role_status,
                     j.x_sub_status                             AS sub_status,
+                    j.x_role_received_date                     AS role_received_date,
+                    j.x_role_opened_date                       AS role_opened_date,
                     COALESCE(j.no_of_recruitment, 0)           AS no_of_positions,
                     COUNT(a.id)                                AS applicant_count
 
@@ -64,6 +69,7 @@ class RecruitmentPipelineSummaryView(models.Model):
                 LEFT JOIN res_partner          poc ON poc.id = j.x_poc_id
                 GROUP BY COALESCE(d.id, 0), d.name, j.id, j.name, j.x_employment_type,
                          j.x_role_status, j.x_sub_status,
+                         j.x_role_received_date, j.x_role_opened_date,
                          j.no_of_recruitment, poc.id, poc.name, s.id, s.sequence
             )
         """).format(

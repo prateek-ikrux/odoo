@@ -17,7 +17,8 @@
                 <field name="role_type"              string="Role Type"
                        widget="badge"
                        decoration-danger="role_type == 'fte'"
-                       decoration-warning="role_type == 'consulting'"/>
+                       decoration-warning="role_type == 'consulting'"
+                       decoration-info="role_type == 'fte_consulting'"/>
                 <field name="role_status"            string="Role Status"
                        widget="badge"
                        decoration-success="role_status == 'active'"
@@ -25,6 +26,8 @@
                        decoration-warning="role_status == 'on_hold'"
                        decoration-muted="role_status == 'closed'"/>
                 <field name="sub_status"             string="Role Status Remarks"/>
+                <field name="role_received_date"     string="Role Received from Client"/>
+                <field name="role_opened_date"       string="Role Opened to Team"/>
                 <field name="no_of_positions"        string="No. of Positions"              sum="Total"/>
                 <field name="applicant_count"        string="Applicants"                    sum="Total"/>
             </list>

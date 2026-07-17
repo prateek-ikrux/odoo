@@ -3,7 +3,7 @@ import base64
 
 from odoo import models, fields, api
 from .assessment_report_xlsx import build_assessment_xlsx
-from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS, SUB_STATUS_SELECTION
+from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS, SUB_STATUS_SELECTION, EMP_TYPE_LABELS
 
 
 class AssessmentReportWizard(models.TransientModel):
@@ -33,7 +33,7 @@ class AssessmentReportWizard(models.TransientModel):
         string='Role Status Remarks',
     )
     employment_type = fields.Selection(
-        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        list(EMP_TYPE_LABELS.items()),
         string='Employment Type',
     )
     stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
@@ -106,7 +106,7 @@ class AssessmentReportWizard(models.TransientModel):
             req_id      = job.x_req_id      if job else ''
             client      = dept.name          if dept else ''
             role        = job.name           if job else ''
-            role_type   = 'FTE' if (job and job.x_employment_type == 'fte') else 'Consulting'
+            role_type   = EMP_TYPE_LABELS.get(job.x_employment_type, 'Consulting') if job else 'Consulting'
             role_status = ROLE_STATUS_LABELS.get(app.x_role_status, '') if app.x_role_status else ''
             sub_status  = SUB_STATUS_LABELS.get(app.x_sub_status, '') if app.x_sub_status else ''
 

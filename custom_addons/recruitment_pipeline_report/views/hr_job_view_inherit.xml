@@ -31,10 +31,12 @@
                 <field name="x_sub_status"      string="Role Status Remarks" required="1"/>
                 <field name="x_min_experience"  string="Min Experience (Yrs)" required="1"/>
                 <field name="x_max_experience"  string="Max Experience (Yrs)" required="1"/>
-                <field name="x_budget_lpa"      invisible="x_employment_type != 'fte'" required="x_employment_type == 'fte'"/>
+                <field name="x_budget_lpa"      invisible="x_employment_type not in ('fte', 'fte_consulting')" required="x_employment_type in ('fte', 'fte_consulting')"/>
                 <field name="x_bill_rate_lpm"   invisible="x_employment_type != 'consulting'" required="x_employment_type == 'consulting'"/>
                 <field name="x_location_ids"    widget="many2many_tags" string="Job Locations" options="{'no_create_edit': True}" required="1"/>
                 <field name="x_skill_ids"       widget="many2many_tags" string="Required Skills" options="{'no_create_edit': True}" required="1"/>
+                <field name="x_role_received_date" string="Role Received from Client"/>
+                <field name="x_role_opened_date"    string="Role Opened to Team"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="replace">
                 <field name="x_recruiter_team_id"

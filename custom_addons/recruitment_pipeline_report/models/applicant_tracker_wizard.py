@@ -3,6 +3,7 @@ import base64
 
 from odoo import models, fields, api
 from .applicant_tracker_xlsx import build_tracker_xlsx
+from .pipeline_constants import EMP_TYPE_LABELS
 
 
 class ApplicantTrackerWizard(models.TransientModel):
@@ -28,7 +29,7 @@ class ApplicantTrackerWizard(models.TransientModel):
         string='Role Status',
     )
     employment_type = fields.Selection(
-        [('fte', 'FTE'), ('consulting', 'Consulting')],
+        list(EMP_TYPE_LABELS.items()),
         string='Employment Type',
     )
     stage_ids      = fields.Many2many('hr.recruitment.stage', string='Stages')
@@ -131,7 +132,7 @@ class ApplicantTrackerWizard(models.TransientModel):
                 'req_id':                 job.x_req_id              if job else '',
                 'client':                 dept.name                 if dept else '',
                 'role':                   job.name                  if job else '',
-                'role_type':              'FTE' if emp_type == 'fte' else 'Consulting',
+                'role_type':              EMP_TYPE_LABELS.get(emp_type, emp_type),
                 'recruiter':              recruiter,
                 # Application Details
                 'source':                 source,

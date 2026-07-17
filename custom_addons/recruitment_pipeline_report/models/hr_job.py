@@ -11,8 +11,9 @@ class HrJob(models.Model):
 
     x_employment_type = fields.Selection(
         selection=[
-            ('fte',        'FTE'),
-            ('consulting', 'Consulting'),
+            ('fte',             'FTE'),
+            ('consulting',      'Consulting'),
+            ('fte_consulting',  'FTE/Consulting'),
         ],
         string='Employment Type',
     )
@@ -105,6 +106,14 @@ class HrJob(models.Model):
         string='Required Skills'
     )
 
+    x_role_received_date = fields.Date(
+        string='Role Received from Client',
+    )
+
+    x_role_opened_date = fields.Date(
+        string='Role Opened to Team',
+    )
+
     x_display_name = fields.Char(
         string='Job Position',
         compute='_compute_display_name_with_type',
@@ -164,7 +173,7 @@ class HrJob(models.Model):
     @api.constrains('x_budget_lpa', 'x_bill_rate_lpm', 'x_employment_type')
     def _check_budget_bill_rate_positive(self):
         for rec in self:
-            if rec.x_employment_type == 'fte' and rec.x_budget_lpa <= 0:
+            if rec.x_employment_type in ('fte', 'fte_consulting') and rec.x_budget_lpa <= 0:
                 raise ValidationError('Budget (LPA) must be greater than zero for FTE roles.')
             if rec.x_employment_type == 'consulting' and rec.x_bill_rate_lpm <= 0:
                 raise ValidationError('Bill Rate (LPM) must be greater than zero for Consulting roles.')
@@ -258,7 +267,7 @@ class HrJob(models.Model):
         """
         Format: [JOB0001] Infosys - Python Developer | FTE | 2-4 Yrs
         """
-        emp_labels = {'fte': 'FTE', 'consulting': 'Consulting'}
+        emp_labels = {'fte': 'FTE', 'consulting': 'Consulting', 'fte_consulting': 'FTE/Consulting'}
         prefix = f'[{req_id}] ' if req_id else ''
         client = department.display_name if department else ''
         role   = name or ''

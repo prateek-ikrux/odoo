@@ -293,7 +293,7 @@ class HrApplicant(models.Model):
     def _compute_budget_bill_rate_display_new(self):
         for rec in self:
             emp_type = rec.job_id.x_employment_type
-            if emp_type == 'fte':
+            if emp_type in ('fte', 'fte_consulting'):
                 rec.x_budget_lpa_display = rec.job_id.x_budget_lpa
                 rec.x_bill_rate_lpm_display = 0.0
             elif emp_type == 'consulting':
