@@ -782,10 +782,10 @@ class HrEmployee(models.Model):
         for employee in self:
             employee.versions_count = version_count_per_employee.get(employee, 0)
 
-    @api.depends('version_ids.date_version')
+    @api.depends('version_ids.write_date')
     def _compute_version_revision(self):
         for employee in self:
-            employee.version_revision = ",".join(f"{v.id},{v.date_version!s}" for v in employee.version_ids)
+            employee.version_revision = ",".join(f"{v.id},{v.write_date!s}" for v in employee.version_ids)
 
     def _search_newly_hired(self, operator, value):
         if operator not in ('in', 'not in'):
@@ -1419,6 +1419,9 @@ We can redirect you to the public employee list."""
             self._remove_work_contact_id(user, vals.get('company_id'))
         if 'work_permit_expiration_date' in vals:
             vals['work_permit_scheduled_activity'] = False
+        if 'current_version_id' in vals:
+            new_version = self.env['hr.version'].browse(vals.get('current_version_id'))
+            self.resource_id.calendar_id = new_version.resource_calendar_id
         if vals.get('tz'):
             users_to_update = self.env['res.users']
             for employee in self:

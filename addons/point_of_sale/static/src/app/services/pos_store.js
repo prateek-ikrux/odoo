@@ -762,6 +762,7 @@ export class PosStore extends WithLazyGetterTrap {
             (attr) => attr.attribute_id?.id in attrById
         );
         let attributeLinesValues = attributeLines.map((attr) => attr.product_template_value_ids);
+        let variantProduct = null;
         if (opts.code || opts.presetVariant) {
             let product;
             if (opts.code) {
@@ -779,6 +780,7 @@ export class PosStore extends WithLazyGetterTrap {
             } else {
                 product = opts.presetVariant;
             }
+            variantProduct = product;
 
             const attrValueIds = new Set(
                 product?.product_template_attribute_value_ids?.map((v) => v.id) || []
@@ -791,10 +793,22 @@ export class PosStore extends WithLazyGetterTrap {
             );
         }
         if (attributeLinesValues.some((values) => values.length > 1 || values[0].is_custom)) {
+            const forceVariantValue =
+                (opts.forceVariantValue
+                    ? Object.fromEntries(opts.forceVariantValue.map((value) => [value.id, value]))
+                    : undefined) ||
+                (variantProduct
+                    ? Object.fromEntries(
+                          variantProduct.product_template_attribute_value_ids.map((value) => [
+                              value.id,
+                              value,
+                          ])
+                      )
+                    : undefined);
             return await makeAwaitable(this.dialog, ProductConfiguratorPopup, {
                 productTemplate: pTemplate,
                 hideAlwaysVariants: opts.hideAlwaysVariants,
-                forceVariantValue: opts.forceVariantValue,
+                forceVariantValue,
                 line: opts.line,
             });
         }
@@ -1263,7 +1277,7 @@ export class PosStore extends WithLazyGetterTrap {
             if (values.product_id.product_template_variant_value_ids.length > 0) {
                 // Verify price extra of variant products
                 const priceExtra = values.product_id.product_template_variant_value_ids
-                    .filter((attr) => attr.attribute_id.create_variant !== "always")
+                    .filter((attr) => attr.attribute_id.create_variant !== "always" && !opts.code)
                     .reduce((acc, attr) => acc + attr.price_extra, 0);
 
                 values.price_extra += priceExtra;
@@ -1683,15 +1697,13 @@ export class PosStore extends WithLazyGetterTrap {
     }
     async getServerOrders() {
         await this.syncAllOrders();
-        const config_domain = new Domain([
-            ["config_id", "in", [...this.config.raw.trusted_config_ids, this.config.id]],
-        ]);
-        return await this.data.loadServerOrders(
-            Domain.and([config_domain, this.getServerOrdersDomain()]).toList()
-        );
+        return await this.data.loadServerOrders(this.getServerOrdersDomain().toList());
     }
     getServerOrdersDomain() {
-        return new Domain([["state", "=", "draft"]]);
+        return new Domain([
+            ["config_id", "in", [...this.config.raw.trusted_config_ids, this.config.id]],
+            ["state", "=", "draft"],
+        ]);
     }
     async getProductInfo(productTemplate, quantity, priceExtra = 0, productProduct = false) {
         const order = this.getOrder();
@@ -2078,7 +2090,7 @@ export class PosStore extends WithLazyGetterTrap {
     getOrderData(order, reprint) {
         return {
             reprint: reprint,
-            pos_reference: order.getName(),
+            pos_reference: order.preparationName,
             config_name: order.config_id?.name || order.config.name,
             time: DateTime.now().toFormat("HH:mm"),
             tracking_number: order.tracking_number,
@@ -2624,7 +2636,6 @@ export class PosStore extends WithLazyGetterTrap {
         existingLots = existingLots.filter(
             (lot) => lot.product_qty > (usedLotsQty[lot.name]?.total || 0)
         );
-
         // Check if the input lot/serial name is already used in another order
         const isLotNameUsed = (itemValue) => {
             const totalQty = existingLots.find((lt) => lt.name == itemValue)?.product_qty || 0;
@@ -2634,10 +2645,25 @@ export class PosStore extends WithLazyGetterTrap {
             return usedQty ? usedQty >= totalQty : false;
         };
 
-        const existingLotsName = existingLots.map((l) => l.name);
-        if (!packLotLinesToEdit.length && existingLotsName.length === 1) {
-            // If there's only one existing lot/serial number, automatically assign it to the order line
-            return { newPackLotLines: [{ lot_name: existingLotsName[0] }] };
+        if (!packLotLinesToEdit.length) {
+            const removalStrategy = product.categ_id?.removal_strategy_id?.method;
+            if (existingLots.length === 1) {
+                // If there's only one existing lot/serial number, automatically assign it to the order line
+                return { newPackLotLines: [{ lot_name: existingLots[0].name }] };
+            } else if (removalStrategy && existingLots.length > 1) {
+                // Auto-select the appropriate lot for new order lines based on the product's
+                // FIFO, LIFO removal strategy.
+                switch (removalStrategy) {
+                    case "fifo":
+                        return {
+                            newPackLotLines: [{ lot_name: existingLots[0].name }],
+                        };
+                    case "lifo":
+                        return {
+                            newPackLotLines: [{ lot_name: existingLots.at(-1).name }],
+                        };
+                }
+            }
         }
         const payload = await makeAwaitable(this.dialog, SelectLotPopup, {
             title: _t("Lot/Serial number(s) required for"),
