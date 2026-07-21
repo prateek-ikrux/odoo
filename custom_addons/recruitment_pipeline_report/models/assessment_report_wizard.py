@@ -2,8 +2,16 @@
 import base64
 
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 from .assessment_report_xlsx import build_assessment_xlsx
-from .pipeline_constants import ROLE_STATUS_LABELS, SUB_STATUS_LABELS, SUB_STATUS_SELECTION, EMP_TYPE_LABELS
+from .pipeline_constants import (
+    ROLE_STATUS_LABELS,
+    SUB_STATUS_LABELS,
+    SUB_STATUS_SELECTION,
+    EMP_TYPE_LABELS,
+    DATE_FILTER_TYPE_SELECTION,
+    build_date_range_domain,
+)
 
 
 class AssessmentReportWizard(models.TransientModel):
@@ -11,8 +19,25 @@ class AssessmentReportWizard(models.TransientModel):
     _description = 'Internal Assessment Report Export Wizard'
 
     # ── Date Range ────────────────────────────────────────────────
+    date_filter_type = fields.Selection(
+        DATE_FILTER_TYPE_SELECTION,
+        string='Filter By',
+        default='create_date',
+        required=True,
+        help="Profile Created Date filters by when the candidate was added to the "
+             "system.\nLast Stage Activity Date filters by when the candidate's "
+             "stage last changed - use this to report on pipeline movement during "
+             "a period, including candidates who were added earlier but were "
+             "active (moved stage) within the selected range.",
+    )
     date_from      = fields.Date(string='Date From')
     date_to        = fields.Date(string='Date To')
+
+    @api.constrains('date_from', 'date_to')
+    def _check_date_range(self):
+        for rec in self:
+            if rec.date_from and rec.date_to and rec.date_from > rec.date_to:
+                raise ValidationError("'Date From' cannot be later than 'Date To'.")
 
     # ── Role Filters ──────────────────────────────────────────────
     department_ids = fields.Many2many('hr.department', string='Clients')
@@ -63,10 +88,10 @@ class AssessmentReportWizard(models.TransientModel):
 
     def _base_domain(self):
         domain = [('active', 'in', [True, False])]
-        if self.date_from:
-            domain.append(('create_date', '>=', str(self.date_from) + ' 00:00:00'))
-        if self.date_to:
-            domain.append(('create_date', '<=', str(self.date_to) + ' 23:59:59'))
+        domain += build_date_range_domain(
+            self.env, self.date_from, self.date_to,
+            self.date_filter_type or 'create_date',
+        )
         if self.department_ids:
             domain.append(('department_id', 'in', self.department_ids.ids))
         if self.job_ids:

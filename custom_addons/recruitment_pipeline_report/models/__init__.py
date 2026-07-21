@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import pipeline_constants
+from . import stage_history
 from . import recruiter_team
 from . import hr_job
 from . import hr_applicant

@@ -101,6 +101,7 @@
                     </div>
 
                     <group string="📅 Date Range">
+                        <field name="date_filter_type" widget="radio" options="{'horizontal': true}"/>
                         <group>
                             <field name="date_from" string="From"
                                    placeholder="Start date..."/>
