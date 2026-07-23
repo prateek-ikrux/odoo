@@ -23,12 +23,12 @@ class HrApplicant(models.Model):
     )
 
     # ── Fixed Source value ────────────────────────────────────────
-    # Source is always "iKrux Engineering" — the field is readonly in the
+    # Source is always "Shenzyn" — the field is readonly in the
     # view, defaulted here, and re-applied in create/write below so it
     # can't be changed via API, import, or by removing the readonly
     # attribute client-side.
     def _get_fixed_source_id(self):
-        source = self.env.ref('recruitment_pipeline_report.utm_source_ikrux_engineering', raise_if_not_found=False)
+        source = self.env.ref('recruitment_pipeline_report.utm_source_shenzyn', raise_if_not_found=False)
         return source.id if source else False
 
     source_id = fields.Many2one(default=lambda self: self._get_fixed_source_id())

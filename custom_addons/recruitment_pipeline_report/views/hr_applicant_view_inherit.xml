@@ -92,7 +92,7 @@
                 <group>
                     <group string="Personal">
                         <!-- source_id moved here from Sourcing section.
-                             Always "iKrux Engineering" — readonly, value
+                             Always "Shenzyn" — readonly, value
                              enforced server-side in models/hr_applicant.py -->
                         <field name="source_id"                  string="Source" readonly="1"/>
                         <field name="x_skill_ids"                widget="many2many_tags" string="Skill" options="{'no_create_edit': True}" required="1"/>
