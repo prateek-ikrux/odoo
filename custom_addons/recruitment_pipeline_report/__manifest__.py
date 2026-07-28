@@ -28,6 +28,8 @@
             'recruitment_pipeline_report/static/src/scss/help_center.scss',
             'recruitment_pipeline_report/static/src/xml/help_center.xml',
             'recruitment_pipeline_report/static/src/js/help_center.js',
+            'recruitment_pipeline_report/static/src/scss/hr_job_kanban.scss',
+            'recruitment_pipeline_report/static/src/js/hr_job_kanban_role_status.js',
         ],
     },
     'installable': True,

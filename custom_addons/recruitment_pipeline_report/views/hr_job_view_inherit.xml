@@ -149,9 +149,24 @@
         <field name="arch" type="xml">
             <xpath expr="//kanban" position="inside">
                 <field name="x_display_name"/>
+                <field name="x_role_status"/>
             </xpath>
             <xpath expr="//field[@name='name'][@class='fs-3']" position="replace">
                 <field class="fs-3" name="x_display_name"/>
+            </xpath>
+            <!-- Highlight closed job positions on the recruitment kanban -->
+            <xpath expr="//div[hasclass('o_hr_recruitment_kanban_card_large_screen')]" position="attributes">
+                <attribute name="t-attf-class">{{record.x_role_status.raw_value == 'closed' ? 'o_job_role_closed' : ''}}</attribute>
+            </xpath>
+            <xpath expr="//div[hasclass('o_hr_recruitment_kanban_card_mobile_screen')]" position="attributes">
+                <attribute name="t-attf-class">{{record.x_role_status.raw_value == 'closed' ? 'o_job_role_closed' : ''}}</attribute>
+            </xpath>
+            <!-- Hide the quick "Applications" link for closed job positions -->
+            <xpath expr="//div[@name='menu_view_applications']/a[@name='%(hr_recruitment.action_hr_job_applications)d']" position="attributes">
+                <attribute name="invisible">x_role_status == 'closed'</attribute>
+            </xpath>
+            <xpath expr="//div[@name='menu_view_applications']/a[@name='%(hr_recruitment.action_hr_job_applications)d']" position="after">
+                <span invisible="x_role_status != 'closed'" class="text-muted" title="This role is closed">Applications (Closed)</span>
             </xpath>
             <xpath expr="//div[hasclass('col') and div/@groups='!base.group_multi_company']" position="replace">
                 <div class="col">
