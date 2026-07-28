@@ -1,0 +1,8 @@
+/* ============================================================
+   Recruitment kanban — highlight job positions whose Role
+   Status is "Closed" (see hr_job_view_inherit.xml)
+   ============================================================ */
+
+.o_kanban_record .o_job_role_closed {
+    background-color: #c5c6cd;
+}
