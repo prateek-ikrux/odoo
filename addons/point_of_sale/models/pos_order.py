@@ -128,7 +128,10 @@ class PosOrder(models.Model):
                     order[field] = []
 
             del order['uuid']
-            del order['access_token']
+            if "access_token" in order:
+                # From self access_token is no longer present in the data
+                del order['access_token']
+
             if order.get('state') == 'paid':
                 # The "paid" state will be assigned later by `_process_saved_order`
                 order['state'] = pos_order.state
@@ -916,9 +919,13 @@ class PosOrder(models.Model):
 
         fiscal_position = self.fiscal_position_id
         pos_config = self.config_id
-        move_type = 'out_invoice' if not any(
-            order.is_refund or order.amount_total < 0.0 for order in self
-        ) else 'out_refund'
+        # A document whose total is negative for its type cannot be posted, so the move type
+        # follows the sign of the net amount of the whole group.
+        amount_total = sum(self.mapped('amount_total'))
+        if self.currency_id.is_zero(amount_total):
+            move_type = 'out_refund' if all(order.is_refund for order in self) else 'out_invoice'
+        else:
+            move_type = 'out_invoice' if amount_total > 0.0 else 'out_refund'
         invoice_payment_term_id = (
             self.partner_id.property_payment_term_id.id
             if self.partner_id.property_payment_term_id and any(p.payment_method_id.type == 'pay_later' for p in self.payment_ids)
@@ -1345,27 +1352,34 @@ class PosOrder(models.Model):
         return not self.session_id.update_stock_at_closing or self._force_create_picking_real_time()
 
     def _force_create_picking_real_time(self):
-        return self.company_id.anglo_saxon_accounting and self.to_invoice
+        return (self.company_id.anglo_saxon_accounting and self.to_invoice) or bool(self.refunded_order_id.shipping_date)
 
     def _create_order_picking(self):
         self.ensure_one()
+
+        def _create_pickings_from_order_lines():
+            picking_type = self.config_id.picking_type_id
+            destination_id = picking_type.default_location_dest_id.id
+            if self.partner_id.property_stock_customer:
+                destination_id = self.partner_id.property_stock_customer.id
+            pickings = self.env['stock.picking']._create_picking_from_pos_order_lines(
+                destination_id, self.lines, picking_type, self.partner_id)
+            pickings.write({'pos_session_id': self.session_id.id, 'pos_order_id': self.id, 'origin': self.name})
+            return pickings
+
         if self.picking_ids:
             return
         if self.shipping_date:
-            self.sudo().lines._launch_stock_rule_from_pos_order_lines()
+            if self.is_refund and self.refunded_order_id:
+                # For refunds of ship-later orders, use the picking-based flow
+                # which handles cancellation/reduction of original picking moves
+                _create_pickings_from_order_lines()
+            else:
+                self.sudo().lines._launch_stock_rule_from_pos_order_lines()
         else:
             if self._should_create_picking_real_time():
-                picking_type = self.config_id.picking_type_id
-                if self.partner_id.property_stock_customer:
-                    destination_id = self.partner_id.property_stock_customer.id
-                elif not picking_type or not picking_type.default_location_dest_id:
-                    destination_id = self.env['stock.warehouse']._get_partner_locations()[0].id
-                else:
-                    destination_id = picking_type.default_location_dest_id.id
-
-                pickings = self.env['stock.picking']._create_picking_from_pos_order_lines(destination_id, self.lines, picking_type, self.partner_id)
-                all_pickings = pickings | pickings.backorder_ids
-                all_pickings.write({'pos_session_id': self.session_id.id, 'pos_order_id': self.id, 'origin': self.name})
+                pickings = _create_pickings_from_order_lines()
+                pickings.backorder_ids.write({'pos_session_id': self.session_id.id, 'pos_order_id': self.id, 'origin': self.name})
 
     def add_payment(self, data):
         """Create a new payment for the order"""
@@ -1532,7 +1546,11 @@ class PosOrder(models.Model):
         """Search for 'paid' orders that satisfy the given domain, limit and offset."""
         pos_config = self.env['pos.config'].browse(config_id)
         paid_order_domain = Domain(domain) & Domain([
+            '|',
             ('state', 'not in', ['cancel', 'draft']),
+            '&',
+            ('state', '!=', 'draft'),
+            ('is_refund', '=', True),
             ('config_id', 'in', [config_id] + pos_config.trusted_config_ids.ids),
             ('config_id.currency_id', '=', pos_config.currency_id.id)
         ])
@@ -1621,7 +1639,14 @@ class PosOrderLine(models.Model):
     is_total_cost_computed = fields.Boolean(help="Allows to know if the total cost has already been computed or not")
     discount = fields.Float(string='Discount (%)', digits=0, default=0.0)
     order_id = fields.Many2one('pos.order', string='Order Ref', ondelete='cascade', required=True, index=True)
-    tax_ids = fields.Many2many('account.tax', string='Taxes', readonly=True)
+    tax_ids = fields.Many2many(
+        comodel_name='account.tax',
+        relation='account_tax_pos_order_line_rel',
+        column1='pos_order_line_id',
+        column2='account_tax_id',
+        string='Taxes',
+        readonly=True,
+    )
     tax_ids_after_fiscal_position = fields.Many2many('account.tax', compute='_get_tax_ids_after_fiscal_position', string='Taxes to Apply')
     pack_lot_ids = fields.One2many('pos.pack.operation.lot', 'pos_order_line_id', string='Lot/serial Number')
     product_uom_id = fields.Many2one('uom.uom', string='Product Unit', related='product_id.uom_id')
@@ -1796,6 +1821,14 @@ class PosOrderLine(models.Model):
 
     @api.onchange('qty', 'discount', 'price_unit', 'tax_ids')
     def _onchange_qty(self):
+        if self.refunded_orderline_id:
+            line_id = self.ids[0]  # do not just use `id` in case of NewId
+            already_refunded_qty = sum(self.refunded_orderline_id.refund_orderline_ids
+                                       .filtered(lambda l: l.id != line_id and l.order_id.state != 'cancel')
+                                       .mapped('qty'))
+            total_refunded_qty = abs(already_refunded_qty) + abs(self.qty)
+            if abs(self.refunded_orderline_id.qty) - total_refunded_qty < 0:
+                raise ValidationError(_("You cannot refund more than the outstanding quantity for this product."))
         if self.product_id:
             price = self.price_unit * (1 - (self.discount or 0.0) / 100.0)
             self.price_subtotal = self.price_subtotal_incl = price * self.qty
