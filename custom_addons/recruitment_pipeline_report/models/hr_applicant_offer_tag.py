@@ -14,9 +14,10 @@ class HrApplicantOfferTag(models.Model):
 
     name = fields.Char(string='Offer Amount (LPA)', required=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique (name)', 'Tag name already exists!')
-    ]
+    _name_uniq = models.Constraint(
+        'unique (name)',
+        'Tag name already exists!',
+    )
 
     @api.constrains('name')
     def _check_name_is_float(self):

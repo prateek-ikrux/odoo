@@ -53,9 +53,10 @@ class HrJob(models.Model):
              'if available, or set "Req ID Available?" to "No" to auto-generate one on save.',
     )
 
-    _sql_constraints = [
-        ('x_req_id_uniq', 'unique (x_req_id)', 'Req ID must be unique! This Req ID is already assigned to another job position.'),
-    ]
+    _x_req_id_uniq = models.Constraint(
+        'unique (x_req_id)',
+        'Req ID must be unique! This Req ID is already assigned to another job position.',
+    )
 
     # Deprecated alias — kept only so existing ir.ui.view records that still
     # reference x_rec_id pass ORM validation during the upgrade. Odoo will

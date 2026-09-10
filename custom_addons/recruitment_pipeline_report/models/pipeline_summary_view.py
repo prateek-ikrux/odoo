@@ -33,7 +33,7 @@ class RecruitmentPipelineSummaryView(models.Model):
     )
     role_received_date = fields.Date(string='Role Received from Client', readonly=True)
     role_opened_date   = fields.Date(string='Role Opened to Team',       readonly=True)
-    no_of_positions = fields.Integer(string='No. of Positions', readonly=True, group_operator='max')
+    no_of_positions = fields.Integer(string='No. of Positions', readonly=True, aggregator='max')
     department_id   = fields.Many2one('hr.department', readonly=True)
     job_id          = fields.Many2one('hr.job',        readonly=True)
     stage_id        = fields.Many2one('hr.recruitment.stage', string='Stage', readonly=True)

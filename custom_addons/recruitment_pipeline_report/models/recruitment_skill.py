@@ -8,6 +8,7 @@ class RecruitmentSkill(models.Model):
 
     name = fields.Char(string='Skill Name', required=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique (name)', 'Skill name must be unique!')
-    ]
+    _name_uniq = models.Constraint(
+        'unique (name)',
+        'Skill name must be unique!',
+    )

@@ -3,6 +3,7 @@
     'name': 'Recruitment Pipeline Summary Report',
     'version': '19.0.2.1.36',
     'category': 'Recruitment',
+    'author': 'iKrux',
     'summary': 'Pipeline Summary pivot + Excel report with full stage tracking, Applicant Tracker, and Internal Assessment Report',
     'depends': ['hr', 'hr_recruitment', 'hr_skills', 'web'],
     'data': [
@@ -33,6 +34,6 @@
         ],
     },
     'installable': True,
-    'application': False,
+    'application': True,
     'license': 'LGPL-3',
 }
