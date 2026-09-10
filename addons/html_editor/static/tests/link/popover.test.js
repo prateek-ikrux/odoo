@@ -2075,8 +2075,44 @@ test("Should properly show the preview if fetching metadata fails", async () => 
 test("Should open link popover in read only mode when link is not editable", async () => {
     onRpc("/html_editor/link_preview_internal", () => ({}));
     onRpc("/link", () => ({}));
-    await setupEditor('<p><a contenteditable="false" href="/link">link</a></p>');
+    const { el } = await setupEditor('<p><a contenteditable="false" href="/link">link</a></p>');
+    setSelection({ anchorNode: el.querySelector("a"), anchorOffset: 1 });
     await click(queryOne(`a[contenteditable="false"]`));
     await waitFor(".o-we-linkpopover");
     expect(".o_we_edit_link").toHaveCount(0);
+});
+
+test("should hide title replace icon on popover for an image link", async () => {
+    const { el } = await setupEditor(`<p>[<img src="${base64Img}">]</p>`);
+    await click("img");
+    await waitFor(".o-we-toolbar");
+    await click('.o-we-toolbar button[name="link"]');
+    await expectElementCount(".o-we-linkpopover", 1);
+    await contains(".o-we-linkpopover input.o_we_href_input_link").edit("http://test.com/");
+    expect(cleanLinkArtifacts(getContent(el))).toBe(
+        `<p><a href="http://test.com/"><img src="${base64Img}">[]</a></p>`
+    );
+    expect(".o-we-linkpopover .o_we_replace_title_btn").toHaveCount(0);
+});
+
+test("should hide title replace icon on popover for a link with image", async () => {
+    await setupEditor(
+        `<p><a href="https://google.com">https://google.c[]om<img src="${base64Img}"></a></p>`
+    );
+    await expectElementCount(".o-we-linkpopover", 1);
+    expect(".o-we-linkpopover .o_we_replace_title_btn").toHaveCount(0);
+});
+
+test("Should change selection when clicking inside a contenteditable under non editable link", async () => {
+    onRpc("/html_editor/link_preview_internal", () => ({}));
+    onRpc("/link", () => ({}));
+    const { el } = await setupEditor(
+        '<p><a contenteditable="false" href="/link"><span contenteditable="true">abc</span></a></p>'
+    );
+    setSelection({ anchorNode: el.querySelector("span"), anchorOffset: 1 });
+    await click(queryOne(`a[contenteditable="false"]`));
+    await waitFor(".o-we-linkpopover");
+    expect(getContent(el)).toBe(
+        '<p><a contenteditable="false" href="/link"><span contenteditable="true">abc[]</span></a></p>'
+    );
 });

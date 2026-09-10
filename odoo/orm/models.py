@@ -36,7 +36,7 @@ import typing
 import uuid
 import warnings
 from collections import defaultdict, deque
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from inspect import getmembers
 from operator import attrgetter, itemgetter
 
@@ -76,7 +76,7 @@ from .utils import (
 )
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Iterator, Reversible, Sequence
+    from collections.abc import Collection, Iterator, Reversible, Sequence
     from types import MappingProxyType
     from .table_objects import TableObject
     from .environments import Environment
@@ -1328,6 +1328,19 @@ class BaseModel(metaclass=MetaModel):
         for fname, value in defaults.items():
             if fname in self._fields:
                 field = self._fields[fname]
+                if (
+                    field.relational
+                    and not self.env.su
+                    and isinstance(value, Iterable)
+                ):
+                    # since the value will be converted into a SET, we still
+                    # need to check permissions for these actions
+                    for cmd in value:
+                        command_code = cmd[0] if isinstance(cmd, (tuple, list)) and len(cmd) >= 2 else None
+                        if command_code == Command.DELETE:
+                            self.env[field.comodel_name].browse(cmd[1]).check_access('unlink')
+                        elif command_code == Command.UPDATE or (field.type == 'one2many' and command_code in (Command.UNLINK, Command.LINK)):
+                            self.env[field.comodel_name].browse(cmd[1]).check_access('write')
                 value = field.convert_to_cache(value, self, validate=False)
                 defaults[fname] = field.convert_to_write(value, self)
 
@@ -4835,7 +4848,8 @@ class BaseModel(metaclass=MetaModel):
                     # computed stored fields with a column
                     # have to be computed before create
                     # s.t. required and constraints can be applied on those fields.
-                    vals[fname] = field.convert_to_write(record[fname], self)
+                    field_value = record.sudo()[fname] if field.compute_sudo else record[fname]
+                    vals[fname] = field.convert_to_write(field_value, self)
                     precomputed.add(field)
 
     @api.model
@@ -5022,19 +5036,25 @@ class BaseModel(metaclass=MetaModel):
                 if not parent_ids.isdisjoint(records._ids):
                     raise UserError(_("Recursion Detected."))
 
-            # update parent_path of all records and their descendants
+            # update parent_path of all records and their descendants. The
+            # descendants were matched with
+            #     AND child.parent_path LIKE concat(node.parent_path, '%')
+            # whose pattern comes from a column, so PostgreSQL gets no index
+            # bounds and scans the table. The range below selects the same rows
+            # from the index: parent_path ends with '/' and '0' is the next
+            # character, so left(parent_path, -1) || '0' closes the range.
             updated = dict(self.env.execute_query(SQL(
                 """ UPDATE %(table)s child
                     SET parent_path = concat(%(prefix)s, substr(child.parent_path,
                             length(node.parent_path) - length(node.id || '/') + 1))
                     FROM %(table)s node
                     WHERE node.id IN %(ids)s
-                    AND child.parent_path LIKE concat(node.parent_path, %(wildcard)s)
+                    AND child.parent_path >= node.parent_path
+                    AND child.parent_path < left(node.parent_path, -1) || '0'
                     RETURNING child.id, child.parent_path """,
                 table=SQL.identifier(self._table),
                 prefix=prefix,
                 ids=tuple(records.ids),
-                wildcard='%',
             )))
 
             # update the cache of updated nodes, and determine what to recompute
