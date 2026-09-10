@@ -17,10 +17,15 @@
                         </small>
                     </div>
 
+                    <field name="contract_type" invisible="1"/>
+
                     <group string="Contract Filters">
                         <group>
                             <field name="client" placeholder="All clients..."/>
-                            <field name="role" placeholder="All roles..."/>
+                            <field name="candidate" placeholder="All candidates..."
+                                   invisible="contract_type != 'sow'"/>
+                            <field name="role" placeholder="All roles..."
+                                   invisible="contract_type != 'sow'"/>
                         </group>
                         <group>
                             <field name="state" placeholder="All statuses..."/>

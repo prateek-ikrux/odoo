@@ -10,6 +10,13 @@ STATE_SELECTION = [
 
 STATE_LABELS = dict(STATE_SELECTION)
 
+# Internal discriminator. The two window actions set it through
+# ``default_contract_type`` and filter on it, so it is never rendered.
+TYPE_SELECTION = [
+    ('msa', 'Master Service Agreement'),
+    ('sow', 'Statement of Work'),
+]
+
 
 class Contract(models.Model):
     _name = 'contracts.contract'
@@ -18,11 +25,32 @@ class Contract(models.Model):
     _order = 'end_date desc, id desc'
 
     # ── Core fields ───────────────────────────────────────────────
+    contract_type = fields.Selection(
+        TYPE_SELECTION, required=True, index=True, copy=True,
+    )
+    parent_contract_id = fields.Many2one(
+        'contracts.contract', string='Parent Contract',
+        domain="[('contract_type', '=', 'msa')]",
+        ondelete='restrict', index=True, tracking=True,
+        help="The overarching contract this one is placed under.",
+    )
+    child_contract_ids = fields.One2many(
+        'contracts.contract', 'parent_contract_id', string='Linked Contracts',
+    )
+    active_child_count = fields.Integer(
+        compute='_compute_active_child_count',
+    )
     client = fields.Char(
         string='Client', required=True, tracking=True, index=True,
+        compute='_compute_client', store=True, readonly=False, precompute=True,
+        recursive=True,
+    )
+    candidate = fields.Char(
+        string='Candidate', tracking=True,
+        help="Person placed with the client under this contract.",
     )
     role = fields.Char(
-        string='Role', required=True, tracking=True,
+        string='Role', tracking=True,
     )
     poc = fields.Char(
         string='POC', required=True, tracking=True,
@@ -64,13 +92,32 @@ class Contract(models.Model):
     )
 
     # ── Display name ──────────────────────────────────────────────
-    @api.depends('client', 'role')
+    @api.depends('contract_type', 'client', 'role', 'candidate')
     def _compute_display_name(self):
         for rec in self:
-            parts = [p for p in (rec.client, rec.role) if p]
-            rec.display_name = ' - '.join(parts) or _('New Contract')
+            if rec.contract_type == 'sow':
+                parts = [rec.client, rec.role or rec.candidate]
+            else:
+                parts = [rec.client]
+            rec.display_name = ' - '.join(p for p in parts if p) or _('New Contract')
 
     # ── Computes ──────────────────────────────────────────────────
+    @api.depends('contract_type', 'parent_contract_id.client')
+    def _compute_client(self):
+        """A placed contract always shows the client of the contract above it."""
+        for rec in self:
+            if rec.contract_type == 'sow' and rec.parent_contract_id:
+                rec.client = rec.parent_contract_id.client
+            elif not rec.client:
+                rec.client = False
+
+    @api.depends('child_contract_ids.state')
+    def _compute_active_child_count(self):
+        for rec in self:
+            rec.active_child_count = len(
+                rec.child_contract_ids.filtered(lambda c: c.state == 'active')
+            )
+
     @api.depends('end_date', 'state')
     def _compute_days_left(self):
         today = fields.Date.context_today(self)
@@ -135,6 +182,60 @@ class Contract(models.Model):
                       rec.display_name)
                 )
 
+    @api.constrains('contract_type', 'parent_contract_id')
+    def _check_parent_contract(self):
+        for rec in self:
+            if rec.contract_type == 'sow':
+                if not rec.parent_contract_id:
+                    raise ValidationError(
+                        _("A parent contract is required on contract '%s'.",
+                          rec.display_name)
+                    )
+                if rec.parent_contract_id.contract_type != 'msa':
+                    raise ValidationError(
+                        _("Contract '%s' cannot be used as a parent contract.",
+                          rec.parent_contract_id.display_name)
+                    )
+            elif rec.parent_contract_id:
+                raise ValidationError(
+                    _("Contract '%s' cannot be placed under another contract.",
+                      rec.display_name)
+                )
+            if rec.parent_contract_id == rec:
+                raise ValidationError(
+                    _("Contract '%s' cannot be its own parent.", rec.display_name)
+                )
+
+    @api.constrains('contract_type', 'role', 'candidate')
+    def _check_sow_fields(self):
+        for rec in self:
+            if rec.contract_type != 'sow':
+                continue
+            if not rec.role:
+                raise ValidationError(
+                    _("A role is required on contract '%s'.", rec.display_name)
+                )
+            if not rec.candidate:
+                raise ValidationError(
+                    _("A candidate is required on contract '%s'.", rec.display_name)
+                )
+
+    @api.constrains('contract_type', 'parent_contract_id', 'start_date', 'end_date')
+    def _check_parent_period(self):
+        for rec in self:
+            parent = rec.parent_contract_id
+            if rec.contract_type != 'sow' or not parent:
+                continue
+            if not (parent.start_date and parent.end_date):
+                continue
+            if rec.start_date < parent.start_date or rec.end_date > parent.end_date:
+                raise ValidationError(
+                    _("Contract '%(name)s' must run inside the period of the parent "
+                      "contract (%(start)s to %(end)s).",
+                      name=rec.display_name,
+                      start=parent.start_date, end=parent.end_date)
+                )
+
     @api.constrains('attachment_ids')
     def _check_attachments(self):
         for rec in self:
@@ -160,6 +261,11 @@ class Contract(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            # Checked up front: without a parent the client cannot be derived,
+            # so the insert would fail on the NOT NULL column instead of here.
+            if vals.get('contract_type') == 'sow' and not vals.get('parent_contract_id'):
+                raise ValidationError(_("A parent contract is required."))
         records = super().create(vals_list)
         records._link_attachments_to_record()
         # @api.constrains only fires for fields present in the values, so a
@@ -174,11 +280,32 @@ class Contract(models.Model):
             self._link_attachments_to_record()
         if 'end_date' in vals or 'state' in vals:
             self._sync_expired_state()
+        if 'start_date' in vals or 'end_date' in vals:
+            # Narrowing a parent's period must not silently leave the contracts
+            # placed under it running outside of it.
+            self.child_contract_ids._check_parent_period()
         return res
 
     # ── Actions ───────────────────────────────────────────────────
     def action_terminate(self):
-        """Close a contract midway."""
+        """Close a contract midway.
+
+        Closing a contract that still has running contracts placed under it
+        goes through a confirmation first, so the ones affected are named
+        before anything changes. Nothing cascades either way.
+        """
+        self.ensure_one()
+        if self.active_child_count:
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'contracts.terminate.confirm',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': {'default_contract_id': self.id},
+            }
+        return self._do_terminate()
+
+    def _do_terminate(self):
         today = fields.Date.context_today(self)
         for rec in self:
             if rec.state == 'terminated':

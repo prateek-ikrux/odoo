@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ── List view ──────────────────────────────────────────────────── -->
+    <!-- ══════════════════════════════════════════════════════════════════
+         Base views. These carry the fields common to every contract and are
+         used as-is by the first section; the second section derives from
+         them below, adding the fields that only apply to a placement.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── List ───────────────────────────────────────────────────────── -->
     <record id="view_contracts_contract_list" model="ir.ui.view">
         <field name="name">contracts.contract.list</field>
         <field name="model">contracts.contract</field>
@@ -19,8 +25,9 @@
                             display="always"/>
                 </header>
 
+                <field name="contract_type" column_invisible="1"/>
                 <field name="client"/>
-                <field name="role"/>
+                <field name="poc" optional="show"/>
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                 <field name="start_date"/>
                 <field name="end_date"/>
@@ -35,7 +42,7 @@
         </field>
     </record>
 
-    <!-- ── Form view ──────────────────────────────────────────────────── -->
+    <!-- ── Form ───────────────────────────────────────────────────────── -->
     <record id="view_contracts_contract_form" model="ir.ui.view">
         <field name="name">contracts.contract.form</field>
         <field name="model">contracts.contract</field>
@@ -57,23 +64,19 @@
                            statusbar_visible="active,expired,terminated"/>
                 </header>
                 <sheet>
+                    <field name="contract_type" invisible="1"/>
+                    <field name="active_child_count" invisible="1"/>
+                    <field name="attachment_count" invisible="1"/>
+
                     <div class="oe_title">
                         <label for="client" string="Client"/>
                         <h1>
                             <field name="client" placeholder="Client name..."/>
                         </h1>
-                        <label for="role" string="Role"/>
-                        <h2>
-                            <field name="role" placeholder="Role / position covered by this contract..."/>
-                        </h2>
-                        <label for="poc" string="POC"/>
-                        <h3>
-                            <field name="poc" placeholder="Point of contact..."/>
-                        </h3>
                     </div>
 
                     <group>
-                        <group string="Contract Period">
+                        <group string="Contract Period" name="period">
                             <field name="start_date"/>
                             <field name="end_date"/>
                             <field name="days_left"
@@ -81,9 +84,9 @@
                             <field name="termination_date"
                                    invisible="state != 'terminated'"/>
                         </group>
-                        <group string="Ownership">
+                        <group string="Ownership" name="ownership">
+                            <field name="poc"/>
                             <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
-                            <field name="attachment_count" invisible="1"/>
                         </group>
                     </group>
 
@@ -104,16 +107,14 @@
         </field>
     </record>
 
-    <!-- ── Search view ────────────────────────────────────────────────── -->
+    <!-- ── Search ─────────────────────────────────────────────────────── -->
     <record id="view_contracts_contract_search" model="ir.ui.view">
         <field name="name">contracts.contract.search</field>
         <field name="model">contracts.contract</field>
         <field name="arch" type="xml">
             <search string="Search Contracts">
-                <field name="client"
-                       filter_domain="['|', ('client', 'ilike', self), ('role', 'ilike', self)]"
-                       string="Client / Role"/>
-                <field name="role"/>
+                <field name="client"/>
+                <field name="poc"/>
                 <field name="created_by_id"/>
 
                 <filter name="filter_active" string="Active"
@@ -133,7 +134,6 @@
 
                 <group>
                     <filter name="group_client" string="Client" domain="[]" context="{'group_by': 'client'}"/>
-                    <filter name="group_role" string="Role" domain="[]" context="{'group_by': 'role'}"/>
                     <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
                     <filter name="group_created_by" string="Created By" domain="[]" context="{'group_by': 'created_by_id'}"/>
                     <filter name="group_end_date" string="End Date" domain="[]" context="{'group_by': 'end_date'}"/>
@@ -142,16 +142,116 @@
         </field>
     </record>
 
-    <!-- ── Window action ──────────────────────────────────────────────── -->
-    <record id="action_contracts_contract" model="ir.actions.act_window">
-        <field name="name">Contracts</field>
+    <!-- ══════════════════════════════════════════════════════════════════
+         Second section: a contract placed under another one. Adds the
+         parent link, the person and the role, and takes its client from
+         the contract above it.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <record id="view_contracts_placed_list" model="ir.ui.view">
+        <field name="name">contracts.contract.placed.list</field>
+        <field name="model">contracts.contract</field>
+        <field name="inherit_id" ref="view_contracts_contract_list"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="client" position="after">
+                <field name="candidate"/>
+                <field name="role"/>
+                <field name="parent_contract_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_contracts_placed_form" model="ir.ui.view">
+        <field name="name">contracts.contract.placed.form</field>
+        <field name="model">contracts.contract</field>
+        <field name="inherit_id" ref="view_contracts_contract_form"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <!-- The client is owned by the contract above, so it is shown but
+                 not editable here. -->
+            <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='client']" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="placeholder">Taken from the parent contract</attribute>
+            </xpath>
+
+            <xpath expr="//div[hasclass('oe_title')]" position="inside">
+                <label for="candidate" string="Candidate"/>
+                <h2>
+                    <field name="candidate" placeholder="Person placed with the client..."/>
+                </h2>
+                <label for="role" string="Role"/>
+                <h3>
+                    <field name="role" placeholder="Role covered by this contract..."/>
+                </h3>
+            </xpath>
+
+            <xpath expr="//group[@name='period']" position="before">
+                <group>
+                    <field name="parent_contract_id"
+                           options="{'no_create': True}"
+                           required="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contracts_placed_search" model="ir.ui.view">
+        <field name="name">contracts.contract.placed.search</field>
+        <field name="model">contracts.contract</field>
+        <field name="inherit_id" ref="view_contracts_contract_search"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="client" position="after">
+                <field name="candidate"/>
+                <field name="role"/>
+                <field name="parent_contract_id"/>
+            </field>
+            <filter name="group_client" position="after">
+                <filter name="group_role" string="Role" domain="[]" context="{'group_by': 'role'}"/>
+                <filter name="group_parent" string="Parent Contract" domain="[]"
+                        context="{'group_by': 'parent_contract_id'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Window actions. The action name is the screen title.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <record id="action_contracts_msa" model="ir.actions.act_window">
+        <field name="name">Master Service Agreement</field>
         <field name="res_model">contracts.contract</field>
         <field name="view_mode">list,form</field>
+        <field name="domain">[('contract_type', '=', 'msa')]</field>
+        <field name="context">{'default_contract_type': 'msa'}</field>
         <field name="search_view_id" ref="view_contracts_contract_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'sequence': 10, 'view_mode': 'list', 'view_id': ref('view_contracts_contract_list')}),
+            (0, 0, {'sequence': 20, 'view_mode': 'form', 'view_id': ref('view_contracts_contract_form')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Record your first contract</p>
             <p>
                 Track a contract from Active through to Expired or Terminated,
+                with the signed documents attached.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_contracts_sow" model="ir.actions.act_window">
+        <field name="name">Statement of Work</field>
+        <field name="res_model">contracts.contract</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('contract_type', '=', 'sow')]</field>
+        <field name="context">{'default_contract_type': 'sow'}</field>
+        <field name="search_view_id" ref="view_contracts_placed_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'sequence': 10, 'view_mode': 'list', 'view_id': ref('view_contracts_placed_list')}),
+            (0, 0, {'sequence': 20, 'view_mode': 'form', 'view_id': ref('view_contracts_placed_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record your first contract</p>
+            <p>
+                Place a candidate with a client under an existing contract,
                 with the signed documents attached.
             </p>
         </field>

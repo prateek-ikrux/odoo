@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_contracts_contract_user,contracts.contract.user,model_contracts_contract,base.group_user,1,1,1,0
 access_contracts_contract_system,contracts.contract.system,model_contracts_contract,base.group_system,1,1,1,1
 access_contracts_report_wizard,contracts.report.wizard.user,model_contracts_report_wizard,base.group_user,1,1,1,1
+access_contracts_terminate_confirm,contracts.terminate.confirm.user,model_contracts_terminate_confirm,base.group_user,1,1,1,0

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -10,16 +10,26 @@
 Contracts
 =========
 
-Keep track of client contracts across three states:
+Two sections of contract, sharing one lifecycle:
 
-* Active - ongoing contracts.
+* The overarching contract agreeing that the client and we will work together
+  for a period.
+* The contract placed under it, agreeing that a named candidate will work for
+  the client on our payroll.
+
+Every contract moves through three states:
+
+* Active - ongoing.
 * Expired - the end date has passed; flipped automatically by a nightly scheduled action.
 * Terminated - closed midway; set manually.
 
-Each contract records the client, the role, who created it (read only), the start
-and end dates, the number of days left, and at least one mandatory attachment.
+A contract records the client, the point of contact, who created it (read only),
+the start and end dates, the number of days left, and at least one mandatory
+document. A placed contract additionally names the candidate and the role, must
+reference the contract it sits under, takes its client from that contract, and
+has to run inside its period.
 
-A Reporting menu opens a wizard that exports the filtered contracts to Excel.
+Each section exports its own filtered Excel report.
 """,
     'depends': ['base', 'mail'],
     'data': [
@@ -28,6 +38,7 @@ A Reporting menu opens a wizard that exports the filtered contracts to Excel.
         # the wizard action is referenced by a button in the contract list view,
         # so it has to be loaded first
         'views/contract_report_wizard_views.xml',
+        'views/contract_terminate_wizard_views.xml',
         'views/contract_views.xml',
         'views/contract_menus.xml',
     ],

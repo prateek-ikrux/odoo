@@ -4,8 +4,14 @@ import base64
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from .contract import STATE_LABELS, STATE_SELECTION
-from .contract_report_xlsx import build_contract_report_xlsx
+from .contract import STATE_LABELS, STATE_SELECTION, TYPE_SELECTION
+from .contract_report_xlsx import MSA_COLUMNS, SOW_COLUMNS, build_contract_report_xlsx
+
+# Per-section workbook settings: columns, worksheet name, download filename.
+EXPORT_SETTINGS = {
+    'msa': (MSA_COLUMNS, 'MSA', 'MSA_Report.xlsx'),
+    'sow': (SOW_COLUMNS, 'SOW', 'SOW_Report.xlsx'),
+}
 
 
 class ContractReportWizard(models.TransientModel):
@@ -13,9 +19,16 @@ class ContractReportWizard(models.TransientModel):
     _description = 'Contract Report Export Wizard'
 
     # ── Contract filters ──────────────────────────────────────────
+    contract_type = fields.Selection(
+        TYPE_SELECTION, required=True,
+    )
     client = fields.Char(
         string='Client',
         help="Partial match. Leave empty to include every client.",
+    )
+    candidate = fields.Char(
+        string='Candidate',
+        help="Partial match. Leave empty to include every candidate.",
     )
     role = fields.Char(
         string='Role',
@@ -59,11 +72,14 @@ class ContractReportWizard(models.TransientModel):
     # ── Domain ────────────────────────────────────────────────────
     def _get_domain(self):
         self.ensure_one()
-        domain = []
+        domain = [('contract_type', '=', self.contract_type)]
         if self.client:
             domain.append(('client', 'ilike', self.client))
-        if self.role:
-            domain.append(('role', 'ilike', self.role))
+        if self.contract_type == 'sow':
+            if self.candidate:
+                domain.append(('candidate', 'ilike', self.candidate))
+            if self.role:
+                domain.append(('role', 'ilike', self.role))
         if self.state:
             domain.append(('state', '=', self.state))
         if self.created_by_ids:
@@ -95,8 +111,11 @@ class ContractReportWizard(models.TransientModel):
         lines = []
         if self.client:
             lines.append(_("Client contains: %s", self.client))
-        if self.role:
-            lines.append(_("Role contains: %s", self.role))
+        if self.contract_type == 'sow':
+            if self.candidate:
+                lines.append(_("Candidate contains: %s", self.candidate))
+            if self.role:
+                lines.append(_("Role contains: %s", self.role))
         if self.state:
             lines.append(_("Status: %s", STATE_LABELS.get(self.state, self.state)))
         if self.created_by_ids:
@@ -134,6 +153,7 @@ class ContractReportWizard(models.TransientModel):
             rows.append({
                 'seq': seq,
                 'client': contract.client or '',
+                'candidate': contract.candidate or '',
                 'role': contract.role or '',
                 'created_by': contract.created_by_id.name or '',
                 'start_date': contract.start_date,
@@ -155,13 +175,17 @@ class ContractReportWizard(models.TransientModel):
             self, fields.Datetime.now()
         ).strftime('%d-%b-%Y %H:%M')
 
+        columns, sheet_name, filename = EXPORT_SETTINGS[self.contract_type]
         xlsx_data = build_contract_report_xlsx(
             rows,
+            columns,
+            sheet_name,
+            _("Contracts Report"),
             filter_lines=self._get_filter_lines(),
             generated_on=generated_on,
         )
         attachment = self.env['ir.attachment'].create({
-            'name': 'Contracts_Report.xlsx',
+            'name': filename,
             'type': 'binary',
             'datas': base64.b64encode(xlsx_data),
             'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

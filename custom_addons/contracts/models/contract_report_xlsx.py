@@ -5,9 +5,15 @@ import io
 # Each entry: (column_label, data_key, col_width, kind)
 # kind drives the cell format: 'text' | 'date' | 'int' | 'status' | 'days_left'
 
-CONTRACT_COLUMNS = [
+_CLIENT_COLUMN = [
     ('Client',           'client',           24, 'text'),
+]
+# Only a contract placed under another one names a person and a role.
+_PLACEMENT_COLUMNS = [
+    ('Candidate',        'candidate',        22, 'text'),
     ('Role',             'role',             26, 'text'),
+]
+_COMMON_COLUMNS = [
     ('Created By',       'created_by',       20, 'text'),
     ('Start Date',       'start_date',       14, 'date'),
     ('End Date',         'end_date',         14, 'date'),
@@ -18,14 +24,21 @@ CONTRACT_COLUMNS = [
     ('Attachments',      'attachments',      40, 'text'),
 ]
 
+MSA_COLUMNS = _CLIENT_COLUMN + _COMMON_COLUMNS
+SOW_COLUMNS = _CLIENT_COLUMN + _PLACEMENT_COLUMNS + _COMMON_COLUMNS
+
 HEADER_BG = '#1A3A5C'
 TITLE_BG = '#2C3E50'
 
 
-def build_contract_report_xlsx(rows, filter_lines=None, generated_on=''):
+def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
+                               filter_lines=None, generated_on=''):
     """Build the Contracts XLSX.
 
-    :param rows: list of dicts keyed by the data keys in ``CONTRACT_COLUMNS``.
+    :param rows: list of dicts keyed by the data keys in ``columns``.
+    :param columns: list of ``(label, key, width, kind)`` tuples to render.
+    :param sheet_name: name of the single worksheet.
+    :param report_title: heading printed in the title block.
     :param filter_lines: list of "Label: value" strings describing the filters
         the user applied, printed under the title.
     :param generated_on: formatted timestamp shown in the title block.
@@ -34,11 +47,11 @@ def build_contract_report_xlsx(rows, filter_lines=None, generated_on=''):
     import xlsxwriter  # noqa: PLC0415
 
     filter_lines = filter_lines or ['No filters applied - all contracts included.']
-    last_col = len(CONTRACT_COLUMNS)  # col 0 is the sequence column
+    last_col = len(columns)  # col 0 is the sequence column
 
     output = io.BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-    worksheet = workbook.add_worksheet('Contracts')
+    worksheet = workbook.add_worksheet(sheet_name)
 
     # ── Formats ───────────────────────────────────────────────────────────────
     title_fmt = workbook.add_format({
@@ -98,7 +111,7 @@ def build_contract_report_xlsx(rows, filter_lines=None, generated_on=''):
     })
 
     # ── Title block ───────────────────────────────────────────────────────────
-    worksheet.merge_range(0, 0, 0, last_col, '  Contracts Report', title_fmt)
+    worksheet.merge_range(0, 0, 0, last_col, f'  {report_title}', title_fmt)
     worksheet.set_row(0, 28)
     worksheet.merge_range(
         1, 0, 1, last_col,
@@ -115,13 +128,13 @@ def build_contract_report_xlsx(rows, filter_lines=None, generated_on=''):
     # ── Header row ────────────────────────────────────────────────────────────
     header_row = row_idx
     worksheet.write(header_row, 0, '#', hdr_fmt)
-    for i, (label, key, width, kind) in enumerate(CONTRACT_COLUMNS):
+    for i, (label, key, width, kind) in enumerate(columns):
         worksheet.write(header_row, i + 1, label, hdr_fmt)
     worksheet.set_row(header_row, 28)
 
     # ── Column widths ─────────────────────────────────────────────────────────
     worksheet.set_column(0, 0, 5)
-    for i, (label, key, width, kind) in enumerate(CONTRACT_COLUMNS):
+    for i, (label, key, width, kind) in enumerate(columns):
         worksheet.set_column(i + 1, i + 1, width)
 
     worksheet.freeze_panes(header_row + 1, 0)
@@ -131,7 +144,7 @@ def build_contract_report_xlsx(rows, filter_lines=None, generated_on=''):
         r = header_row + 1 + offset
         worksheet.write(r, 0, row.get('seq', offset + 1), seq_fmt)
 
-        for i, (label, key, width, kind) in enumerate(CONTRACT_COLUMNS):
+        for i, (label, key, width, kind) in enumerate(columns):
             col = i + 1
             val = row.get(key)
 

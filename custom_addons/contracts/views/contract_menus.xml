@@ -8,12 +8,18 @@
         web_icon="contracts,static/description/icon.png"
         sequence="90"/>
 
-    <!-- Contracts list -->
     <menuitem
-        id="menu_contracts_contract"
-        name="Contracts"
+        id="menu_contracts_msa"
+        name="MSA"
         parent="menu_contracts_root"
-        action="action_contracts_contract"
+        action="action_contracts_msa"
         sequence="10"/>
+
+    <menuitem
+        id="menu_contracts_sow"
+        name="SOW"
+        parent="menu_contracts_root"
+        action="action_contracts_sow"
+        sequence="20"/>
 
 </odoo>
