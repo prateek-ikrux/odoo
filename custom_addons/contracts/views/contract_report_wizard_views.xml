@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Export wizard form ─────────────────────────────────────────── -->
+    <record id="view_contracts_report_wizard_form" model="ir.ui.view">
+        <field name="name">contracts.report.wizard.form</field>
+        <field name="model">contracts.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Contracts">
+                <sheet>
+                    <div class="alert alert-info text-center" role="alert">
+                        <strong>Contracts Excel Export</strong>
+                        <br/>
+                        <small class="text-muted">
+                            Apply the filters below to narrow down the export.
+                            Leave a filter empty to include all records.
+                        </small>
+                    </div>
+
+                    <group string="Contract Filters">
+                        <group>
+                            <field name="client" placeholder="All clients..."/>
+                            <field name="role" placeholder="All roles..."/>
+                        </group>
+                        <group>
+                            <field name="state" placeholder="All statuses..."/>
+                            <field name="created_by_ids"
+                                   widget="many2many_tags"
+                                   placeholder="Anyone..."
+                                   domain="[('share', '=', False)]"
+                                   options="{'no_create_edit': True}"/>
+                        </group>
+                    </group>
+
+                    <group string="Start Date Range">
+                        <group>
+                            <field name="start_date_from" string="From" placeholder="Any..."/>
+                        </group>
+                        <group>
+                            <field name="start_date_to" string="To" placeholder="Any..."/>
+                        </group>
+                    </group>
+
+                    <group string="End Date Range">
+                        <group>
+                            <field name="end_date_from" string="From" placeholder="Any..."/>
+                        </group>
+                        <group>
+                            <field name="end_date_to" string="To" placeholder="Any..."/>
+                        </group>
+                    </group>
+
+                    <group string="Expiry Shortcut">
+                        <field name="expiring_within_days"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_export_xlsx"
+                            string="Export Excel"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Wizard action (dialog) ─────────────────────────────────────── -->
+    <record id="action_contracts_report_wizard" model="ir.actions.act_window">
+        <field name="name">Export Contracts</field>
+        <field name="res_model">contracts.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_contracts_report_wizard_form"/>
+    </record>
+
+</odoo>

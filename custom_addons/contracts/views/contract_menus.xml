@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Root -->
+    <menuitem
+        id="menu_contracts_root"
+        name="Contracts"
+        web_icon="contracts,static/description/icon.png"
+        sequence="90"/>
+
+    <!-- Contracts list -->
+    <menuitem
+        id="menu_contracts_contract"
+        name="Contracts"
+        parent="menu_contracts_root"
+        action="action_contracts_contract"
+        sequence="10"/>
+
+</odoo>

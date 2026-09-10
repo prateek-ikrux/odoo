@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── List view ──────────────────────────────────────────────────── -->
+    <record id="view_contracts_contract_list" model="ir.ui.view">
+        <field name="name">contracts.contract.list</field>
+        <field name="model">contracts.contract</field>
+        <field name="arch" type="xml">
+            <list string="Contracts"
+                  decoration-success="state == 'active' and days_left &gt; 30"
+                  decoration-warning="state == 'active' and days_left &lt;= 30"
+                  decoration-danger="state == 'expired'"
+                  decoration-muted="state == 'terminated'">
+                <header>
+                    <button name="%(action_contracts_report_wizard)d"
+                            string="Export Excel"
+                            type="action"
+                            class="btn-primary"
+                            display="always"/>
+                </header>
+
+                <field name="client"/>
+                <field name="role"/>
+                <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="days_left" string="Days Left"/>
+                <field name="attachment_count" string="Attachments"/>
+                <field name="termination_date" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-warning="state == 'expired'"
+                       decoration-danger="state == 'terminated'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Form view ──────────────────────────────────────────────────── -->
+    <record id="view_contracts_contract_form" model="ir.ui.view">
+        <field name="name">contracts.contract.form</field>
+        <field name="model">contracts.contract</field>
+        <field name="arch" type="xml">
+            <form string="Contract">
+                <header>
+                    <button name="action_terminate"
+                            string="Terminate"
+                            type="object"
+                            class="btn-danger"
+                            confirm="Terminate this contract? It will be closed as of today."
+                            invisible="state == 'terminated'"/>
+                    <button name="action_reset_to_active"
+                            string="Reset to Active"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'terminated'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="active,expired,terminated"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="client" string="Client"/>
+                        <h1>
+                            <field name="client" placeholder="Client name..."/>
+                        </h1>
+                        <label for="role" string="Role"/>
+                        <h2>
+                            <field name="role" placeholder="Role / position covered by this contract..."/>
+                        </h2>
+                        <label for="poc" string="POC"/>
+                        <h3>
+                            <field name="poc" placeholder="Point of contact..."/>
+                        </h3>
+                    </div>
+
+                    <group>
+                        <group string="Contract Period">
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="days_left"
+                                   invisible="state != 'active'"/>
+                            <field name="termination_date"
+                                   invisible="state != 'terminated'"/>
+                        </group>
+                        <group string="Ownership">
+                            <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
+                            <field name="attachment_count" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Contract Documents">
+                        <field name="attachment_ids"
+                               widget="many2many_binary"
+                               nolabel="1"
+                               colspan="2"/>
+                        <div class="text-muted" colspan="2">
+                            <i class="fa fa-info-circle" title="Information"/>
+                            At least one document is required before the contract can be saved.
+                            Uploaded files also appear in the attachments box below.
+                        </div>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Search view ────────────────────────────────────────────────── -->
+    <record id="view_contracts_contract_search" model="ir.ui.view">
+        <field name="name">contracts.contract.search</field>
+        <field name="model">contracts.contract</field>
+        <field name="arch" type="xml">
+            <search string="Search Contracts">
+                <field name="client"
+                       filter_domain="['|', ('client', 'ilike', self), ('role', 'ilike', self)]"
+                       string="Client / Role"/>
+                <field name="role"/>
+                <field name="created_by_id"/>
+
+                <filter name="filter_active" string="Active"
+                        domain="[('state', '=', 'active')]"/>
+                <filter name="filter_expired" string="Expired"
+                        domain="[('state', '=', 'expired')]"/>
+                <filter name="filter_terminated" string="Terminated"
+                        domain="[('state', '=', 'terminated')]"/>
+                <separator/>
+                <filter name="filter_expiring_30" string="Expiring in 30 Days"
+                        domain="[('state', '=', 'active'), ('days_left', '&lt;=', 30)]"/>
+                <filter name="filter_my_contracts" string="My Contracts"
+                        domain="[('created_by_id', '=', uid)]"/>
+                <separator/>
+                <filter name="filter_start_date" string="Start Date" date="start_date"/>
+                <filter name="filter_end_date" string="End Date" date="end_date"/>
+
+                <group>
+                    <filter name="group_client" string="Client" domain="[]" context="{'group_by': 'client'}"/>
+                    <filter name="group_role" string="Role" domain="[]" context="{'group_by': 'role'}"/>
+                    <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
+                    <filter name="group_created_by" string="Created By" domain="[]" context="{'group_by': 'created_by_id'}"/>
+                    <filter name="group_end_date" string="End Date" domain="[]" context="{'group_by': 'end_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Window action ──────────────────────────────────────────────── -->
+    <record id="action_contracts_contract" model="ir.actions.act_window">
+        <field name="name">Contracts</field>
+        <field name="res_model">contracts.contract</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_contracts_contract_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record your first contract</p>
+            <p>
+                Track a contract from Active through to Expired or Terminated,
+                with the signed documents attached.
+            </p>
+        </field>
+    </record>
+
+</odoo>
