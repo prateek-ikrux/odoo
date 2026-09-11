@@ -18,9 +18,13 @@
                   decoration-danger="state == 'expired'"
                   decoration-muted="state == 'terminated'">
                 <header>
+                    <!-- The webclient strips default_* keys when a button
+                         launches another action, so the section is passed on
+                         explicitly here (overridden to 'sow' further down). -->
                     <button name="%(action_contracts_report_wizard)d"
                             string="Export Excel"
                             type="action"
+                            context="{'default_contract_type': 'msa'}"
                             class="btn-primary"
                             display="always"/>
                 </header>
@@ -159,6 +163,10 @@
                 <field name="role"/>
                 <field name="parent_contract_id" optional="hide"/>
             </field>
+
+            <xpath expr="//header/button" position="attributes">
+                <attribute name="context">{'default_contract_type': 'sow'}</attribute>
+            </xpath>
         </field>
     </record>
 

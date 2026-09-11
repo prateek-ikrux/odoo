@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Expected Revenue, Probability and the Properties block are hidden rather
+        than dropped from the arch: the Forecast views (and the pipeline
+        analysis reports) inherit these nodes by name, so removing them would
+        break those views at load time.
+    -->
+
+    <record id="crm_lead_view_form_custom" model="ir.ui.view">
+        <field name="name">crm.lead.form.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Title: drop the revenue block, drop the probability block, and
+                 put the agreed rate in their place. A full-time placement is
+                 priced as a percentage and a consulting one as a bill rate, so
+                 the engagement type decides which of the two is on show. -->
+            <xpath expr="//h2/div[.//field[@name='expected_revenue']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//h2/div[.//field[@name='probability']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//h2/div[.//field[@name='probability']]" position="after">
+                <div class="col-auto" name="x_percentage_discussed_block"
+                    invisible="x_engagement_type != 'full_time'">
+                    <label for="x_percentage_discussed" class="d-inline-block"/>
+                    <div class="d-flex align-items-baseline">
+                        <field name="x_percentage_discussed" widget="float" class="oe_inline o_input_6ch" nolabel="1"/>
+                        <span class="opacity-50 p-2"> %</span>
+                    </div>
+                </div>
+                <div class="col-auto" name="x_bill_rate_block"
+                    invisible="x_engagement_type != 'contract'">
+                    <label for="x_bill_rate" class="d-inline-block"/>
+                    <div class="d-flex align-items-baseline">
+                        <field name="x_bill_rate" widget="monetary"
+                            options="{'currency_field': 'company_currency'}"
+                            class="oe_inline o_input_13ch" nolabel="1"/>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Requirement details, between the main groups and the notebook.
+                 The engagement progress flags sit here too, rather than in a tab
+                 of their own, to keep the whole deal on one screen. -->
+            <xpath expr="//div[field[@name='lead_properties']]" position="before">
+                <group name="x_client_details" string="Client &amp; Requirement Details">
+                    <group>
+                        <field name="partner_name" invisible="type == 'lead'"/>
+                        <field name="x_client_type"/>
+                        <field name="x_poc_location" placeholder="e.g. Bengaluru"/>
+                    </group>
+                    <group>
+                        <field name="x_open_positions"/>
+                        <field name="x_roles_opened"/>
+                        <field name="x_engagement_type"/>
+                        <field name="x_project_duration_months"
+                            invisible="x_engagement_type == 'full_time'"/>
+                        <field name="x_project_duration"
+                            invisible="x_engagement_type != 'full_time'"/>
+                    </group>
+                    <group string="Engagement Progress" name="x_engagement_progress" colspan="2">
+                        <group>
+                            <field name="x_requirement_received" widget="radio" options="{'horizontal': true}"/>
+                            <field name="x_recruitment_started" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                        <group>
+                            <field name="x_agreement_signed" widget="radio" options="{'horizontal': true}"/>
+                            <field name="x_client_onboarded" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                    </group>
+                </group>
+            </xpath>
+
+            <!-- Properties block. -->
+            <xpath expr="//div[field[@name='lead_properties']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Contacts tab. The Marketing group is hidden rather than dropped,
+                 for the same reason as the revenue nodes above. -->
+            <xpath expr="//page[@name='lead']//group[field[@name='campaign_id']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='lead']//field[@name='lang_id']" position="after">
+                <field name="x_client_location" placeholder="e.g. Bengaluru"/>
+            </xpath>
+
+            <xpath expr="//page[@name='lead']//field[@name='function']" position="attributes">
+                <attribute name="string">Designation</attribute>
+            </xpath>
+            <xpath expr="//page[@name='lead']//field[@name='function']" position="before">
+                <field name="phone" widget="phone" string="Number"/>
+            </xpath>
+            <xpath expr="//page[@name='lead']//field[@name='website']" position="after">
+                <field name="x_poc_location" placeholder="e.g. Bengaluru"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Quick create: keep the priority star, lose the revenue input. -->
+    <record id="quick_create_opportunity_form_custom" model="ir.ui.view">
+        <field name="name">crm.lead.form.quick_create.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- 'title' is translatable and so cannot be used as a selector. -->
+            <xpath expr="//i[hasclass('fa-money')]" position="attributes">
+                <attribute name="class">fa fa-star</attribute>
+                <attribute name="title">Priority</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Opportunity kanban: no revenue on the cards, no revenue column total,
+         no properties. -->
+    <record id="crm_case_kanban_view_leads_custom" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.lead.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
+        <field name="arch" type="xml">
+            <xpath expr="//progressbar" position="attributes">
+                <attribute name="sum_field"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_kanban_card_crm_lead_revenue')]" position="attributes">
+                <attribute name="class" add="d-none" separator=" "/>
+            </xpath>
+            <xpath expr="//field[@name='lead_properties']" position="replace"/>
+        </field>
+    </record>
+
+    <!-- Forecast kanban rebuilds the revenue block from the base kanban, so it
+         needs the same treatment on its own arch. -->
+    <record id="crm_lead_view_kanban_forecast_custom" model="ir.ui.view">
+        <field name="name">crm.lead.view.kanban.forecast.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_kanban_forecast"/>
+        <field name="arch" type="xml">
+            <xpath expr="//progressbar" position="attributes">
+                <attribute name="sum_field"/>
+            </xpath>
+            <xpath expr="//t[@t-name='card']//div[t/field[@name='prorated_revenue']]" position="attributes">
+                <attribute name="class" add="d-none" separator=" "/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Mobile kanban carries no revenue; surface the client type instead. -->
+    <record id="view_crm_lead_kanban_custom" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_lead_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//t[@t-name='card']//field[@name='contact_name']" position="after">
+                <field name="x_client_type" invisible="not x_client_type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Leads list. -->
+    <record id="crm_case_tree_view_leads_custom" model="ir.ui.view">
+        <field name="name">crm.lead.list.lead.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_tree_view_leads"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='probability']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_name']" position="after">
+                <field name="x_client_type" optional="hide"/>
+                <field name="x_poc_location" optional="hide"/>
+                <field name="x_open_positions" optional="hide"/>
+                <field name="x_roles_opened" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Opportunity list. -->
+    <record id="crm_case_tree_view_oppor_custom" model="ir.ui.view">
+        <field name="name">crm.lead.list.opportunity.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_tree_view_oppor"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="sum"/>
+            </xpath>
+            <xpath expr="//field[@name='probability']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='expected_revenue']" position="after">
+                <field name="x_percentage_discussed" optional="show"/>
+                <field name="x_bill_rate" optional="show"/>
+                <field name="x_client_type" optional="hide"/>
+                <field name="x_poc_location" optional="hide"/>
+                <field name="x_open_positions" optional="hide" sum="Open Positions"/>
+                <field name="x_roles_opened" optional="hide" sum="Roles Opened"/>
+                <field name="x_project_duration" optional="hide"/>
+                <field name="x_client_onboarded" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Forecast list re-shows expected revenue as an optional column and adds
+         the prorated one; both go. -->
+    <record id="crm_lead_view_tree_forecast_custom" model="ir.ui.view">
+        <field name="name">crm.lead.view.list.forecast.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_tree_forecast"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='prorated_revenue']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="sum"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Activity view. -->
+    <record id="crm_lead_view_activity_custom" model="ir.ui.view">
+        <field name="name">crm.lead.view.activity.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_activity"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Calendar popover. -->
+    <record id="crm_case_calendar_view_leads_custom" model="ir.ui.view">
+        <field name="name">crm.lead.calendar.lead.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_calendar_view_leads"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='lead_properties']" position="replace"/>
+        </field>
+    </record>
+
+    <!--
+        Graph / pivot: an invisible field is dropped from the measure list, so
+        this both removes the default measure and hides it from the dropdown.
+    -->
+    <record id="crm_lead_view_pivot_custom" model="ir.ui.view">
+        <field name="name">crm.lead.view.pivot.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_pivot"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_pivot_forecast_custom" model="ir.ui.view">
+        <field name="name">crm.lead.view.pivot.forecast.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_pivot_forecast"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='prorated_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_graph_forecast_custom" model="ir.ui.view">
+        <field name="name">crm.lead.view.graph.forecast.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_graph_forecast"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='prorated_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_opportunity_report_view_pivot_custom" model="ir.ui.view">
+        <field name="name">crm.opportunity.report.pivot.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_opportunity_report_view_pivot"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='prorated_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_opportunity_report_view_graph_custom" model="ir.ui.view">
+        <field name="name">crm.opportunity.report.graph.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_opportunity_report_view_graph"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='prorated_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search views: the Properties group-by goes with the block itself. -->
+    <record id="view_crm_case_leads_filter_custom" model="ir.ui.view">
+        <field name="name">crm.lead.search.lead.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_leads_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lead_properties']" position="replace"/>
+            <xpath expr="//filter[@name='group_by_lead_properties']" position="replace"/>
+            <xpath expr="//field[@name='city']" position="after">
+                <field name="x_poc_location"/>
+            </xpath>
+            <xpath expr="//filter[@name='country']" position="after">
+                <filter string="Type of Client" name="group_by_x_client_type" context="{'group_by': 'x_client_type'}"/>
+                <filter string="Engagement Type" name="group_by_x_engagement_type" context="{'group_by': 'x_engagement_type'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_crm_case_opportunities_filter_custom" model="ir.ui.view">
+        <field name="name">crm.lead.search.opportunity.crm.custom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lead_properties']" position="replace"/>
+            <xpath expr="//filter[@name='group_by_lead_properties']" position="replace"/>
+            <xpath expr="//field[@name='city']" position="after">
+                <field name="x_poc_location"/>
+            </xpath>
+            <xpath expr="//filter[@name='lostreason']" position="after">
+                <filter string="Type of Client" name="group_by_x_client_type" context="{'group_by': 'x_client_type'}"/>
+                <filter string="Engagement Type" name="group_by_x_engagement_type" context="{'group_by': 'x_engagement_type'}"/>
+            </xpath>
+            <xpath expr="//filter[@name='filter_rotting']" position="after">
+                <separator/>
+                <filter string="Requirement Received" name="filter_x_requirement_received"
+                    domain="[('x_requirement_received', '=', 'yes')]"/>
+                <filter string="Recruitment Started" name="filter_x_recruitment_started"
+                    domain="[('x_recruitment_started', '=', 'yes')]"/>
+                <filter string="Agreement Signed" name="filter_x_agreement_signed"
+                    domain="[('x_agreement_signed', '=', 'yes')]"/>
+                <filter string="Client Onboarded" name="filter_x_client_onboarded"
+                    domain="[('x_client_onboarded', '=', 'yes')]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
