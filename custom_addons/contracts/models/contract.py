@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 STATE_SELECTION = [
     ('active', 'Active'),
@@ -16,6 +20,10 @@ TYPE_SELECTION = [
     ('msa', 'Master Service Agreement'),
     ('sow', 'Statement of Work'),
 ]
+
+# Fallback for the 'contracts.reminder_days' system parameter: how many days
+# before the end date an expiry reminder goes out.
+DEFAULT_REMINDER_DAYS = '45,30,7'
 
 
 class Contract(models.Model):
@@ -92,6 +100,15 @@ class Contract(models.Model):
     termination_date = fields.Date(
         string='Termination Date', readonly=True, copy=False,
         help="Date the contract was closed midway.",
+    )
+    reminder_sent_days = fields.Integer(
+        string='Last Reminder', readonly=True, copy=False,
+        help="Day milestone of the most recent expiry reminder sent for this "
+             "contract. Zero means none has been sent yet. Reset whenever the "
+             "end date changes, so a renewal starts the sequence over.",
+    )
+    reminder_last_sent = fields.Date(
+        string='Reminder Sent On', readonly=True, copy=False,
     )
 
     # ── Display name ──────────────────────────────────────────────
@@ -283,6 +300,12 @@ class Contract(models.Model):
         return records
 
     def write(self, vals):
+        if 'end_date' in vals:
+            # A renewal pushes the end date out, which has to re-arm the whole
+            # reminder sequence. setdefault keeps the cron's own write - which
+            # sets the marker and never touches end_date - out of the way.
+            vals.setdefault('reminder_sent_days', 0)
+            vals.setdefault('reminder_last_sent', False)
         res = super().write(vals)
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()
@@ -328,7 +351,13 @@ class Contract(models.Model):
         rather than 'active' - that is handled by :meth:`_sync_expired_state`.
         """
         for rec in self:
-            rec.write({'state': 'active', 'termination_date': False})
+            rec.write({
+                'state': 'active',
+                'termination_date': False,
+                # Back in the running, so the reminder sequence starts over.
+                'reminder_sent_days': 0,
+                'reminder_last_sent': False,
+            })
         return True
 
     def action_view_child_contracts(self):
@@ -361,7 +390,37 @@ class Contract(models.Model):
             'contracts.action_contracts_report_wizard'
         )
 
-    # ── Scheduled action ──────────────────────────────────────────
+    # ── Reminder configuration ────────────────────────────────────
+    @api.model
+    def _get_reminder_days(self):
+        """Day milestones an expiry reminder goes out on, most distant first.
+
+        Read from the 'contracts.reminder_days' system parameter so the
+        schedule can be changed without a deploy. Anything that is not a
+        plain number is ignored rather than breaking the run.
+        """
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'contracts.reminder_days', DEFAULT_REMINDER_DAYS)
+        days = set()
+        for chunk in (raw or '').split(','):
+            chunk = chunk.strip()
+            if chunk.isdigit() and int(chunk) > 0:
+                days.add(int(chunk))
+        return sorted(days, reverse=True)
+
+    @api.model
+    def _get_reminder_recipients(self):
+        """Who expiry reminders go to, as a comma-separated address list.
+
+        The contract itself carries no email address - the client and the POC
+        are free text - so the recipients are an internal list held in the
+        'contracts.reminder_emails' system parameter.
+        """
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'contracts.reminder_emails', '')
+        return ','.join(e.strip() for e in (raw or '').split(',') if e.strip())
+
+    # ── Scheduled actions ─────────────────────────────────────────
     @api.model
     def _cron_expire_contracts(self):
         """Move contracts past their end date to 'Expired'. Runs nightly."""
@@ -372,4 +431,74 @@ class Contract(models.Model):
         ])
         if contracts:
             contracts.write({'state': 'expired'})
+        return True
+
+    @api.model
+    def _cron_send_expiry_reminders(self):
+        """Warn an internal list before a contract runs out. Runs nightly.
+
+        A milestone is reached once the contract has that many days left or
+        fewer. The one sent is the most urgent milestone reached, and only if
+        it beats what already went out, which makes a repeated run a no-op and
+        still catches up after downtime: a contract that slips from 35 to 5
+        days left while the server is off gets the 7 day warning, and the 30
+        day one it overtook is dropped rather than sent late.
+        """
+        days = self._get_reminder_days()
+        recipients = self._get_reminder_recipients()
+        if not days or not recipients:
+            _logger.warning(
+                "Contract expiry reminders: no milestones in "
+                "'contracts.reminder_days' or no recipients in "
+                "'contracts.reminder_emails'; skipping run."
+            )
+            return True
+
+        template = self.env.ref(
+            'contracts.mail_template_contract_expiry_reminder',
+            raise_if_not_found=False,
+        )
+        if not template:
+            _logger.warning(
+                "Contract expiry reminders: mail template is missing; "
+                "skipping run."
+            )
+            return True
+
+        today = fields.Date.context_today(self)
+        # The widest milestone bounds the candidate set; the per-record check
+        # below picks the milestone that actually applies.
+        contracts = self.search([
+            ('state', '=', 'active'),
+            ('end_date', '>=', today),
+            ('end_date', '<=', fields.Date.add(today, days=max(days))),
+        ])
+
+        for rec in contracts:
+            reached = [d for d in days if rec.days_left <= d]
+            if not reached:
+                continue
+            milestone = min(reached)
+            if rec.reminder_sent_days and milestone >= rec.reminder_sent_days:
+                # This milestone, or a less urgent one, already went out.
+                continue
+            try:
+                # A savepoint per record: one bad contract must not abort the
+                # whole run, and an error would otherwise leave the cursor
+                # unusable for the contracts after it.
+                with self.env.cr.savepoint():
+                    template.with_context(reminder_days=milestone).send_mail(
+                        rec.id,
+                        email_values={'email_to': recipients},
+                        force_send=False,
+                    )
+                    rec.write({
+                        'reminder_sent_days': milestone,
+                        'reminder_last_sent': today,
+                    })
+            except Exception:
+                _logger.exception(
+                    "Contract expiry reminder failed for contract %s (id %s).",
+                    rec.display_name, rec.id,
+                )
         return True

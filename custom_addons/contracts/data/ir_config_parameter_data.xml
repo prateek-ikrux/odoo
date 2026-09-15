@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: these are meant to be edited in Settings > Technical >
+         System Parameters, and those edits have to survive an upgrade. -->
+    <data noupdate="1">
+
+        <!-- Days before the end date an expiry reminder goes out. -->
+        <record id="reminder_days_param" model="ir.config_parameter">
+            <field name="key">contracts.reminder_days</field>
+            <field name="value">45,30,7</field>
+        </record>
+
+        <!-- Who those reminders go to, comma separated. Deliberately empty on
+             install: the contract carries no email address of its own, so
+             until someone fills this in the reminder cron logs a warning and
+             sends nothing, rather than mailing the wrong party. -->
+        <record id="reminder_emails_param" model="ir.config_parameter">
+            <field name="key">contracts.reminder_emails</field>
+            <field name="value"></field>
+        </record>
+
+    </data>
+</odoo>

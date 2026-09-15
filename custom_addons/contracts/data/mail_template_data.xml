@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- No noupdate here, unlike the cron and the system parameters: the
+         wording carries no user-owned state, so reworded copy should land on
+         the next upgrade. -->
+    <data>
+
+        <record id="mail_template_contract_expiry_reminder" model="mail.template">
+            <field name="name">Contract: Expiry Reminder</field>
+            <field name="model_id" ref="model_contracts_contract"/>
+            <field name="subject">{{ object.display_name }} expires in {{ ctx.get('reminder_days') }} days ({{ format_date(object.end_date) }})</field>
+            <!-- email_to is supplied per send by the cron, from the
+                 'contracts.reminder_emails' system parameter. email_from is
+                 left out so it falls back to the company address the outgoing
+                 mail server expects. -->
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent by the nightly scheduled action when a contract reaches a reminder milestone before its end date.</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px; font-size: 13px;">
+                    <p>
+                        The following contract expires in
+                        <strong><t t-out="ctx.get('reminder_days') or ''"/> days</strong>,
+                        on <strong t-out="format_date(object.end_date) or ''"/>.
+                    </p>
+
+                    <table width="100%" style="border-collapse: collapse; margin: 16px 0;">
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Client</td>
+                            <td style="padding: 4px 0;"><t t-out="object.client or ''"/></td>
+                        </tr>
+                        <tr t-if="object.contract_type == 'sow'">
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Candidate</td>
+                            <td style="padding: 4px 0;"><t t-out="object.candidate or ''"/></td>
+                        </tr>
+                        <tr t-if="object.contract_type == 'sow'">
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Role</td>
+                            <td style="padding: 4px 0;"><t t-out="object.role or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">POC</td>
+                            <td style="padding: 4px 0;"><t t-out="object.poc or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Start Date</td>
+                            <td style="padding: 4px 0;"><t t-out="format_date(object.start_date) or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">End Date</td>
+                            <td style="padding: 4px 0;"><t t-out="format_date(object.end_date) or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Days Left</td>
+                            <td style="padding: 4px 0;"><t t-out="object.days_left"/></td>
+                        </tr>
+                        <tr t-if="object.created_by_id">
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Created By</td>
+                            <td style="padding: 4px 0;"><t t-out="object.created_by_id.name or ''"/></td>
+                        </tr>
+                    </table>
+
+                    <p style="color: #888888;">
+                        Sent automatically by the Contracts scheduled action.
+                    </p>
+                </div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

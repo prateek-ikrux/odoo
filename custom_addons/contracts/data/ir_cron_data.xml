@@ -17,5 +17,22 @@
             <field name="active" eval="True"/>
         </record>
 
+        <!-- Expiry warnings, at the milestones held in the
+             'contracts.reminder_days' system parameter. Runs at 07:00, after
+             the 01:00 rollover above, so the day's states are already settled
+             and the mail lands at a sensible hour. -->
+        <record id="ir_cron_contract_expiry_reminders" model="ir.cron">
+            <field name="name">Contracts: Send Expiry Reminders</field>
+            <field name="model_id" ref="model_contracts_contract"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_expiry_reminders()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall"
+                   eval="(DateTime.now().replace(hour=7, minute=0, second=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>

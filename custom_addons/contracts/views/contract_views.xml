@@ -41,6 +41,7 @@
                        column_invisible="context.get('default_contract_type') != 'msa'"
                        optional="hide"/>
                 <field name="termination_date" optional="hide"/>
+                <field name="reminder_sent_days" optional="hide"/>
                 <field name="create_date" string="Created On" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'active'"
@@ -121,6 +122,12 @@
                             <field name="poc"/>
                             <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                             <field name="create_date" string="Created On" readonly="1"/>
+                            <!-- Only worth showing once a reminder has gone
+                                 out; otherwise it is two empty rows. -->
+                            <field name="reminder_sent_days" readonly="1"
+                                   invisible="state != 'active' or not reminder_sent_days"/>
+                            <field name="reminder_last_sent" readonly="1"
+                                   invisible="state != 'active' or not reminder_sent_days"/>
                         </group>
                     </group>
 
@@ -206,8 +213,14 @@
                 <filter name="filter_terminated" string="Terminated"
                         domain="[('state', '=', 'terminated')]"/>
                 <separator/>
+                <filter name="filter_expiring_45" string="Expiring in 45 Days"
+                        domain="[('state', '=', 'active'), ('days_left', '&lt;=', 45)]"/>
                 <filter name="filter_expiring_30" string="Expiring in 30 Days"
                         domain="[('state', '=', 'active'), ('days_left', '&lt;=', 30)]"/>
+                <!-- Inside the reminder window but never mailed about: either
+                     the cron has not run yet, or it failed on this record. -->
+                <filter name="filter_reminder_pending" string="No Reminder Sent"
+                        domain="[('state', '=', 'active'), ('days_left', '&lt;=', 45), ('reminder_sent_days', '=', 0)]"/>
                 <filter name="filter_my_contracts" string="My Contracts"
                         domain="[('created_by_id', '=', uid)]"/>
                 <separator/>
