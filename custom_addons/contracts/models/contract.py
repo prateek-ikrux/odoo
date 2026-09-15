@@ -40,6 +40,9 @@ class Contract(models.Model):
     active_child_count = fields.Integer(
         compute='_compute_active_child_count',
     )
+    child_contract_count = fields.Integer(
+        string='# Linked Contracts', compute='_compute_child_contract_count',
+    )
     client = fields.Char(
         string='Client', required=True, tracking=True, index=True,
         compute='_compute_client', store=True, readonly=False, precompute=True,
@@ -117,6 +120,11 @@ class Contract(models.Model):
             rec.active_child_count = len(
                 rec.child_contract_ids.filtered(lambda c: c.state == 'active')
             )
+
+    @api.depends('child_contract_ids')
+    def _compute_child_contract_count(self):
+        for rec in self:
+            rec.child_contract_count = len(rec.child_contract_ids)
 
     @api.depends('end_date', 'state')
     def _compute_days_left(self):
@@ -322,6 +330,30 @@ class Contract(models.Model):
         for rec in self:
             rec.write({'state': 'active', 'termination_date': False})
         return True
+
+    def action_view_child_contracts(self):
+        """Open the contracts placed under this one, in the SOW screen."""
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'contracts.action_contracts_sow'
+        )
+        action['domain'] = [('parent_contract_id', '=', self.id)]
+        action['context'] = {
+            'default_contract_type': 'sow',
+            'default_parent_contract_id': self.id,
+        }
+        return action
+
+    def action_open_parent_contract(self):
+        """Open the contract this one is placed under."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.parent_contract_id.id,
+            'view_mode': 'form',
+            'views': [(self.env.ref('contracts.view_contracts_contract_form').id, 'form')],
+        }
 
     def action_open_report_wizard(self):
         """Open the Excel export wizard."""

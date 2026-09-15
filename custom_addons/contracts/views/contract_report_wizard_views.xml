@@ -7,58 +7,57 @@
         <field name="model">contracts.report.wizard</field>
         <field name="arch" type="xml">
             <form string="Export Contracts">
-                <sheet>
-                    <div class="alert alert-info text-center" role="alert">
+                <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+                    <i class="fa fa-file-excel-o fa-2x" title="Excel"/>
+                    <div>
                         <strong>Contracts Excel Export</strong>
-                        <br/>
-                        <small class="text-muted">
-                            Apply the filters below to narrow down the export.
-                            Leave a filter empty to include all records.
-                        </small>
+                        <div class="small">
+                            Narrow the export with the filters below. Anything left
+                            empty includes every record.
+                        </div>
                     </div>
+                </div>
 
-                    <field name="contract_type" invisible="1"/>
+                <field name="contract_type" invisible="1"/>
 
-                    <group string="Contract Filters">
-                        <group>
-                            <field name="client" placeholder="All clients..."/>
-                            <field name="candidate" placeholder="All candidates..."
-                                   invisible="contract_type != 'sow'"/>
-                            <field name="role" placeholder="All roles..."
-                                   invisible="contract_type != 'sow'"/>
-                        </group>
-                        <group>
-                            <field name="state" placeholder="All statuses..."/>
-                            <field name="created_by_ids"
-                                   widget="many2many_tags"
-                                   placeholder="Anyone..."
-                                   domain="[('share', '=', False)]"
-                                   options="{'no_create_edit': True}"/>
-                        </group>
+                <group>
+                    <group string="Contract" name="contract_filters">
+                        <field name="client" placeholder="All clients..."/>
+                        <field name="state" placeholder="All statuses..."/>
+                        <field name="created_by_ids"
+                               widget="many2many_tags"
+                               placeholder="Anyone..."
+                               domain="[('share', '=', False)]"
+                               options="{'no_create_edit': True}"/>
                     </group>
-
-                    <group string="Start Date Range">
-                        <group>
-                            <field name="start_date_from" string="From" placeholder="Any..."/>
-                        </group>
-                        <group>
-                            <field name="start_date_to" string="To" placeholder="Any..."/>
-                        </group>
+                    <!-- Only a placement carries a person and a role, so for the
+                         other section the column is dropped rather than left as
+                         two empty inputs. -->
+                    <group string="Placement" name="placement_filters"
+                           invisible="contract_type != 'sow'">
+                        <field name="candidate" placeholder="All candidates..."/>
+                        <field name="role" placeholder="All roles..."/>
                     </group>
+                </group>
 
-                    <group string="End Date Range">
-                        <group>
-                            <field name="end_date_from" string="From" placeholder="Any..."/>
-                        </group>
-                        <group>
-                            <field name="end_date_to" string="To" placeholder="Any..."/>
-                        </group>
+                <group>
+                    <group string="Start Date Range" name="start_range">
+                        <field name="start_date_from" string="From" placeholder="Any..."/>
+                        <field name="start_date_to" string="To" placeholder="Any..."/>
                     </group>
+                    <group string="End Date Range" name="end_range">
+                        <field name="end_date_from" string="From" placeholder="Any..."/>
+                        <field name="end_date_to" string="To" placeholder="Any..."/>
+                    </group>
+                </group>
 
-                    <group string="Expiry Shortcut">
-                        <field name="expiring_within_days"/>
-                    </group>
-                </sheet>
+                <group string="Expiry Shortcut" name="expiry">
+                    <label for="expiring_within_days"/>
+                    <div class="o_row">
+                        <field name="expiring_within_days" class="oe_inline"/>
+                        <span class="text-muted">days from today - 0 ignores this filter</span>
+                    </div>
+                </group>
                 <footer>
                     <button name="action_export_xlsx"
                             string="Export Excel"
