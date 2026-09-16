@@ -35,6 +35,8 @@
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                 <field name="start_date"/>
                 <field name="end_date"/>
+                <field name="extended_end_date" optional="hide"/>
+                <field name="annual_appraisal_due" optional="hide"/>
                 <field name="days_left" string="Days Left"/>
                 <field name="attachment_count" string="Attachments" optional="show"/>
                 <field name="child_contract_count" string="Linked"
@@ -115,6 +117,14 @@
                                 <field name="days_left" class="oe_inline"/>
                                 <span class="text-muted">days remaining</span>
                             </div>
+                            <field name="extended_end_date"
+                                   placeholder="Set when the contract is extended"/>
+                            <!-- Only worth showing once the two dates differ;
+                                 until then it just repeats the end date. -->
+                            <field name="effective_end_date" readonly="1"
+                                   invisible="not extended_end_date"/>
+                            <field name="annual_appraisal_due" readonly="1"
+                                   invisible="contract_type != 'sow'"/>
                             <field name="termination_date"
                                    invisible="state != 'terminated'"/>
                         </group>
@@ -141,6 +151,10 @@
                                 At least one document is required before the contract can be saved.
                                 Uploaded files also appear in the attachments box below.
                             </div>
+                        </page>
+                        <page string="Remarks" name="remarks">
+                            <field name="remarks" nolabel="1"
+                                   placeholder="Notes about this contract - extensions, appraisals, anything worth recording..."/>
                         </page>
                         <page string="Linked Contracts" name="children"
                               invisible="contract_type != 'msa'">
@@ -226,6 +240,8 @@
                 <separator/>
                 <filter name="filter_start_date" string="Start Date" date="start_date"/>
                 <filter name="filter_end_date" string="End Date" date="end_date"/>
+                <filter name="filter_extended_end_date" string="Extended End Date"
+                        date="extended_end_date"/>
 
                 <group>
                     <filter name="group_client" string="Client" domain="[]" context="{'group_by': 'client'}"/>

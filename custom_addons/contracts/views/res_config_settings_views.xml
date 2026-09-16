@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The settings form is one shared record across every module, so this
+         only adds a tab to it. name="contracts" is what the action's
+         {'module': 'contracts'} context opens, and it is also what the tab
+         logo is taken from - static/description/icon.png, which the module
+         already ships for its menu. -->
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.contracts</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Contracts" string="Contracts" name="contracts">
+                    <block title="Expiry Reminders" name="contracts_reminders">
+                        <!-- The schedule and the recipients only mean anything
+                             while the reminders are on, so they sit inside the
+                             toggle rather than beside it. -->
+                        <setting id="contracts_reminders_setting"
+                                 string="Expiry Reminders"
+                                 help="Warn by email before a contract runs out. Switching this off deactivates the nightly scheduled action.">
+                            <field name="contracts_reminders_enabled"/>
+                            <div class="content-group"
+                                 invisible="not contracts_reminders_enabled">
+                                <div class="row mt16">
+                                    <label for="contracts_reminder_days"
+                                           string="Remind at (days left)"
+                                           class="col-lg-4 o_light_label"/>
+                                    <field name="contracts_reminder_days"
+                                           placeholder="45,30,7"/>
+                                </div>
+                                <div class="row">
+                                    <label for="contracts_reminder_emails"
+                                           string="Recipients"
+                                           class="col-lg-4 o_light_label"/>
+                                    <field name="contracts_reminder_emails"
+                                           placeholder="team@example.com, ops@example.com"/>
+                                </div>
+                                <div class="text-muted mt8"
+                                     invisible="contracts_reminder_emails">
+                                    No recipients set - nothing will be sent.
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_contracts_config_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'contracts', 'bin_size': False}</field>
+    </record>
+
+</odoo>

@@ -93,11 +93,16 @@ class ContractReportWizard(models.TransientModel):
         if self.end_date_to:
             domain.append(('end_date', '<=', self.end_date_to))
         if self.expiring_within_days:
+            # Expiry is measured on the effective end date, so an extended
+            # contract is judged by the date it actually runs to. The explicit
+            # End Date range above stays on the original date, which is the one
+            # the report column of that name shows.
             today = fields.Date.context_today(self)
             domain += [
                 ('state', '=', 'active'),
-                ('end_date', '>=', today),
-                ('end_date', '<=', fields.Date.add(today, days=self.expiring_within_days)),
+                ('effective_end_date', '>=', today),
+                ('effective_end_date', '<=',
+                 fields.Date.add(today, days=self.expiring_within_days)),
             ]
         return domain
 
@@ -144,7 +149,7 @@ class ContractReportWizard(models.TransientModel):
         self.ensure_one()
         contracts = self.env['contracts.contract'].search(
             self._get_domain(),
-            order='client asc, end_date desc, id asc',
+            order='client asc, effective_end_date desc, id asc',
         )
 
         rows = []
@@ -163,6 +168,11 @@ class ContractReportWizard(models.TransientModel):
                 'termination_date': contract.termination_date,
                 'attachment_count': len(attachments),
                 'attachments': ', '.join(attachments.mapped('name')),
+                # Placed-contract columns. Harmless in the MSA rows, which
+                # simply never look them up.
+                'annual_appraisal_due': contract.annual_appraisal_due,
+                'extended_end_date': contract.extended_end_date,
+                'remarks': contract.remarks or '',
             })
         return rows
 

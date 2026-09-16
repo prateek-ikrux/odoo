@@ -8,11 +8,6 @@ import io
 _CLIENT_COLUMN = [
     ('Client',           'client',           24, 'text'),
 ]
-# Only a contract placed under another one names a person and a role.
-_PLACEMENT_COLUMNS = [
-    ('Candidate',        'candidate',        22, 'text'),
-    ('Role',             'role',             26, 'text'),
-]
 _COMMON_COLUMNS = [
     ('Created By',       'created_by',       20, 'text'),
     ('Start Date',       'start_date',       14, 'date'),
@@ -25,7 +20,20 @@ _COMMON_COLUMNS = [
 ]
 
 MSA_COLUMNS = _CLIENT_COLUMN + _COMMON_COLUMNS
-SOW_COLUMNS = _CLIENT_COLUMN + _PLACEMENT_COLUMNS + _COMMON_COLUMNS
+
+# A placed contract is reported on in the client's own terms - who is placed,
+# what they do, and how the dates have moved - rather than on the lifecycle
+# columns the overarching contract is tracked by.
+SOW_COLUMNS = [
+    ('Employee Name',           'candidate',            22, 'text'),
+    ('Client Name',             'client',               24, 'text'),
+    ('Role',                    'role',                 26, 'text'),
+    ('SOW Original Start Date', 'start_date',           18, 'date'),
+    ('Contract End Date',       'end_date',             16, 'date'),
+    ('Annual Appraisal Due',    'annual_appraisal_due', 18, 'date'),
+    ('Extended End Date',       'extended_end_date',    16, 'date'),
+    ('Remarks',                 'remarks',              40, 'text'),
+]
 
 HEADER_BG = '#1A3A5C'
 TITLE_BG = '#2C3E50'

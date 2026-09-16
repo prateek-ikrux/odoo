@@ -22,4 +22,21 @@
         action="action_contracts_sow"
         sequence="20"/>
 
+    <!-- Admin only: res.config.settings.execute() refuses non-admins, so a
+         visible entry would lead nowhere but an access error. -->
+    <menuitem
+        id="menu_contracts_config"
+        name="Configuration"
+        parent="menu_contracts_root"
+        sequence="100"
+        groups="base.group_system"/>
+
+    <menuitem
+        id="menu_contracts_config_settings"
+        name="Settings"
+        parent="menu_contracts_config"
+        action="action_contracts_config_settings"
+        sequence="10"
+        groups="base.group_system"/>
+
 </odoo>

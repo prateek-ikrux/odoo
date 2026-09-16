@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- noupdate: these are meant to be edited in Settings > Technical >
-         System Parameters, and those edits have to survive an upgrade. -->
+    <!-- Seed values only. These are edited under Contracts > Configuration >
+         Settings, which writes straight back to these parameters; noupdate
+         keeps those edits from being reverted by an upgrade. -->
     <data noupdate="1">
 
         <!-- Days before the end date an expiry reminder goes out. -->

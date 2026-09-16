@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.5.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -31,15 +31,21 @@ has to run inside its period.
 
 Before a contract runs out, a nightly scheduled action emails an internal list
 at a set of day milestones - 45, 30 and 7 days left by default. Both the
-milestones and the recipients are system parameters, 'contracts.reminder_days'
-and 'contracts.reminder_emails', so the schedule can be changed without a
-deploy. Recipients start out empty, so nothing is sent until they are filled
-in. Every reminder is logged in the contract's chatter, and extending an end
+milestones and the recipients are set under Contracts > Configuration >
+Settings, so the schedule can be changed without a deploy, and the same screen
+switches the reminders off altogether. Recipients start out empty, so nothing
+is sent until they are filled in. Every reminder is logged in the contract's chatter, and extending an end
 date starts the sequence over.
+
+A contract that is extended records an Extended End Date. From then on it,
+not the original end date, is what the contract runs to - expiry, days left
+and the reminders all follow it, and extending re-arms the reminder sequence.
+A placed contract also carries the next annual appraisal date, taken from the
+start date, and free-text remarks.
 
 Each section exports its own filtered Excel report.
 """,
-    'depends': ['base', 'mail'],
+    'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_config_parameter_data.xml',
@@ -50,6 +56,9 @@ Each section exports its own filtered Excel report.
         'views/contract_report_wizard_views.xml',
         'views/contract_terminate_wizard_views.xml',
         'views/contract_views.xml',
+        # the settings action is referenced by the Configuration menu,
+        # so it has to be loaded first
+        'views/res_config_settings_views.xml',
         'views/contract_menus.xml',
     ],
     'installable': True,

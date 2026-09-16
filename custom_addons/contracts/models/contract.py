@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -30,7 +32,7 @@ class Contract(models.Model):
     _name = 'contracts.contract'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Contract'
-    _order = 'end_date desc, id desc'
+    _order = 'effective_end_date desc, id desc'
 
     # ── Core fields ───────────────────────────────────────────────
     contract_type = fields.Selection(
@@ -110,6 +112,24 @@ class Contract(models.Model):
     reminder_last_sent = fields.Date(
         string='Reminder Sent On', readonly=True, copy=False,
     )
+    extended_end_date = fields.Date(
+        string='Extended End Date', tracking=True, copy=False,
+        help="Set when the contract is extended beyond its original end date. "
+             "Once set it - not the end date - decides when the contract "
+             "expires and when expiry reminders go out.",
+    )
+    effective_end_date = fields.Date(
+        string='Effective End Date',
+        compute='_compute_effective_end_date', store=True, index=True,
+        help="The date the contract actually runs to: the extended end date "
+             "when one is set, otherwise the end date.",
+    )
+    annual_appraisal_due = fields.Date(
+        string='Annual Appraisal Due',
+        compute='_compute_annual_appraisal_due', store=True,
+        help="Next anniversary of the start date still to come.",
+    )
+    remarks = fields.Text(string='Remarks')
 
     # ── Display name ──────────────────────────────────────────────
     @api.depends('contract_type', 'client', 'role', 'candidate')
@@ -143,17 +163,40 @@ class Contract(models.Model):
         for rec in self:
             rec.child_contract_count = len(rec.child_contract_ids)
 
-    @api.depends('end_date', 'state')
+    @api.depends('end_date', 'extended_end_date')
+    def _compute_effective_end_date(self):
+        """An extension, once recorded, is what the contract actually runs to."""
+        for rec in self:
+            rec.effective_end_date = rec.extended_end_date or rec.end_date
+
+    @api.depends('start_date')
+    def _compute_annual_appraisal_due(self):
+        """The next start-date anniversary that has not passed yet.
+
+        Stored, so it can be sorted and filtered on, which means it goes stale
+        as anniversaries pass - the nightly cron refreshes the ones that have.
+        """
+        today = fields.Date.context_today(self)
+        for rec in self:
+            if not rec.start_date:
+                rec.annual_appraisal_due = False
+                continue
+            due = rec.start_date
+            while due <= today:
+                due += relativedelta(years=1)
+            rec.annual_appraisal_due = due
+
+    @api.depends('effective_end_date', 'state')
     def _compute_days_left(self):
         today = fields.Date.context_today(self)
         for rec in self:
-            if rec.state in ('expired', 'terminated') or not rec.end_date:
+            if rec.state in ('expired', 'terminated') or not rec.effective_end_date:
                 rec.days_left = 0
             else:
-                rec.days_left = (rec.end_date - today).days
+                rec.days_left = (rec.effective_end_date - today).days
 
     def _search_days_left(self, operator, value):
-        """Translate a search on days_left into a search on end_date.
+        """Translate a search on days_left into one on the effective end date.
 
         Only meaningful for contracts that still run, so the domain is
         restricted to the active ones.
@@ -161,10 +204,11 @@ class Contract(models.Model):
         if not isinstance(value, int):
             raise ValidationError(_("'Days Left' can only be compared to a whole number."))
         today = fields.Date.context_today(self)
-        # days_left = end_date - today  =>  end_date = today + days_left.
+        # days_left = effective_end_date - today
+        #   =>  effective_end_date = today + days_left.
         # The operator carries over unchanged because the mapping is increasing.
         target = fields.Date.add(today, days=value)
-        return [('state', '=', 'active'), ('end_date', operator, target)]
+        return [('state', '=', 'active'), ('effective_end_date', operator, target)]
 
     def _get_documents(self):
         """Every file on the record: uploaded through the form widget, or
@@ -198,13 +242,21 @@ class Contract(models.Model):
             rec.attachment_count = len(rec._get_documents())
 
     # ── Constraints ───────────────────────────────────────────────
-    @api.constrains('start_date', 'end_date')
+    @api.constrains('start_date', 'end_date', 'extended_end_date')
     def _check_dates(self):
         for rec in self:
             if rec.start_date and rec.end_date and rec.end_date < rec.start_date:
                 raise ValidationError(
                     _("End Date cannot be earlier than Start Date on contract '%s'.",
                       rec.display_name)
+                )
+            # An extension that moves the end date backwards is a correction,
+            # not an extension, and would quietly shorten the contract.
+            if rec.extended_end_date and rec.end_date \
+                    and rec.extended_end_date < rec.end_date:
+                raise ValidationError(
+                    _("Extended End Date cannot be earlier than End Date on "
+                      "contract '%s'.", rec.display_name)
                 )
 
     @api.constrains('contract_type', 'parent_contract_id')
@@ -245,20 +297,24 @@ class Contract(models.Model):
                     _("A candidate is required on contract '%s'.", rec.display_name)
                 )
 
-    @api.constrains('contract_type', 'parent_contract_id', 'start_date', 'end_date')
+    @api.constrains('contract_type', 'parent_contract_id', 'start_date',
+                    'end_date', 'extended_end_date')
     def _check_parent_period(self):
         for rec in self:
             parent = rec.parent_contract_id
             if rec.contract_type != 'sow' or not parent:
                 continue
-            if not (parent.start_date and parent.end_date):
+            if not (parent.start_date and parent.effective_end_date):
                 continue
-            if rec.start_date < parent.start_date or rec.end_date > parent.end_date:
+            # Compared on the effective dates: extending a placed contract past
+            # the contract above it means that one has to be extended first.
+            if rec.start_date < parent.start_date \
+                    or rec.effective_end_date > parent.effective_end_date:
                 raise ValidationError(
                     _("Contract '%(name)s' must run inside the period of the parent "
                       "contract (%(start)s to %(end)s).",
                       name=rec.display_name,
-                      start=parent.start_date, end=parent.end_date)
+                      start=parent.start_date, end=parent.effective_end_date)
                 )
 
     @api.constrains('attachment_ids')
@@ -279,7 +335,8 @@ class Contract(models.Model):
         """
         today = fields.Date.context_today(self)
         to_expire = self.filtered(
-            lambda c: c.state == 'active' and c.end_date and c.end_date < today
+            lambda c: c.state == 'active' and c.effective_end_date
+            and c.effective_end_date < today
         )
         if to_expire:
             super(Contract, to_expire).write({'state': 'expired'})
@@ -300,18 +357,19 @@ class Contract(models.Model):
         return records
 
     def write(self, vals):
-        if 'end_date' in vals:
-            # A renewal pushes the end date out, which has to re-arm the whole
-            # reminder sequence. setdefault keeps the cron's own write - which
-            # sets the marker and never touches end_date - out of the way.
+        if 'end_date' in vals or 'extended_end_date' in vals:
+            # A renewal or an extension pushes the end out, which has to re-arm
+            # the whole reminder sequence. setdefault keeps the cron's own write
+            # - which sets the marker and touches neither date - out of the way.
             vals.setdefault('reminder_sent_days', 0)
             vals.setdefault('reminder_last_sent', False)
         res = super().write(vals)
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()
-        if 'end_date' in vals or 'state' in vals:
+        if 'end_date' in vals or 'extended_end_date' in vals or 'state' in vals:
             self._sync_expired_state()
-        if 'start_date' in vals or 'end_date' in vals:
+        if 'start_date' in vals or 'end_date' in vals \
+                or 'extended_end_date' in vals:
             # Narrowing a parent's period must not silently leave the contracts
             # placed under it running outside of it.
             self.child_contract_ids._check_parent_period()
@@ -423,14 +481,27 @@ class Contract(models.Model):
     # ── Scheduled actions ─────────────────────────────────────────
     @api.model
     def _cron_expire_contracts(self):
-        """Move contracts past their end date to 'Expired'. Runs nightly."""
+        """Move contracts past their end date to 'Expired'. Runs nightly.
+
+        Also rolls the appraisal date forward: it is a stored compute that
+        only depends on the start date, so an anniversary passing does not
+        invalidate it on its own.
+        """
         today = fields.Date.context_today(self)
         contracts = self.search([
             ('state', '=', 'active'),
-            ('end_date', '<', today),
+            ('effective_end_date', '<', today),
         ])
         if contracts:
             contracts.write({'state': 'expired'})
+
+        stale = self.search([
+            ('state', '=', 'active'),
+            ('annual_appraisal_due', '<=', today),
+        ])
+        if stale:
+            stale._compute_annual_appraisal_due()
+            stale.flush_recordset(['annual_appraisal_due'])
         return True
 
     @api.model
@@ -470,8 +541,8 @@ class Contract(models.Model):
         # below picks the milestone that actually applies.
         contracts = self.search([
             ('state', '=', 'active'),
-            ('end_date', '>=', today),
-            ('end_date', '<=', fields.Date.add(today, days=max(days))),
+            ('effective_end_date', '>=', today),
+            ('effective_end_date', '<=', fields.Date.add(today, days=max(days))),
         ])
 
         for rec in contracts:

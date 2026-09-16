@@ -8,7 +8,7 @@
         <record id="mail_template_contract_expiry_reminder" model="mail.template">
             <field name="name">Contract: Expiry Reminder</field>
             <field name="model_id" ref="model_contracts_contract"/>
-            <field name="subject">{{ object.display_name }} expires in {{ ctx.get('reminder_days') }} days ({{ format_date(object.end_date) }})</field>
+            <field name="subject">{{ object.display_name }} expires in {{ ctx.get('reminder_days') }} days ({{ format_date(object.effective_end_date) }})</field>
             <!-- email_to is supplied per send by the cron, from the
                  'contracts.reminder_emails' system parameter. email_from is
                  left out so it falls back to the company address the outgoing
@@ -20,7 +20,7 @@
                     <p>
                         The following contract expires in
                         <strong><t t-out="ctx.get('reminder_days') or ''"/> days</strong>,
-                        on <strong t-out="format_date(object.end_date) or ''"/>.
+                        on <strong t-out="format_date(object.effective_end_date) or ''"/>.
                     </p>
 
                     <table width="100%" style="border-collapse: collapse; margin: 16px 0;">
@@ -47,6 +47,10 @@
                         <tr>
                             <td style="padding: 4px 12px 4px 0; color: #888888;">End Date</td>
                             <td style="padding: 4px 0;"><t t-out="format_date(object.end_date) or ''"/></td>
+                        </tr>
+                        <tr t-if="object.extended_end_date">
+                            <td style="padding: 4px 12px 4px 0; color: #888888;">Extended End Date</td>
+                            <td style="padding: 4px 0;"><strong t-out="format_date(object.extended_end_date) or ''"/></td>
                         </tr>
                         <tr>
                             <td style="padding: 4px 12px 4px 0; color: #888888;">Days Left</td>
