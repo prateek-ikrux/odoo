@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Core CRM opens the Pipeline and the Forecast on the "My Pipeline" filter
+        (search_default_assigned_to_me). The record rules already decide what a
+        user is allowed to read - "User: Own Documents Only" never sees anyone
+        else's leads - so the default filter only ever hides records from the
+        people entitled to them: Sales Administrators and "User: All Documents".
+
+        Dropping the default lands everyone on everything they may read, which
+        for an administrator is the whole pipeline regardless of salesperson.
+        The filter itself is untouched, so "My Pipeline" is still one click away
+        in the search panel.
+
+        "My Activities" keeps its default: that menu is scoped to the user by
+        name, not by visibility.
+    -->
+
+    <record model="ir.actions.act_window" id="crm.crm_lead_action_pipeline">
+        <field name="context">{
+                'default_type': 'opportunity',
+                'show_user_team_stages': 1,
+        }</field>
+    </record>
+
+    <record model="ir.actions.act_window" id="crm.crm_lead_action_forecast">
+        <field name="context">{
+                'default_type': 'opportunity',
+                'search_default_forecast': 1,
+                'search_default_date_deadline': 1,
+                'forecast_field': 'date_deadline',
+        }</field>
+    </record>
+
+</odoo>

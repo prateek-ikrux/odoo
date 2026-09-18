@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Custom',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -44,9 +44,17 @@ Changed on the Contacts tab:
 * Contact Information gains Number and POC Location, and Job Position is
   relabelled Designation.
 * The Marketing group is hidden.
+
+Changed on the Pipeline and Forecast actions:
+
+* Neither opens on the "My Pipeline" filter any more. The record rules already
+  decide what each user may read, so that default only hid other salespeople's
+  work from the users entitled to see it - Sales Administrators and "User: All
+  Documents". The filter is still there to be picked in the search panel.
 """,
     'depends': ['crm'],
     'data': [
+        'views/crm_lead_action_inherit.xml',
         'views/crm_lead_view_inherit.xml',
     ],
     'installable': True,
