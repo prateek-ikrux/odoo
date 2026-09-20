@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        The four roles, as one privilege so the user form shows a single
+        dropdown rather than four loose checkboxes. Each role implies the one
+        below it, which is what makes the access matrix hold: model access
+        rules are additive across a user's groups, so a role can only ever
+        gain rights over the role beneath it, never lose them.
+
+        Delete is the one right that does not travel up this ladder by
+        implication. It is granted by sales_team.group_sale_manager, which
+        only Admin implies - so Sales and Leadership genuinely cannot delete,
+        rather than merely being shown no button.
+    -->
+    <record id="res_groups_privilege_crm_consulting" model="res.groups.privilege">
+        <field name="name">CRM Consulting</field>
+        <field name="sequence">5</field>
+        <field name="category_id" ref="base.module_category_sales"/>
+        <field name="placeholder">No access</field>
+    </record>
+
+    <record id="group_crm_bda" model="res.groups">
+        <field name="name">BDA</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_crm_consulting"/>
+        <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+        <field name="comment">Creates and edits the opportunities they own. Sees no others, and deletes nothing.</field>
+    </record>
+
+    <record id="group_crm_sales" model="res.groups">
+        <field name="name">Sales / Sales Head</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_crm_consulting"/>
+        <field name="implied_ids" eval="[(4, ref('group_crm_bda')),
+                                         (4, ref('sales_team.group_sale_salesman_all_leads'))]"/>
+        <field name="comment">Reads and edits every opportunity, and deletes none.</field>
+    </record>
+
+    <record id="group_crm_leadership" model="res.groups">
+        <field name="name">Leadership</field>
+        <field name="sequence">30</field>
+        <field name="privilege_id" ref="res_groups_privilege_crm_consulting"/>
+        <field name="implied_ids" eval="[(4, ref('group_crm_sales'))]"/>
+        <field name="comment">Reads and edits every opportunity, and deletes none.</field>
+    </record>
+
+    <record id="group_crm_admin" model="res.groups">
+        <field name="name">Admin</field>
+        <field name="sequence">40</field>
+        <field name="privilege_id" ref="res_groups_privilege_crm_consulting"/>
+        <field name="implied_ids" eval="[(4, ref('group_crm_leadership')),
+                                         (4, ref('sales_team.group_sale_manager'))]"/>
+        <field name="comment">Everything the other roles can do, plus deletion and the CRM configuration.</field>
+    </record>
+
+    <!--
+        CRM ships the own-documents rule as
+            ['|', ('user_id','=',user.id), ('user_id','=',False)]
+        which is wrong for this business twice over: it shows a BDA every
+        unassigned opportunity, and it knows nothing of the second, third and
+        fourth BDA on an account.
+
+        Rewriting the rule in place, rather than adding a second one, is
+        deliberate. Record rules from different groups are OR-ed together, so
+        a new rule alongside the shipped one could only ever widen what a BDA
+        sees - it could never take the unassigned opportunities away again.
+
+        The rule is owned by crm and flagged no-update there, so this applies
+        when this module is installed and is left alone by later upgrades.
+    -->
+    <record id="crm.crm_rule_personal_lead" model="ir.rule">
+        <field name="name">Personal Leads</field>
+        <field name="domain_force">['|', ('user_id', '=', user.id), ('bda_ids', 'in', user.id)]</field>
+    </record>
+
+    <record id="crm.crm_activity_report_rule_personal_activities" model="ir.rule">
+        <field name="name">Personal Activities</field>
+        <field name="domain_force">['|', ('user_id', '=', user.id), ('lead_id.bda_ids', 'in', user.id)]</field>
+    </record>
+
+</odoo>

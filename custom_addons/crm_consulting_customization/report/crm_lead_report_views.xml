@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Reporting.
+
+        All of it is built out of list, pivot and graph views over crm.lead
+        itself - there is no QWeb and no SQL view, because nothing here needs
+        a shape the ORM cannot already produce.
+
+        Every report that breaks down by stage groups by stage_id, never by a
+        stage name or an external id. crm.stage is ordered by its sequence, so
+        renaming a stage relabels a column, reordering one moves it, and adding
+        or deleting one changes how many there are. No report needs touching
+        for any of that.
+    -->
+
+    <record id="crm_lead_view_pivot_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Pipeline" sample="1">
+                <field name="stage_id" type="col"/>
+                <field name="bda_ids" type="row"/>
+                <field name="open_positions" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_graph_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.graph.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <graph string="Pipeline" type="bar" sample="1">
+                <field name="stage_id"/>
+                <field name="open_positions" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!--
+        The funnel. A bar per stage, counting the opportunities sitting in it,
+        drawn in stage order - so the drop-off from one stage to the next is
+        the step down between neighbouring bars.
+    -->
+    <record id="crm_lead_view_graph_funnel" model="ir.ui.view">
+        <field name="name">crm.lead.graph.funnel</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <graph string="Conversion Funnel" type="bar" sample="1" disable_linking="0">
+                <field name="stage_id"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_list_ageing" model="ir.ui.view">
+        <field name="name">crm.lead.list.ageing</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <list string="Ageing" sample="1" default_order="days_in_current_stage desc"
+                  create="false">
+                <field name="name" string="Opportunity"/>
+                <field name="partner_id"/>
+                <field name="stage_id"/>
+                <field name="bda_ids" widget="many2many_avatar_user" optional="show"/>
+                <field name="date_last_stage_update" string="In Stage Since"/>
+                <field name="days_in_current_stage" sum="Total"/>
+                <field name="initial_outreach_date"/>
+                <field name="milestone_agreement_signed_date" string="Agreement Signed On"/>
+                <field name="signed_cycle_days" sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_pivot_ageing" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.ageing</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Ageing" sample="1">
+                <field name="stage_id" type="row"/>
+                <field name="days_in_current_stage" type="measure"/>
+                <field name="signed_cycle_days" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_pivot_milestones" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.milestones</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Engagement Milestones" sample="1">
+                <field name="bda_ids" type="row"/>
+                <field name="milestone_requirement_received" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_list_milestones" model="ir.ui.view">
+        <field name="name">crm.lead.list.milestones</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <list string="Engagement Milestones" sample="1" create="false">
+                <field name="name" string="Opportunity"/>
+                <field name="partner_id"/>
+                <field name="stage_id" optional="show"/>
+                <field name="bda_ids" widget="many2many_avatar_user" optional="show"/>
+                <field name="milestone_requirement_received" widget="boolean_toggle"/>
+                <field name="milestone_requirement_received_date" string="On"/>
+                <field name="milestone_delivery_started" widget="boolean_toggle"/>
+                <field name="milestone_delivery_started_date" string="On"/>
+                <field name="milestone_agreement_signed" widget="boolean_toggle"/>
+                <field name="milestone_agreement_signed_date" string="On"/>
+                <field name="signed_cycle_days" optional="show" sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_pivot_categorisation" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.categorisation</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Opportunities by Client" sample="1">
+                <field name="client_type" type="row"/>
+                <field name="client_status" type="col"/>
+                <field name="open_positions" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_pivot_lost" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.lost</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Closed-Lost Analysis" sample="1">
+                <field name="lost_reason_id" type="row"/>
+                <field name="stage_id" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_pivot_bda_activity" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.bda.activity</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="BDA Activity" sample="1">
+                <field name="bda_ids" type="row"/>
+                <field name="create_date" type="col" interval="month"/>
+                <field name="open_positions" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!--
+        Actions.
+
+        Each opens on the view it needs with its filters already applied. The
+        record rules still apply underneath, so a BDA opening any of these sees
+        the same opportunities they see everywhere else - their own.
+    -->
+
+    <record id="crm_lead_action_report_pipeline" model="ir.actions.act_window">
+        <field name="name">Pipeline by Stage</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="context">{'search_default_open_opportunities': 1}</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+    </record>
+
+    <record id="crm_lead_action_report_pipeline_graph" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="crm_lead_view_graph_consulting"/>
+        <field name="act_window_id" ref="crm_lead_action_report_pipeline"/>
+    </record>
+
+    <record id="crm_lead_action_report_pipeline_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="crm_lead_view_pivot_consulting"/>
+        <field name="act_window_id" ref="crm_lead_action_report_pipeline"/>
+    </record>
+
+    <record id="crm_lead_action_report_categorisation" model="ir.actions.act_window">
+        <field name="name">Opportunities by Client</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing to report yet</p>
+            <p>
+                Client Type, Industry / Domain and Client Status are all set
+                on the opportunity itself. Swap any of the three in and out
+                from the group-by menu.
+            </p>
+        </field>
+    </record>
+
+    <record id="crm_lead_action_report_categorisation_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="crm_lead_view_pivot_categorisation"/>
+        <field name="act_window_id" ref="crm_lead_action_report_categorisation"/>
+    </record>
+
+    <record id="crm_lead_action_report_funnel" model="ir.actions.act_window">
+        <field name="name">Conversion Funnel</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">graph,list</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+    </record>
+
+    <record id="crm_lead_action_report_funnel_graph" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="crm_lead_view_graph_funnel"/>
+        <field name="act_window_id" ref="crm_lead_action_report_funnel"/>
+    </record>
+
+    <record id="crm_lead_action_report_ageing" model="ir.actions.act_window">
+        <field name="name">Ageing</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+    </record>
+
+    <record id="crm_lead_action_report_ageing_list" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="crm_lead_view_list_ageing"/>
+        <field name="act_window_id" ref="crm_lead_action_report_ageing"/>
+    </record>
+
+    <record id="crm_lead_action_report_ageing_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="crm_lead_view_pivot_ageing"/>
+        <field name="act_window_id" ref="crm_lead_action_report_ageing"/>
+    </record>
+
+    <record id="crm_lead_action_report_milestones" model="ir.actions.act_window">
+        <field name="name">Engagement Milestones</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+    </record>
+
+    <record id="crm_lead_action_report_milestones_list" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="crm_lead_view_list_milestones"/>
+        <field name="act_window_id" ref="crm_lead_action_report_milestones"/>
+    </record>
+
+    <record id="crm_lead_action_report_milestones_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="crm_lead_view_pivot_milestones"/>
+        <field name="act_window_id" ref="crm_lead_action_report_milestones"/>
+    </record>
+
+    <record id="crm_lead_action_report_bda_activity" model="ir.actions.act_window">
+        <field name="name">BDA Activity</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing to report yet</p>
+            <p>
+                Opportunities created, moved and signed, per BDA. The columns
+                group by creation date; switch them to Last Stage Update for
+                what moved, or to Agreement Signed On for what closed.
+            </p>
+        </field>
+    </record>
+
+    <record id="crm_lead_action_report_bda_activity_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="crm_lead_view_pivot_bda_activity"/>
+        <field name="act_window_id" ref="crm_lead_action_report_bda_activity"/>
+    </record>
+
+    <!--
+        Closed-lost. The reason is required when an opportunity is marked lost,
+        so every row here has one. active=False because marking an opportunity
+        lost archives it.
+    -->
+    <record id="crm_lead_action_report_lost" model="ir.actions.act_window">
+        <field name="name">Closed-Lost Analysis</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('won_status', '=', 'lost')]</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="search_view_id" ref="crm.view_crm_case_opportunities_filter"/>
+    </record>
+
+    <record id="crm_lead_action_report_lost_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="crm_lead_view_pivot_lost"/>
+        <field name="act_window_id" ref="crm_lead_action_report_lost"/>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="crm_menu_report_pipeline_stage"
+              name="Pipeline by Stage"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_pipeline"
+              sequence="10"/>
+
+    <menuitem id="crm_menu_report_categorisation"
+              name="Opportunities by Client"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_categorisation"
+              sequence="11"/>
+
+    <menuitem id="crm_menu_report_funnel"
+              name="Conversion Funnel"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_funnel"
+              sequence="12"/>
+
+    <menuitem id="crm_menu_report_ageing"
+              name="Ageing"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_ageing"
+              sequence="13"/>
+
+    <menuitem id="crm_menu_report_milestones"
+              name="Engagement Milestones"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_milestones"
+              sequence="14"/>
+
+    <menuitem id="crm_menu_report_bda_activity"
+              name="BDA Activity"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_bda_activity"
+              sequence="15"/>
+
+    <menuitem id="crm_menu_report_lost"
+              name="Closed-Lost Analysis"
+              parent="crm.crm_menu_report"
+              action="crm_lead_action_report_lost"
+              sequence="16"/>
+
+</odoo>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The four stages of the pipeline.
+
+    These write over the four stages CRM ships rather than creating four new
+    ones and deleting the originals. Nothing has to be moved off a stage that
+    is about to disappear, no opportunity is left pointing at nothing, and a
+    fresh database and an existing one end up identical.
+
+    noupdate="1" is what makes the stages the Admin's own from here on. The
+    values below are written once, when this module is installed; upgrading it
+    afterwards leaves them alone, so a stage renamed or reordered from the UI
+    stays renamed and reordered.
+
+    Nothing in this module reads a stage by name or by external id. The one
+    piece of stage meaning that behaviour depends on - which stage means the
+    deal is won - is carried by is_won below, and an Admin can move that tick
+    to a different stage from the UI at any time.
+
+    team_ids is left empty on purpose: the stages belong to the whole company,
+    not to one sales team.
+-->
+<odoo noupdate="1">
+
+    <record id="crm.stage_lead1" model="crm.stage">
+        <field name="name">New</field>
+        <field name="sequence">10</field>
+        <field name="is_won" eval="False"/>
+        <field name="fold" eval="False"/>
+        <field name="team_ids" eval="[(5, 0, 0)]"/>
+        <field name="requirements">Potential client identified as relevant to the business.</field>
+    </record>
+
+    <record id="crm.stage_lead2" model="crm.stage">
+        <field name="name">Initial Outreach</field>
+        <field name="sequence">20</field>
+        <field name="is_won" eval="False"/>
+        <field name="fold" eval="False"/>
+        <field name="team_ids" eval="[(5, 0, 0)]"/>
+        <field name="requirements">First communication made; company overview shared.</field>
+    </record>
+
+    <record id="crm.stage_lead3" model="crm.stage">
+        <field name="name">Follow-up in Progress</field>
+        <field name="sequence">30</field>
+        <field name="is_won" eval="False"/>
+        <field name="fold" eval="False"/>
+        <field name="team_ids" eval="[(5, 0, 0)]"/>
+        <field name="requirements">Documents shared; awaiting client approval.</field>
+    </record>
+
+    <record id="crm.stage_lead4" model="crm.stage">
+        <field name="name">Agreement / MSA Signed</field>
+        <field name="sequence">40</field>
+        <field name="is_won" eval="True"/>
+        <field name="fold" eval="False"/>
+        <field name="team_ids" eval="[(5, 0, 0)]"/>
+        <field name="requirements">Master Service Agreement executed; client is live.</field>
+    </record>
+
+</odoo>

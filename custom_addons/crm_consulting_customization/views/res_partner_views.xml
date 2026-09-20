@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        The company and POC records share one form in Odoo, told apart by
+        is_company. Everything below is conditioned on that flag, never on
+        anything to do with the pipeline.
+
+        Designation needs no view change: function is relabelled once on the
+        model, which carries the new label into every view, filter and export
+        at the same time.
+    -->
+    <record id="view_partner_form_consulting" model="ir.ui.view">
+        <field name="name">res.partner.form.consulting</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <!--
+                website holds the LinkedIn page on a company and the LinkedIn
+                profile on a POC. There is no separate website field. The
+                model relabels it; this view hardcodes string="Website", so it
+                has to be overridden here as well.
+            -->
+            <xpath expr="//field[@name='website']" position="attributes">
+                <attribute name="string">LinkedIn</attribute>
+                <attribute name="placeholder">e.g. https://www.linkedin.com/company/...</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='website']" position="before">
+                <field name="location" placeholder="e.g. Bengaluru - Whitefield"/>
+            </xpath>
+
+            <!-- Generic property placeholders, off the form entirely. -->
+            <xpath expr="//field[@name='properties']" position="replace"/>
+
+            <!--
+                Every contact held under a company here is a POC-side
+                stakeholder, so the section says so.
+            -->
+            <xpath expr="//page[@name='contact_addresses']" position="attributes">
+                <attribute name="string">POCs</attribute>
+            </xpath>
+
+            <!--
+                The card a POC is opened in. It already captures the phone
+                and the designation; this adds the location and the POC's
+                own LinkedIn profile alongside them.
+            -->
+            <xpath expr="//page[@name='contact_addresses']//field[@name='function']/parent::div"
+                   position="after">
+                <div invisible="is_company or type != 'contact'" class="d-flex align-items-baseline">
+                    <i class="fa fa-fw me-1 fa-map-marker text-primary" title="Location"/>
+                    <field name="location" placeholder="Location"/>
+                </div>
+                <div invisible="is_company or type != 'contact'" class="d-flex align-items-baseline">
+                    <i class="fa fa-fw me-1 fa-linkedin text-primary" title="LinkedIn"/>
+                    <field name="website" widget="url" placeholder="LinkedIn profile"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!--
+        The bare address card, reached when a POC is opened from outside the
+        company form.
+    -->
+    <record id="view_partner_address_form_consulting" model="ir.ui.view">
+        <field name="name">res.partner.form.address.consulting</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_address_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='website']" position="attributes">
+                <attribute name="string">LinkedIn</attribute>
+                <attribute name="placeholder">e.g. https://www.linkedin.com/in/...</attribute>
+            </xpath>
+            <xpath expr="//field[@name='website']" position="before">
+                <field name="location" placeholder="e.g. Bengaluru - Whitefield"/>
+                <field name="function"/>
+                <field name="phone" widget="phone"/>
+                <field name="email" widget="email"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_tree_consulting" model="ir.ui.view">
+        <field name="name">res.partner.list.consulting</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email']" position="after">
+                <field name="location" optional="show"/>
+                <field name="function" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_res_partner_filter_consulting" model="ir.ui.view">
+        <field name="name">res.partner.select.consulting</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='type_company']" position="after">
+                <separator/>
+                <field name="location"/>
+            </xpath>
+
+            <!-- Generic property placeholders, off the search panel too. -->
+            <xpath expr="//field[@name='properties']" position="replace"/>
+            <xpath expr="//filter[@name='group_by_properties']" position="replace"/>
+
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Location" name="group_by_location"
+                        context="{'group_by': 'location'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

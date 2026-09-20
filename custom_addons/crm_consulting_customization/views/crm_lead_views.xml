@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        The opportunity form.
+
+        Laid out to sit on one laptop screen: everything lives in compact
+        multi-column groups on the main page, and only the first POC is shown
+        - the other four are asked for one at a time and most opportunities
+        never need them.
+
+        Every conditional display below keys off a data field - the engagement
+        type, the commercial basis, whether this is a lead or an opportunity.
+        None of them keys off the stage, so moving an opportunity through the
+        pipeline never makes a field appear, vanish, lock or become required.
+    -->
+    <record id="crm_lead_view_form_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.form.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+
+            <!--
+                Expected Revenue and the commercial Probability both lived in
+                this one title block. Commercial Agreement supersedes them
+                both, so the whole block goes - which also hands back the
+                vertical space the rest of the form needs.
+
+                The columns themselves are untouched. expected_revenue and
+                probability keep their data; probability additionally still
+                drives CRM's own won/lost computation, which is why it is
+                removed from sight rather than from the model.
+            -->
+            <xpath expr="//div[hasclass('oe_title')]/h2" position="replace"/>
+
+            <!-- Generic property placeholders, off the form entirely. -->
+            <xpath expr="//field[@name='lead_properties']" position="replace"/>
+
+            <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <!--
+                How this deal is classified, entered on the front page next to
+                the client it is for. The two are the opportunity's own - they
+                are not read from the client record and setting them here
+                changes nothing outside this opportunity.
+            -->
+            <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="after">
+                <field name="client_type" required="1"/>
+                <field name="industry_domain" required="1"/>
+                <field name="client_status"/>
+            </xpath>
+
+            <!--
+                Email and phone move out of here and into POC 1,
+                where they belong - they are the primary POC's email and
+                phone, and showing them twice was the duplication.
+            -->
+            <xpath expr="//group[@name='opportunity_partner']/label[@for='email_from']" position="replace"/>
+            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='email_from']]" position="replace"/>
+            <xpath expr="//group[@name='opportunity_partner']/label[@for='phone']" position="replace"/>
+            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='phone']]" position="replace"/>
+
+            <!--
+                One field for one idea. Salesperson and BDA were the same
+                thing twice, so the BDA list stands and Odoo's Salesperson
+                goes. It still exists underneath, following the list, because
+                an activity has to be assigned to one person and an
+                opportunity has to count in one person's pipeline.
+            -->
+            <xpath expr="//label[@for='date_deadline']/parent::group/field[@name='user_id']" position="replace">
+                <field name="bda_ids" widget="many2many_avatar_user"
+                       options="{'no_quick_create': True}"/>
+            </xpath>
+
+            <!--
+                The two dates that bracket the pipeline sit together, in the
+                order they happen: first contact, then the date the deal is
+                expected to close. The label is replaced rather than
+                relabelled because CRM writes "Expected Closing" as the
+                label's own text, which an attribute cannot override.
+            -->
+            <xpath expr="//label[@for='date_deadline']" position="replace">
+                <field name="initial_outreach_date"/>
+                <label for="date_deadline" string="Expected Closure Date"/>
+            </xpath>
+
+            <!--
+                Tags, off both sides of the form. CRM puts the field in two
+                places - once in the opportunity block and once in the lead
+                one - and neither is read by anything this module reports on.
+                The column is untouched; anything already tagged keeps its
+                tags and they stay exportable.
+            -->
+            <xpath expr="//label[@for='date_deadline']/parent::group/field[@name='tag_ids']"
+                   position="replace"/>
+            <xpath expr="//group[@name='lead_priority']/field[@name='tag_ids']"
+                   position="replace"/>
+
+            <xpath expr="//notebook" position="before">
+                <group>
+                    <group string="Engagement" name="engagement">
+                        <field name="engagement_type"/>
+                        <!--
+                            Every engagement agrees a commercial; only the unit
+                            differs. FTE is struck as a percentage and
+                            Consulting in lakhs per month, so for those the
+                            basis follows from the type and is not the user's
+                            to set. A blended engagement could have been struck
+                            either way, so there it is theirs.
+                        -->
+                        <field name="commercial_basis"
+                               readonly="engagement_type != 'fte_consulting'"/>
+                        <field name="company_currency" invisible="1"/>
+                        <!--
+                            One line, called Commercial Agreement whichever way
+                            the deal was struck. Two columns still sit behind
+                            it, because a percentage and a rupee figure cannot
+                            share one - so only the one the basis calls for is
+                            ever on screen, and the unit is written next to it.
+                            The percentage widget writes its own % sign; the
+                            monetary one writes the rupee symbol, and LPM is
+                            added after the figure.
+                        -->
+                        <label for="commercial_agreement_pct" string="Commercial Agreement"
+                               invisible="commercial_basis != 'percentage'"/>
+                        <div class="o_row" invisible="commercial_basis != 'percentage'">
+                            <field name="commercial_agreement_pct" nolabel="1"
+                                   widget="percentage" class="oe_inline"/>
+                        </div>
+                        <label for="bill_rate_lpm" string="Commercial Agreement"
+                               invisible="commercial_basis != 'lpm'"/>
+                        <div class="o_row" invisible="commercial_basis != 'lpm'">
+                            <field name="bill_rate_lpm" nolabel="1"
+                                   widget="monetary"
+                                   options="{'currency_field': 'company_currency'}"
+                                   class="oe_inline"/>
+                            <span class="oe_inline text-muted">LPM</span>
+                        </div>
+                        <label for="project_duration" invisible="engagement_type == 'fte'"/>
+                        <div class="o_row" invisible="engagement_type == 'fte'">
+                            <field name="project_duration" nolabel="1" class="oe_inline"/>
+                            <span class="oe_inline text-muted">months</span>
+                        </div>
+                        <label string="Project Duration" for="engagement_type"
+                               invisible="engagement_type != 'fte'"/>
+                        <span class="text-muted" invisible="engagement_type != 'fte'">NA</span>
+                    </group>
+
+                    <!--
+                        Two counts, not one. Open Positions is how many
+                        vacancies there are; Roles Open is how many distinct
+                        roles they span.
+                    -->
+                    <group string="Requirement" name="requirement">
+                        <field name="open_positions"/>
+                        <field name="roles_open"/>
+                    </group>
+                </group>
+
+                <!--
+                    Milestones, not stages. Each is raised and cleared by hand,
+                    independently of where the opportunity sits in the
+                    pipeline, and each stamps the day it was raised so cycle
+                    times can be measured. Nothing here reads stage_id and
+                    nothing here writes it.
+
+                    One per row, the date beside its own tick and carrying no
+                    label of its own - the milestone is already named to the
+                    left of it, and all the date adds is the day the tick
+                    went on.
+
+                    numeric, because the date widget otherwise drops the year
+                    from a date in the current year and renders "Sep 19",
+                    which reads as a fragment rather than a date. Not muted,
+                    for the same reason: it is the answer to when, not a hint.
+                -->
+                <group string="Engagement Milestones" name="engagement_milestones">
+                    <label for="milestone_requirement_received"/>
+                    <div class="o_row">
+                        <field name="milestone_requirement_received" nolabel="1"/>
+                        <field name="milestone_requirement_received_date" nolabel="1"
+                               options="{'numeric': true}" class="oe_inline"
+                               invisible="not milestone_requirement_received"/>
+                    </div>
+                    <label for="milestone_delivery_started"/>
+                    <div class="o_row">
+                        <field name="milestone_delivery_started" nolabel="1"/>
+                        <field name="milestone_delivery_started_date" nolabel="1"
+                               options="{'numeric': true}" class="oe_inline"
+                               invisible="not milestone_delivery_started"/>
+                    </div>
+                    <label for="milestone_agreement_signed"/>
+                    <div class="o_row">
+                        <field name="milestone_agreement_signed" nolabel="1"/>
+                        <field name="milestone_agreement_signed_date" nolabel="1"
+                               options="{'numeric': true}" class="oe_inline"
+                               invisible="not milestone_agreement_signed"/>
+                    </div>
+                </group>
+
+                <!--
+                    POC 1 is the opportunity's own contact fields, not a second
+                    copy of them: the person being dealt with is the primary
+                    POC. They fill in from the client record and still drive
+                    Send Email and Send SMS.
+
+                    Only this one is shown. Each block below ends with the
+                    toggle that asks for the next, so the form walks out from
+                    one POC to five and stops - there is no sixth block for a
+                    toggle to open.
+                -->
+                <group name="poc" col="2">
+                    <group string="POC 1" name="poc_primary">
+                        <field name="contact_name" string="Name"/>
+                        <field name="function" string="Designation"/>
+                        <field name="phone" string="Phone Number" widget="phone"/>
+                        <field name="email_from" string="Email" widget="email"/>
+                        <field name="poc1_location" string="Location"/>
+                        <field name="poc1_linkedin" string="LinkedIn" widget="url"
+                               placeholder="e.g. https://www.linkedin.com/in/..."/>
+                        <field name="show_poc2" string="Add another POC" widget="boolean_toggle"/>
+                    </group>
+                    <group string="POC 2" invisible="not show_poc2">
+                        <field name="poc2_name" string="Name"/>
+                        <field name="poc2_designation" string="Designation"/>
+                        <field name="poc2_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc2_email" string="Email" widget="email"/>
+                        <field name="poc2_location" string="Location"/>
+                        <field name="poc2_linkedin" string="LinkedIn" widget="url"
+                               placeholder="e.g. https://www.linkedin.com/in/..."/>
+                        <field name="show_poc3" string="Add another POC" widget="boolean_toggle"/>
+                    </group>
+                    <group string="POC 3" invisible="not show_poc3">
+                        <field name="poc3_name" string="Name"/>
+                        <field name="poc3_designation" string="Designation"/>
+                        <field name="poc3_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc3_email" string="Email" widget="email"/>
+                        <field name="poc3_location" string="Location"/>
+                        <field name="poc3_linkedin" string="LinkedIn" widget="url"
+                               placeholder="e.g. https://www.linkedin.com/in/..."/>
+                        <field name="show_poc4" string="Add another POC" widget="boolean_toggle"/>
+                    </group>
+                    <group string="POC 4" invisible="not show_poc4">
+                        <field name="poc4_name" string="Name"/>
+                        <field name="poc4_designation" string="Designation"/>
+                        <field name="poc4_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc4_email" string="Email" widget="email"/>
+                        <field name="poc4_location" string="Location"/>
+                        <field name="poc4_linkedin" string="LinkedIn" widget="url"
+                               placeholder="e.g. https://www.linkedin.com/in/..."/>
+                        <field name="show_poc5" string="Add another POC" widget="boolean_toggle"/>
+                    </group>
+                    <group string="POC 5" invisible="not show_poc5">
+                        <field name="poc5_name" string="Name"/>
+                        <field name="poc5_designation" string="Designation"/>
+                        <field name="poc5_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc5_email" string="Email" widget="email"/>
+                        <field name="poc5_location" string="Location"/>
+                        <field name="poc5_linkedin" string="LinkedIn" widget="url"
+                               placeholder="e.g. https://www.linkedin.com/in/..."/>
+                    </group>
+                </group>
+            </xpath>
+
+            <!--
+                The Contacts tab went. Everything on it was already somewhere
+                better: the company name and address belong to the client
+                record that Client Name now points at; the contact name, job
+                position and website were the primary POC, who has a group of
+                their own on the front page; and the campaign, medium and
+                source are marketing, which is out of scope here.
+
+                What was worth keeping off it - how the client is classified -
+                is now on the front page next to Client Name.
+            -->
+            <xpath expr="//page[@name='lead']" position="replace"/>
+        </field>
+    </record>
+
+    <!--
+        The quick-create card behind the kanban's "New" button. Expected
+        Revenue comes off it for the same reason it came off the form.
+    -->
+    <record id="quick_create_opportunity_form_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.form.quick_create.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']/ancestor::div[1]" position="replace">
+                <div class="d-flex align-items-center" colspan="2">
+                    <i class="fa fa-users" title="Open Positions"/>
+                    <div class="mb-0">
+                        <field name="open_positions" class="oe_inline me-5 o_field_highlight mb-0"/>
+                        <field name="priority" class="oe_inline mb-0" nolabel="1" widget="priority"/>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_case_tree_view_oppor_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.list.opportunity.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_tree_view_oppor"/>
+        <field name="arch" type="xml">
+            <!--
+                Hidden rather than deleted. CRM's own Forecast list is a
+                separate view built on top of this one, and it reaches for this
+                exact node to hang Prorated Revenue off - delete the node and
+                that view can no longer be built. column_invisible takes the
+                column out of the list and out of the optional-columns menu
+                with it, so there is no way to bring it back from the UI.
+            -->
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="optional"/>
+                <attribute name="sum"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <!-- Tags are off the form, so they come out of the list too. -->
+            <xpath expr="//field[@name='tag_ids']" position="replace"/>
+            <!--
+                POC 1 is the primary point of contact, so it is the POC that
+                surfaces in list views and reports. contact_name is already in
+                this list, relabelled POC Name.
+            -->
+            <xpath expr="//field[@name='user_id']" position="before">
+                <field name="function" optional="hide"/>
+                <field name="poc1_location" optional="hide"/>
+                <field name="client_status" optional="show"/>
+                <field name="client_type" optional="hide"/>
+                <field name="industry_domain" optional="hide"/>
+                <field name="engagement_type" optional="show"/>
+                <field name="open_positions" optional="show" sum="Open Positions"/>
+                <field name="roles_open" optional="hide"/>
+                <field name="initial_outreach_date" optional="hide"/>
+                <field name="days_in_current_stage" optional="hide"/>
+                <field name="signed_cycle_days" optional="hide"/>
+            </xpath>
+            <!--
+                BDA replaces Salesperson here too, rather than sitting next to
+                it. Hidden and not deleted: CRM's My Activities list is built
+                on this view and reaches for this node, as the Forecast list
+                does for Expected Revenue above.
+            -->
+            <xpath expr="//field[@name='user_id']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="optional"/>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="bda_ids" widget="many2many_avatar_user" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_case_kanban_view_leads_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.lead.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
+        <field name="arch" type="xml">
+            <!--
+                Hidden, not deleted, for the same reason as in the list: CRM's
+                Forecast kanban is built on this view and replaces this node.
+            -->
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='expected_revenue']" position="after">
+                <field name="open_positions" display="full" muted="1"/>
+            </xpath>
+
+            <!-- Tags are off the form, so the card does not carry them either. -->
+            <xpath expr="//field[@name='tag_ids']" position="replace"/>
+            <!--
+                The card shows everyone working the account, not just whichever
+                BDA happens to be primary - an opportunity three people are on
+                shows three faces.
+            -->
+            <xpath expr="//footer//field[@name='user_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//footer//field[@name='user_id']" position="after">
+                <field name="bda_ids" widget="many2many_avatar_user" class="ms-2"/>
+            </xpath>
+
+            <!--
+                The column total follows the field that replaced revenue, so
+                the kanban header counts vacancies rather than rupees.
+            -->
+            <xpath expr="//progressbar" position="attributes">
+                <attribute name="sum_field">open_positions</attribute>
+                <attribute name="recurring_revenue_sum_field"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!--
+        The narrow card shown on a phone. A separate view, not built on the
+        kanban above, so the tags have to be taken off it in its own right.
+    -->
+    <record id="view_crm_lead_kanban_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.mobile.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_lead_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tag_ids']" position="replace"/>
+        </field>
+    </record>
+
+    <!--
+        Search, filters and group-bys.
+
+        Every group-by here is a plain field. The stage group-by CRM already
+        ships keys off stage_id, so renaming or reordering a stage simply
+        relabels or reorders the groups.
+    -->
+    <record id="view_crm_case_opportunities_filter_consulting" model="ir.ui.view">
+        <field name="name">crm.lead.search.opportunity.consulting</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="replace">
+                <field name="bda_ids" string="BDA"/>
+            </xpath>
+
+            <!-- Tags are off the form, so they come out of the search too. -->
+            <xpath expr="//field[@name='tag_ids']" position="replace"/>
+
+
+            <!-- Generic property placeholders, off the search panel too. -->
+            <xpath expr="//field[@name='lead_properties']" position="replace"/>
+            <xpath expr="//filter[@name='group_by_lead_properties']" position="replace"/>
+
+            <!--
+                An opportunity belongs to every BDA on it, so "My Pipeline"
+                has to mean the same thing as the record rule does - owned by
+                me, or worked by me.
+            -->
+            <xpath expr="//filter[@name='assigned_to_me']" position="attributes">
+                <attribute name="domain">['|', ('user_id', '=', uid), ('bda_ids', 'in', uid)]</attribute>
+                <attribute name="help">Opportunities I own or work on</attribute>
+            </xpath>
+
+            <xpath expr="//filter[@name='open_opportunities']" position="after">
+                <separator/>
+                <filter string="Requirement Received" name="filter_requirement_received"
+                        domain="[('milestone_requirement_received', '=', True)]"/>
+                <filter string="Delivery Started" name="filter_delivery_started"
+                        domain="[('milestone_delivery_started', '=', True)]"/>
+                <filter string="Agreement Signed" name="filter_agreement_signed"
+                        domain="[('milestone_agreement_signed', '=', True)]"/>
+                <separator/>
+                <filter string="FTE" name="filter_engagement_fte"
+                        domain="[('engagement_type', '=', 'fte')]"/>
+                <filter string="Consulting" name="filter_engagement_consulting"
+                        domain="[('engagement_type', '=', 'consulting')]"/>
+                <filter string="FTE/Consulting" name="filter_engagement_blended"
+                        domain="[('engagement_type', '=', 'fte_consulting')]"/>
+            </xpath>
+
+            <!--
+                Grouping by Salesperson would file each opportunity under one
+                BDA, while grouping by BDA files it under all of them. Two
+                answers to the same question, so the BDA group-by takes its
+                place rather than sitting beside it.
+            -->
+            <xpath expr="//filter[@name='salesperson']" position="replace">
+                <filter string="BDA" name="group_by_bda" context="{'group_by': 'bda_ids'}"/>
+                <filter string="Client Type" name="group_by_client_type" context="{'group_by': 'client_type'}"/>
+                <filter string="Industry / Domain" name="group_by_industry_domain" context="{'group_by': 'industry_domain'}"/>
+                <filter string="Client Status" name="group_by_client_status" context="{'group_by': 'client_status'}"/>
+                <filter string="Engagement Type" name="group_by_engagement_type" context="{'group_by': 'engagement_type'}"/>
+            </xpath>
+
+            <xpath expr="//filter[@name='date_deadline']" position="after">
+                <filter string="Initial Outreach Date" name="group_by_initial_outreach_date"
+                        context="{'group_by': 'initial_outreach_date'}"/>
+                <filter string="Agreement Signed On" name="group_by_agreement_signed_date"
+                        context="{'group_by': 'milestone_agreement_signed_date'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
