@@ -10,11 +10,26 @@
 
         Delete is the one right that does not travel up this ladder by
         implication. It is granted by sales_team.group_sale_manager, which
-        only Admin implies - so Sales and Leadership genuinely cannot delete,
-        rather than merely being shown no button.
+        only Admin implies - so Sales Lead and Leadership genuinely cannot
+        delete, rather than merely being shown no button.
+
+        The implied sales_team group on each role is also what the Sales
+        dropdown beside this one on the user form now reads. That dropdown is
+        made read-only by models/res_groups.py, so the role below is the only
+        place a sales right is chosen:
+
+            No access   ->  (none)
+            BDA         ->  User: Own Documents Only
+            Sales Lead  ->  User: All Documents
+            Leadership  ->  User: All Documents   (via Sales Lead)
+            Admin       ->  Administrator
+
+        The privilege's external id still says crm_consulting; only its label
+        is CRM. Renaming an external id orphans the records already pointing
+        at it, which here would mean every user losing their role.
     -->
     <record id="res_groups_privilege_crm_consulting" model="res.groups.privilege">
-        <field name="name">CRM Consulting</field>
+        <field name="name">CRM</field>
         <field name="sequence">5</field>
         <field name="category_id" ref="base.module_category_sales"/>
         <field name="placeholder">No access</field>
@@ -29,7 +44,7 @@
     </record>
 
     <record id="group_crm_sales" model="res.groups">
-        <field name="name">Sales / Sales Head</field>
+        <field name="name">Sales Lead</field>
         <field name="sequence">20</field>
         <field name="privilege_id" ref="res_groups_privilege_crm_consulting"/>
         <field name="implied_ids" eval="[(4, ref('group_crm_bda')),

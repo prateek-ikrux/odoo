@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+<!--
+    Renders a read-only privilege as text rather than as a disabled select.
+
+    The span sits between the two branches the stock template already has, as
+    a t-elif, because SelectionField's t-if and BooleanField's t-else are one
+    chain: narrowing the t-if alone would fall through to the t-else and draw
+    a checkbox for a selection field.
+-->
+<t t-inherit="web.ResUserGroupIdsPrivilegeField" t-inherit-mode="extension">
+    <xpath expr="//SelectionField" position="attributes">
+        <attribute name="t-if">type == 'selection' and !props.readonly</attribute>
+    </xpath>
+    <xpath expr="//SelectionField" position="after">
+        <span t-elif="type == 'selection'"
+              t-att-class="{'text-muted': !isSet}"
+              t-esc="readonlyDisplayName"/>
+    </xpath>
+</t>
+
+</templates>

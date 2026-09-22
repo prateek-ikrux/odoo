@@ -485,4 +485,45 @@
         </field>
     </record>
 
+    <!--
+        Pipeline and Forecast open on everything the user is allowed to see,
+        not on their own opportunities.
+
+        Both ship from CRM with 'search_default_assigned_to_me': 1, which
+        pins My Pipeline on every time the menu is opened. For a BDA that
+        filter is redundant - the record rule already holds them to the
+        opportunities they own or work on - and for Sales Lead, Leadership
+        and Admin it is simply wrong: they are granted the whole pipeline and
+        then shown a quarter of it, with nothing on screen to say why. The
+        one person it appears to work for is whoever happens to own most of
+        the records.
+
+        Who sees what is the record rule's job in this module, and the filter
+        is left as a filter: My Pipeline is still in the Filters menu, still
+        means "owned by me or worked by me", and is now chosen rather than
+        assumed.
+
+        My Activities keeps its default. That one is named for what it
+        filters to.
+
+        These two actions are not noupdate in CRM, so upgrading crm restores
+        its context and this module has to be upgraded after it to take it
+        off again.
+    -->
+    <record id="crm.crm_lead_action_pipeline" model="ir.actions.act_window">
+        <field name="context">{
+            'default_type': 'opportunity',
+            'show_user_team_stages': 1,
+        }</field>
+    </record>
+
+    <record id="crm.crm_lead_action_forecast" model="ir.actions.act_window">
+        <field name="context">{
+            'default_type': 'opportunity',
+            'search_default_forecast': 1,
+            'search_default_date_deadline': 1,
+            'forecast_field': 'date_deadline',
+        }</field>
+    </record>
+
 </odoo>

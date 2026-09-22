@@ -25,8 +25,10 @@ Built and tested against **Odoo 19.0 Community**.
    Upgrading later uses `-u` in place of `-i`.
 
 3. Give each person a role. **Settings > Users & Companies > Users**, open a
-   user, and pick one of BDA, Sales / Sales Head, Leadership or Admin under the
-   **CRM Consulting** privilege. Nobody has a role until you give them one.
+   user, and pick one of BDA, Sales Lead, Leadership or Admin from the **CRM**
+   dropdown on the Access Rights page. Nobody has a role until you give them
+   one. The **Sales** dropdown beside it is read-only and follows whatever the
+   role implies; there is nothing to set there.
 
 `crm`, `contacts` and `sales_team` are pulled in as dependencies if they are not
 already installed.
@@ -143,15 +145,27 @@ stage simply relabels or moves a column.
 
 ### Access
 
-| Role | Create | Read | Edit | Delete | Reports | Config |
-|---|---|---|---|---|---|---|
-| BDA | Yes | Own opportunities only | Own | No | Own pipeline | No |
-| Sales / Sales Head | Yes | All | All | No | All | No |
-| Leadership | Yes | All | All | No | All | No |
-| Admin | Yes | All | All | Yes | All | Yes |
+| Role | Create | Read | Edit | Delete | Reports | Config | Sets Sales to |
+|---|---|---|---|---|---|---|---|
+| *(No access)* | — | — | — | — | — | — | No |
+| BDA | Yes | Own opportunities only | Own | No | Own pipeline | No | User: Own Documents Only |
+| Sales Lead | Yes | All | All | No | All | No | User: All Documents |
+| Leadership | Yes | All | All | No | All | No | User: All Documents |
+| Admin | Yes | All | All | Yes | All | Yes | Administrator |
 
 Delete is denied in `ir.model.access.csv`, not merely hidden — attempting it
 raises an access error. Archive an opportunity or mark it closed-lost instead.
+
+The **Sales** privilege is a read-only mirror of the role, shown so the Access
+Rights page still says what sales rights a user ended up with. The role decides
+it; the last column above is the whole mapping.
+
+**Pipeline and Forecast open on everything the user may see.** CRM ships both
+with My Pipeline pinned on, which for a BDA only repeats the record rule and
+for everyone above it contradicts the table above — a Sales Lead granted the
+whole pipeline would be shown a quarter of it. The default is off; the filter
+itself is untouched and still in the Filters menu. **My Activities** keeps its
+default, being named for what it filters to.
 
 "Own" means the user is the owner **or** appears in the BDA list. A BDA does not
 see unassigned opportunities, and this holds in list views, search, reports and
@@ -257,6 +271,42 @@ left-hand value) orphans the records already using it; changing only its label
   The classification of a company with no opportunity has nowhere to land and
   is not carried over. Take a copy of `res_partner.client_type` and
   `res_partner.industry_domain` before upgrading if those matter.
+
+- **The Sales dropdown is made read-only in the browser, not by a view.** The
+  Access Rights page has no arch to inherit — `res_user_group_ids` reads
+  `res.groups._get_view_group_hierarchy()` and generates one selection field
+  per privilege client-side. So `models/res_groups.py` flags the Sales
+  privilege in that dictionary and `static/src/res_user_group_ids_field.js`
+  patches the widget to emit `readonly="1"` for a flagged privilege, plus a
+  span to render in place of the select. Add another privilege to
+  `READONLY_PRIVILEGE_XMLIDS` and both halves pick it up.
+
+  Stock Odoo already greys the Sales value out and hides the options *below*
+  what the role implies. What it does not stop is picking an option *above*
+  — handing a BDA `Administrator` on Sales, which grants delete on
+  `crm.lead` and quietly contradicts the access table. That is the hole this
+  closes.
+
+- **Sales rights can no longer be granted on their own.** `group_sale_salesman`
+  and its two siblings are the whole Sales suite's groups, not CRM's, so
+  locking the dropdown means a user gets them only by way of a CRM role. That
+  is the intent here, where CRM is the sales app; installing Sales, Invoicing
+  or Point of Sale alongside it makes the lock inconvenient, and the fix is to
+  drop `sales_team.res_groups_privilege_sales` from
+  `READONLY_PRIVILEGE_XMLIDS`.
+
+  `base.user_admin` is the one account that starts out disagreeing: sales_team
+  puts it in `group_sale_manager` directly, so it reads Sales *Administrator*
+  with CRM *No access* until somebody gives it the Admin role. The dropdown
+  shows the granted value rather than a blank, so this is visible rather than
+  silent, and giving it the role settles it.
+
+- **It also rewrites the context of two CRM actions** —
+  `crm.crm_lead_action_pipeline` and `crm.crm_lead_action_forecast`, to drop
+  `search_default_assigned_to_me`. Unlike the record rules below, these two are
+  *not* flagged no-update in CRM, so upgrading `crm` puts the default back and
+  this module has to be upgraded after it. Symptom if that happens: everyone
+  above BDA opens the Pipeline on their own opportunities again.
 
 - **The module rewrites two record rules that belong to CRM** —
   `crm.crm_rule_personal_lead` and
