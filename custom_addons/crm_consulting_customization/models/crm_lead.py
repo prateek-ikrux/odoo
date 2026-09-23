@@ -162,11 +162,18 @@ class CrmLead(models.Model):
              'held as 0.08 - which is what the percentage widget reads and writes.',
     )
 
-    bill_rate_lpm = fields.Monetary(
+    # Float and not Monetary. The unit is lakhs per month, which is not a
+    # currency: a Monetary field renders the company's symbol in front of the
+    # figure, so 2.5 lakhs per month read as a rupee amount of 2.50. The unit
+    # is written after the figure on the form instead, the way any other unit
+    # is. Float with explicit digits keeps the same numeric column Monetary
+    # used, so nothing already stored has to move.
+    bill_rate_lpm = fields.Float(
         'Bill Rate',
-        currency_field='company_currency',
+        digits=(16, 2),
         tracking=True,
-        help='Agreed commercial in rupee lakhs per month.',
+        help='Agreed commercial in lakhs per month. A count of lakhs, not a '
+             'rupee figure - do not sum it against one.',
     )
 
     # Two different counts, deliberately kept apart. Open Positions is the
@@ -212,32 +219,6 @@ class CrmLead(models.Model):
         'Agreement Signed', default=False, tracking=True)
     milestone_agreement_signed_date = fields.Date(
         'Agreement Signed On', readonly=True)
-
-    # -------------------------------------------------------------------
-    # Ageing
-    # -------------------------------------------------------------------
-    # Stored so the ageing report can sort, group and average on it, which a
-    # computed column that exists only in memory cannot do. Its input only
-    # changes when the opportunity moves stage, so a nightly cron
-    # (_cron_refresh_stage_ageing) ages it forward; between runs it can be up
-    # to a day behind, which is the resolution the report works at anyway.
-    days_in_current_stage = fields.Integer(
-        'Days in Current Stage',
-        compute='_compute_days_in_current_stage',
-        store=True,
-        help='Days since this opportunity last changed stage.',
-    )
-
-    # Stored, unlike days_in_current_stage, because a pivot can only aggregate
-    # a column that exists in the table. Both its inputs are themselves stored
-    # dates, so it never goes stale.
-    signed_cycle_days = fields.Integer(
-        'Outreach to Signature (Days)',
-        compute='_compute_signed_cycle_days',
-        store=True,
-        help='Days from the initial outreach to the day the agreement was '
-             'signed. Empty until the Agreement Signed milestone is raised.',
-    )
 
     # -------------------------------------------------------------------
     # POC contacts
@@ -349,38 +330,6 @@ class CrmLead(models.Model):
             # Index 0 is POC 2: reveal it if it, or anything past it, is filled.
             for index, n in enumerate((2, 3, 4, 5)):
                 lead['show_poc%d' % n] = any(filled[index:])
-
-    @api.depends('date_last_stage_update')
-    def _compute_days_in_current_stage(self):
-        today = fields.Date.context_today(self)
-        for lead in self:
-            if lead.date_last_stage_update:
-                entered = fields.Datetime.context_timestamp(
-                    lead, lead.date_last_stage_update).date()
-                lead.days_in_current_stage = (today - entered).days
-            else:
-                lead.days_in_current_stage = 0
-
-    @api.depends('initial_outreach_date', 'milestone_agreement_signed_date')
-    def _compute_signed_cycle_days(self):
-        for lead in self:
-            start = lead.initial_outreach_date
-            end = lead.milestone_agreement_signed_date
-            lead.signed_cycle_days = (end - start).days if start and end else 0
-
-    @api.model
-    def _cron_refresh_stage_ageing(self):
-        """Age days_in_current_stage forward overnight.
-
-        The field depends on the day an opportunity entered its stage, so
-        nothing invalidates it as the days pass - only a stage change would.
-        This asks the ORM to recompute it for every live opportunity, which is
-        what keeps the ageing report honest.
-        """
-        leads = self.search([('type', '=', 'opportunity'), ('active', '=', True)])
-        if leads:
-            self.env.add_to_compute(self._fields['days_in_current_stage'], leads)
-            leads.flush_recordset(['days_in_current_stage'])
 
     # -------------------------------------------------------------------
     # Constraints

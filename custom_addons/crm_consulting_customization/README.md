@@ -1,8 +1,8 @@
 # CRM Consulting Customization
 
 Reshapes Odoo CRM around a recruitment and consulting business: a four-stage
-pipeline, engagement commercials in rupees, POCs held on the
-opportunity, and four roles that divide who may see and do what.
+pipeline, engagement commercials in rupees, and POCs held on the
+opportunity. Access is left to CRM's own Sales privilege.
 
 Built and tested against **Odoo 19.0 Community**.
 
@@ -23,12 +23,6 @@ Built and tested against **Odoo 19.0 Community**.
    ```
 
    Upgrading later uses `-u` in place of `-i`.
-
-3. Give each person a role. **Settings > Users & Companies > Users**, open a
-   user, and pick one of BDA, Sales Lead, Leadership or Admin from the **CRM**
-   dropdown on the Access Rights page. Nobody has a role until you give them
-   one. The **Sales** dropdown beside it is read-only and follows whatever the
-   role implies; there is nothing to set there.
 
 `crm`, `contacts` and `sales_team` are pulled in as dependencies if they are not
 already installed.
@@ -63,15 +57,13 @@ actually lost — and a lost reason is now mandatory.
 | Engagement Type | `engagement_type` | Selection: FTE / Consulting / FTE\|Consulting | Yes |
 | Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | No |
 | Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | Never |
-| Bill Rate | `bill_rate_lpm` | Monetary, ₹ lakhs per month | No |
+| Bill Rate | `bill_rate_lpm` | Float, lakhs per month | No |
 | Open Positions | `open_positions` | Integer | No |
 | Roles Open | `roles_open` | Integer | No |
 | Project Duration | `project_duration` | Integer, months | No |
 | Requirement Received | `milestone_requirement_received` (+ `_date`) | Boolean | No |
 | Delivery Started | `milestone_delivery_started` (+ `_date`) | Boolean | No |
 | Agreement Signed | `milestone_agreement_signed` (+ `_date`) | Boolean | No |
-| Days in Current Stage | `days_in_current_stage` | Integer, computed | — |
-| Outreach to Signature | `signed_cycle_days` | Integer, computed | — |
 | Client Type | `client_type` | Selection | Yes |
 | Industry / Domain | `industry_domain` | Selection | Yes |
 | POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | No |
@@ -133,48 +125,6 @@ computation behind the scenes, which is why it is hidden rather than deleted.
 - The **Contacts** section is now **POCs**, and every POC captures phone,
   designation and location.
 
-### Reporting
-
-Seven reports under **CRM > Reporting**: Pipeline by Stage, Opportunities by
-Client, Conversion Funnel, Ageing, Engagement Milestones, BDA Activity and
-Closed-Lost Analysis.
-
-All of them are ordinary list, pivot and graph views. Every stage breakdown
-groups by the stage field, never by a stage's name, so renaming or reordering a
-stage simply relabels or moves a column.
-
-### Access
-
-| Role | Create | Read | Edit | Delete | Reports | Config | Sets Sales to |
-|---|---|---|---|---|---|---|---|
-| *(No access)* | — | — | — | — | — | — | No |
-| BDA | Yes | Own opportunities only | Own | No | Own pipeline | No | User: Own Documents Only |
-| Sales Lead | Yes | All | All | No | All | No | User: All Documents |
-| Leadership | Yes | All | All | No | All | No | User: All Documents |
-| Admin | Yes | All | All | Yes | All | Yes | Administrator |
-
-Delete is denied in `ir.model.access.csv`, not merely hidden — attempting it
-raises an access error. Archive an opportunity or mark it closed-lost instead.
-
-The **Sales** privilege is a read-only mirror of the role, shown so the Access
-Rights page still says what sales rights a user ended up with. The role decides
-it; the last column above is the whole mapping.
-
-**Pipeline and Forecast open on everything the user may see.** CRM ships both
-with My Pipeline pinned on, which for a BDA only repeats the record rule and
-for everyone above it contradicts the table above — a Sales Lead granted the
-whole pipeline would be shown a quarter of it. The default is off; the filter
-itself is untouched and still in the Filters menu. **My Activities** keeps its
-default, being named for what it filters to.
-
-"Own" means the user is the owner **or** appears in the BDA list. A BDA does not
-see unassigned opportunities, and this holds in list views, search, reports and
-exports alike, because it is enforced by a record rule rather than by a filter.
-
-Permissions depend on role and ownership only. Nothing is tied to a stage.
-
----
-
 ## Changing things without a developer
 
 ### Stages
@@ -223,24 +173,43 @@ left-hand value) orphans the records already using it; changing only its label
 ## Notes for whoever maintains this
 
 - **Commercial Agreement is one label over two columns.** The form always
-  calls it Commercial Agreement and writes the unit next to the figure — `%`
-  for a percentage deal, `₹ … LPM` for a lakhs-per-month one. Behind it,
-  `commercial_agreement_pct` and `bill_rate_lpm` are still two separate
-  columns, because a percentage and a rupee figure cannot share one. Only the
-  one the Commercial Basis calls for is ever on screen; an export sees both.
+  calls it Commercial Agreement and writes the unit immediately after the
+  figure, with nothing in front of it — `%` for a percentage deal, `LPM`
+  for a lakhs-per-month one. Which of the two is on screen follows the
+  Commercial Basis, so a blended FTE/Consulting engagement shows whichever way
+  it was actually struck. Behind it, `commercial_agreement_pct` and
+  `bill_rate_lpm` are still two separate columns, because a percentage and a
+  rate cannot share one; an export sees both.
 
 - **Commercial Agreement is stored as a fraction.** 8% is held as `0.08`. That
   is what Odoo's percentage widget reads and writes. Anything reading the field
   directly — an export, a formula, a report — has to multiply by 100.
 
-- **Bill Rate is in lakhs per month, not rupees.** It is a monetary field in the
-  company currency, so a bill rate of 2.5 lakhs per month displays as `₹ 2.50`.
-  It is a unit of lakhs, so do not sum it against a rupee figure.
+- **Bill Rate is a Float, not a Monetary.** It is a count of lakhs per month,
+  which is not a currency: as a Monetary it rendered the company symbol in
+  front of the figure, so 2.5 lakhs per month read as `₹ 2.50`. The unit is
+  written after the figure instead, the way any other unit is. Explicit
+  `digits=(16, 2)` keeps the same `numeric` column Monetary used, so the change
+  moved no data. It is still a unit of lakhs — do not sum it against a rupee
+  figure.
 
-- **`days_in_current_stage` is refreshed nightly** by the scheduled action *CRM:
-  age opportunities in their current stage*. Between runs it can be up to a day
-  behind. It is stored rather than computed live so that the ageing report can
-  sort and average on it.
+- **Dates read "21st July 2024" via a widget, not a language setting.**
+  Neither strftime nor Luxon has a token for the ordinal suffix — `%d` and
+  `d` both give `21` — so no `res.lang` date format can express this and the
+  string is built in the browser. `static/src/ordinal_date_field.js` registers
+  `ordinal_date`, which subclasses Odoo's own date field and overrides the one
+  method every rendering goes through.
+
+  Only the *displayed* string changes. Odoo's template already draws a focused
+  date field as a real `<input>` and everything else as text, so typing,
+  parsing and the date picker are untouched. The hover tooltip stays numeric,
+  which is the one place the long form would not help.
+
+  It is on this module's five date fields: Expected Closure Date, Initial
+  Outreach Date and the three milestone dates. Dates elsewhere in Odoo are
+  unaffected. The milestone dates carried a `numeric` option for the stock
+  widget's habit of dropping the year from a date in the current year; this
+  one always writes day, month and year, so the option went with it.
 
 - **`bda_ids` always contains the owner.** Setting the salesperson adds them to
   the BDA list automatically, so ownership is one list to consult rather than a
@@ -272,49 +241,24 @@ left-hand value) orphans the records already using it; changing only its label
   is not carried over. Take a copy of `res_partner.client_type` and
   `res_partner.industry_domain` before upgrading if those matter.
 
-- **The Sales dropdown is made read-only in the browser, not by a view.** The
-  Access Rights page has no arch to inherit — `res_user_group_ids` reads
-  `res.groups._get_view_group_hierarchy()` and generates one selection field
-  per privilege client-side. So `models/res_groups.py` flags the Sales
-  privilege in that dictionary and `static/src/res_user_group_ids_field.js`
-  patches the widget to emit `readonly="1"` for a flagged privilege, plus a
-  span to render in place of the select. Add another privilege to
-  `READONLY_PRIVILEGE_XMLIDS` and both halves pick it up.
+- **Roles and reporting were removed in 19.0.1.8.0.** While it carried them,
+  this module rewrote two record rules and two action contexts belonging to
+  `crm`, and shipped its own groups, `ir.model.access` rows, seven reports and
+  a nightly ageing cron.
 
-  Stock Odoo already greys the Sales value out and hides the options *below*
-  what the role implies. What it does not stop is picking an option *above*
-  — handing a BDA `Administrator` on Sales, which grants delete on
-  `crm.lead` and quietly contradicts the access table. That is the hole this
-  closes.
+  Its own records go when the upgrade finds no data file claiming them, but
+  three kinds do not: the two `crm` rules (no-update there, so a `crm` upgrade
+  will not restore them), the two `crm` action contexts (only reapplied when
+  `crm` itself is upgraded) and this module's own cron (no-update here, and a
+  stale no-update record is left alone rather than deleted — it would have
+  gone on calling a method that no longer exists). All three are undone by
+  `migrations/19.0.1.8.0/post-migrate.py`, which is safe to re-run.
 
-- **Sales rights can no longer be granted on their own.** `group_sale_salesman`
-  and its two siblings are the whole Sales suite's groups, not CRM's, so
-  locking the dropdown means a user gets them only by way of a CRM role. That
-  is the intent here, where CRM is the sales app; installing Sales, Invoicing
-  or Point of Sale alongside it makes the lock inconvenient, and the fix is to
-  drop `sales_team.res_groups_privilege_sales` from
-  `READONLY_PRIVILEGE_XMLIDS`.
-
-  `base.user_admin` is the one account that starts out disagreeing: sales_team
-  puts it in `group_sale_manager` directly, so it reads Sales *Administrator*
-  with CRM *No access* until somebody gives it the Admin role. The dropdown
-  shows the granted value rather than a blank, so this is visible rather than
-  silent, and giving it the role settles it.
-
-- **It also rewrites the context of two CRM actions** —
-  `crm.crm_lead_action_pipeline` and `crm.crm_lead_action_forecast`, to drop
-  `search_default_assigned_to_me`. Unlike the record rules below, these two are
-  *not* flagged no-update in CRM, so upgrading `crm` puts the default back and
-  this module has to be upgraded after it. Symptom if that happens: everyone
-  above BDA opens the Pipeline on their own opportunities again.
-
-- **The module rewrites two record rules that belong to CRM** —
-  `crm.crm_rule_personal_lead` and
-  `crm.crm_activity_report_rule_personal_activities`. Both shipped as "my
-  records, plus everything unassigned", which leaks and knows nothing of
-  `bda_ids`. They are rewritten in place because record rules from different
-  groups are OR-ed: a second rule could only ever widen what a BDA sees, never
-  narrow it. Reinstalling `crm` itself would restore Odoo's versions.
+  Users were **not** given anything in exchange for the roles they lost, so
+  anyone who had one has no Sales access until it is granted by hand under
+  Settings. `days_in_current_stage` and `signed_cycle_days` went with the
+  reports; Odoo leaves their columns in place, so the history is still there
+  to read and to drop by hand.
 
 - **Expected Revenue and Salesperson are hidden, not deleted, in the list and
   kanban views.** CRM's own Forecast and My Activities views are built on top of

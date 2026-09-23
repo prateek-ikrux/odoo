@@ -81,8 +81,13 @@
                 relabelled because CRM writes "Expected Closing" as the
                 label's own text, which an attribute cannot override.
             -->
+            <xpath expr="//field[@name='date_deadline'][not(ancestor::list)]"
+                   position="attributes">
+                <attribute name="widget">ordinal_date</attribute>
+            </xpath>
+
             <xpath expr="//label[@for='date_deadline']" position="replace">
-                <field name="initial_outreach_date"/>
+                <field name="initial_outreach_date" widget="ordinal_date"/>
                 <label for="date_deadline" string="Expected Closure Date"/>
             </xpath>
 
@@ -112,16 +117,19 @@
                         -->
                         <field name="commercial_basis"
                                readonly="engagement_type != 'fte_consulting'"/>
-                        <field name="company_currency" invisible="1"/>
                         <!--
                             One line, called Commercial Agreement whichever way
                             the deal was struck. Two columns still sit behind
-                            it, because a percentage and a rupee figure cannot
-                            share one - so only the one the basis calls for is
-                            ever on screen, and the unit is written next to it.
-                            The percentage widget writes its own % sign; the
-                            monetary one writes the rupee symbol, and LPM is
-                            added after the figure.
+                            it, because a percentage and a rupee-free rate
+                            cannot share one - so only the one the basis calls
+                            for is ever on screen.
+
+                            Each carries its unit immediately after the figure
+                            and nothing in front of it: % for a percentage deal
+                            and LPM for a lakhs-per-month one. Which of the two
+                            shows is decided by the basis, so a blended
+                            FTE/Consulting engagement follows whichever way it
+                            was actually struck.
                         -->
                         <label for="commercial_agreement_pct" string="Commercial Agreement"
                                invisible="commercial_basis != 'percentage'"/>
@@ -132,10 +140,7 @@
                         <label for="bill_rate_lpm" string="Commercial Agreement"
                                invisible="commercial_basis != 'lpm'"/>
                         <div class="o_row" invisible="commercial_basis != 'lpm'">
-                            <field name="bill_rate_lpm" nolabel="1"
-                                   widget="monetary"
-                                   options="{'currency_field': 'company_currency'}"
-                                   class="oe_inline"/>
+                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline"/>
                             <span class="oe_inline text-muted">LPM</span>
                         </div>
                         <label for="project_duration" invisible="engagement_type == 'fte'"/>
@@ -171,31 +176,33 @@
                     left of it, and all the date adds is the day the tick
                     went on.
 
-                    numeric, because the date widget otherwise drops the year
-                    from a date in the current year and renders "Sep 19",
-                    which reads as a fragment rather than a date. Not muted,
-                    for the same reason: it is the answer to when, not a hint.
+                    ordinal_date, which always writes the day, the month and
+                    the year. It replaces the numeric option these carried for
+                    the same reason: the stock widget drops the year from a
+                    date in the current year and renders "Sep 19", which reads
+                    as a fragment rather than a date. Not muted either, for the
+                    same reason: it is the answer to when, not a hint.
                 -->
                 <group string="Engagement Milestones" name="engagement_milestones">
                     <label for="milestone_requirement_received"/>
                     <div class="o_row">
                         <field name="milestone_requirement_received" nolabel="1"/>
                         <field name="milestone_requirement_received_date" nolabel="1"
-                               options="{'numeric': true}" class="oe_inline"
+                               widget="ordinal_date" class="oe_inline"
                                invisible="not milestone_requirement_received"/>
                     </div>
                     <label for="milestone_delivery_started"/>
                     <div class="o_row">
                         <field name="milestone_delivery_started" nolabel="1"/>
                         <field name="milestone_delivery_started_date" nolabel="1"
-                               options="{'numeric': true}" class="oe_inline"
+                               widget="ordinal_date" class="oe_inline"
                                invisible="not milestone_delivery_started"/>
                     </div>
                     <label for="milestone_agreement_signed"/>
                     <div class="o_row">
                         <field name="milestone_agreement_signed" nolabel="1"/>
                         <field name="milestone_agreement_signed_date" nolabel="1"
-                               options="{'numeric': true}" class="oe_inline"
+                               widget="ordinal_date" class="oe_inline"
                                invisible="not milestone_agreement_signed"/>
                     </div>
                 </group>
@@ -337,9 +344,7 @@
                 <field name="engagement_type" optional="show"/>
                 <field name="open_positions" optional="show" sum="Open Positions"/>
                 <field name="roles_open" optional="hide"/>
-                <field name="initial_outreach_date" optional="hide"/>
-                <field name="days_in_current_stage" optional="hide"/>
-                <field name="signed_cycle_days" optional="hide"/>
+                <field name="initial_outreach_date" widget="ordinal_date" optional="hide"/>
             </xpath>
             <!--
                 BDA replaces Salesperson here too, rather than sitting next to
@@ -483,47 +488,6 @@
                         context="{'group_by': 'milestone_agreement_signed_date'}"/>
             </xpath>
         </field>
-    </record>
-
-    <!--
-        Pipeline and Forecast open on everything the user is allowed to see,
-        not on their own opportunities.
-
-        Both ship from CRM with 'search_default_assigned_to_me': 1, which
-        pins My Pipeline on every time the menu is opened. For a BDA that
-        filter is redundant - the record rule already holds them to the
-        opportunities they own or work on - and for Sales Lead, Leadership
-        and Admin it is simply wrong: they are granted the whole pipeline and
-        then shown a quarter of it, with nothing on screen to say why. The
-        one person it appears to work for is whoever happens to own most of
-        the records.
-
-        Who sees what is the record rule's job in this module, and the filter
-        is left as a filter: My Pipeline is still in the Filters menu, still
-        means "owned by me or worked by me", and is now chosen rather than
-        assumed.
-
-        My Activities keeps its default. That one is named for what it
-        filters to.
-
-        These two actions are not noupdate in CRM, so upgrading crm restores
-        its context and this module has to be upgraded after it to take it
-        off again.
-    -->
-    <record id="crm.crm_lead_action_pipeline" model="ir.actions.act_window">
-        <field name="context">{
-            'default_type': 'opportunity',
-            'show_user_team_stages': 1,
-        }</field>
-    </record>
-
-    <record id="crm.crm_lead_action_forecast" model="ir.actions.act_window">
-        <field name="context">{
-            'default_type': 'opportunity',
-            'search_default_forecast': 1,
-            'search_default_date_deadline': 1,
-            'forecast_field': 'date_deadline',
-        }</field>
     </record>
 
 </odoo>

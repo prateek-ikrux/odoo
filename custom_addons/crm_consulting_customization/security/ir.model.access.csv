@@ -1,5 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_crm_lead_admin,crm.lead.consulting.admin,crm.model_crm_lead,group_crm_admin,1,1,1,1
-access_res_partner_admin,res.partner.consulting.admin,base.model_res_partner,group_crm_admin,1,1,1,1
-access_crm_stage_admin,crm.stage.consulting.admin,crm.model_crm_stage,group_crm_admin,1,1,1,1
-access_crm_lost_reason_admin,crm.lost.reason.consulting.admin,crm.model_crm_lost_reason,group_crm_admin,1,1,1,1
