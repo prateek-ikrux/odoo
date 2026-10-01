@@ -41,6 +41,19 @@ INDUSTRY_DOMAINS = [
     ('others', 'Others'),
 ]
 
+# The numbers the opportunity form asks for, with the label the form shows
+# and the condition under which it shows them. The web client never enforces
+# required on a number - 0 always passes as filled in - so _check_required_numbers
+# holds the rule on the server instead.
+REQUIRED_NUMBERS = {
+    'open_positions': ('Open Positions', lambda lead: True),
+    'roles_open': ('Roles Open', lambda lead: True),
+    'project_duration': ('Project Duration', lambda lead: lead.engagement_type != 'fte'),
+    'commercial_agreement_pct': (
+        'Commercial Agreement', lambda lead: lead.commercial_basis == 'percentage'),
+    'bill_rate_lpm': ('Commercial Agreement', lambda lead: lead.commercial_basis == 'lpm'),
+}
+
 
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
@@ -77,11 +90,12 @@ class CrmLead(models.Model):
     # classifying a deal never means leaving CRM. Ordinary stored columns,
     # which is what the pivot groups by.
     #
-    # Mandatory on the form rather than on the field, the same way Client Name
-    # is. crm.lead also backs leads raised by the incoming-mail alias and the
-    # website form, neither of which can answer these two, and a requirement
-    # on the field would reject those outright. Everything a person creates
-    # goes through a form, which is where the rule has to hold.
+    # Client Type is mandatory on the form rather than on the field, the same
+    # way Client Name is. crm.lead also backs leads raised by the incoming-mail
+    # alias and the website form, neither of which can answer it, and a
+    # requirement on the field would reject those outright. Everything a
+    # person creates goes through a form, which is where the rule has to hold.
+    # Industry / Domain is the one classification left optional.
     client_type = fields.Selection(
         selection=CLIENT_TYPES,
         string='Client Type',
@@ -225,8 +239,9 @@ class CrmLead(models.Model):
     # -------------------------------------------------------------------
     # Five fixed blocks rather than a linked list: a POC belongs to the
     # opportunity that found them and is not meant to be reused across
-    # opportunities. POC 1 is the primary contact; 2 to 5 are optional and
-    # never validated.
+    # opportunities. POC 1 is the primary contact and every field of it is
+    # mandatory on the form; 2 to 5 are optional, but once a block is opened
+    # the form asks for every field in it.
     #
     # POC 1 is not a new set of fields. An opportunity already carries the
     # name, job position, email and phone of the person being dealt with, and
@@ -353,6 +368,34 @@ class CrmLead(models.Model):
                 raise ValidationError(
                     _('An opportunity needs at least one BDA assigned.'))
 
+    def _check_required_numbers(self, fnames):
+        """Refuse a zero in a number the form marks as required.
+
+        Only the numbers being written are checked, and those whose turn to
+        show has just come - a change of engagement type or commercial basis
+        brings Project Duration or the other Commercial Agreement onto the
+        form. A new record from the form sends every field on it, so it is
+        checked in full; a lead from the mail alias sends none of these and a
+        kanban drag sends only the stage, so neither is refused for a number
+        nobody was asked for.
+        """
+        fnames = set(fnames)
+        if fnames & {'engagement_type', 'commercial_basis'}:
+            fnames |= {'project_duration', 'commercial_agreement_pct', 'bill_rate_lpm'}
+        checked = [fname for fname in REQUIRED_NUMBERS if fname in fnames]
+        if not checked:
+            return
+        for lead in self:
+            missing = []
+            for fname in checked:
+                label, applies = REQUIRED_NUMBERS[fname]
+                if applies(lead) and lead[fname] <= 0 and label not in missing:
+                    missing.append(label)
+            if missing:
+                raise ValidationError(_(
+                    'These fields are mandatory and must be greater than zero: %s',
+                    ', '.join(missing)))
+
     # -------------------------------------------------------------------
     # CRUD
     # -------------------------------------------------------------------
@@ -369,6 +412,8 @@ class CrmLead(models.Model):
             for vals in vals_list
         ]
         leads = super().create(vals_list)
+        for lead, vals in zip(leads, vals_list):
+            lead._check_required_numbers(vals)
         leads._sync_owner_from_bda()
         raised = {
             flag: True
@@ -381,6 +426,7 @@ class CrmLead(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
+        self._check_required_numbers(vals)
         # The BDA list is what people edit, so it wins when both are written.
         if 'bda_ids' in vals:
             self._sync_owner_from_bda()

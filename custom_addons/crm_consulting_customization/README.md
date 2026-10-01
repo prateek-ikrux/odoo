@@ -50,23 +50,23 @@ actually lost — and a lost reason is now mandatory.
 | Label | Technical name | Type | Required |
 |---|---|---|---|
 | BDA | `bda_ids` | Many2many to users | Yes |
-| POC Location | `poc1_location` | Char | No |
-| POC LinkedIn | `poc1_linkedin` | Char, url widget | No |
+| POC Location | `poc1_location` | Char | Yes |
+| POC LinkedIn | `poc1_linkedin` | Char, url widget | Yes |
 | Client Status | `client_status` | Selection: Active / Dormant / Passive | Yes |
 | Initial Outreach Date | `initial_outreach_date` | Date | Yes |
 | Engagement Type | `engagement_type` | Selection: FTE / Consulting / FTE\|Consulting | Yes |
-| Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | No |
-| Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | Never |
-| Bill Rate | `bill_rate_lpm` | Float, lakhs per month | No |
-| Open Positions | `open_positions` | Integer | No |
-| Roles Open | `roles_open` | Integer | No |
-| Project Duration | `project_duration` | Integer, months | No |
+| Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | Yes |
+| Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | Yes, on a percentage deal |
+| Bill Rate | `bill_rate_lpm` | Float, lakhs per month | Yes, on a lakhs-per-month deal |
+| Open Positions | `open_positions` | Integer | Yes |
+| Roles Open | `roles_open` | Integer | Yes |
+| Project Duration | `project_duration` | Integer, months | Yes, unless FTE |
 | Requirement Received | `milestone_requirement_received` (+ `_date`) | Boolean | No |
 | Delivery Started | `milestone_delivery_started` (+ `_date`) | Boolean | No |
 | Agreement Signed | `milestone_agreement_signed` (+ `_date`) | Boolean | No |
 | Client Type | `client_type` | Selection | Yes |
-| Industry / Domain | `industry_domain` | Selection | Yes |
-| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | No |
+| Industry / Domain | `industry_domain` | Selection | No |
+| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | Every field, once that POC is added |
 
 Existing fields are relabelled rather than duplicated wherever one already
 said the same thing:
@@ -82,6 +82,14 @@ said the same thing:
 | POC 1 → Email | `email_from` | Keeps Send Email working on the POC |
 
 Only **Location** and **LinkedIn** are genuinely new on POC 1.
+
+Every field on the opportunity form is mandatory except **Industry / Domain**
+and **Expected Closure Date**. That covers all of POC 1, the opportunity's own
+contact fields included. The milestone ticks and the Notes tab are not fields
+anyone fills in, so they stay optional.
+
+The priority stars that CRM puts beside the closing date are off the form. The
+column is untouched, so stars already given are kept.
 
 ### Salesperson and BDA
 
@@ -154,8 +162,8 @@ not use. The reason is required whenever an opportunity is marked lost.
 
 ### Client Type and Industry / Domain
 
-Both are set on the opportunity, on the front page next to the client, and both
-are mandatory. Nothing is read from or written to the client record — the same
+Both are set on the opportunity, on the front page next to the client. Client
+Type is mandatory; Industry / Domain is optional. Nothing is read from or written to the client record — the same
 company can be classified one way on one opportunity and another way on the
 next, and neither affects the other.
 
@@ -222,14 +230,24 @@ left-hand value) orphans the records already using it; changing only its label
   had an owner is left empty, and the form asks for a BDA the next time it is
   saved.
 
-- **Client Type, Industry / Domain and Client Name are mandatory on the form,
+- **Client Type, Client Name and the POC 1 fields are mandatory on the form,
   not on the field.** `crm.lead` also backs leads raised by the incoming-mail
-  alias and the website form, and neither of those can answer any of the three.
+  alias and the website form, and neither of those can answer all of them.
   A requirement on the field would reject them outright, so the rule is written
   on the opportunity form, which is the only way a person creates one.
 
   A lead that arrives by email can therefore reach the pipeline unclassified.
   It gets classified the first time somebody opens and saves it.
+
+- **The required numbers are held on the server.** Open Positions, Roles Open,
+  Project Duration and Commercial Agreement are marked required on the form,
+  but Odoo's web client lets a 0 through as filled in. `_check_required_numbers`
+  refuses a zero instead — for the numbers being written, plus Project Duration
+  and Commercial Agreement whenever the engagement type or commercial basis
+  changes. A new opportunity from the form sends every number and is checked
+  in full; a lead from the mail alias sends none of them and a kanban drag
+  sends only the stage, so neither is refused. An older opportunity still
+  holding a 0 is only held to the rule once one of those numbers is edited.
 
 - **Client Type and Industry / Domain used to live on the company.** Up to
   1.2.0 they were company fields mirrored onto the opportunity. As of 1.3.0
