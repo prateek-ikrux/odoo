@@ -23,6 +23,11 @@ TYPE_SELECTION = [
     ('sow', 'Statement of Work'),
 ]
 
+YES_NO_SELECTION = [
+    ('no', 'No'),
+    ('yes', 'Yes'),
+]
+
 # Fallback for the 'contracts.reminder_days' system parameter: how many days
 # before the end date an expiry reminder goes out.
 DEFAULT_REMINDER_DAYS = '45,30,7'
@@ -112,6 +117,11 @@ class Contract(models.Model):
     reminder_last_sent = fields.Date(
         string='Reminder Sent On', readonly=True, copy=False,
     )
+    is_extended = fields.Selection(
+        YES_NO_SELECTION, string='Is Contract Getting Extended?',
+        required=True, default='no', tracking=True, copy=False,
+        help="Answer Yes to record an Extended End Date. Answering No clears it.",
+    )
     extended_end_date = fields.Date(
         string='Extended End Date', tracking=True, copy=False,
         help="Set when the contract is extended beyond its original end date. "
@@ -123,6 +133,12 @@ class Contract(models.Model):
         compute='_compute_effective_end_date', store=True, index=True,
         help="The date the contract actually runs to: the extended end date "
              "when one is set, otherwise the end date.",
+    )
+    is_appraisal_due = fields.Selection(
+        YES_NO_SELECTION, string='Is Annual Appraisal Due?',
+        required=True, default='no', tracking=True,
+        help="Answer Yes to track the next annual appraisal date. "
+             "Answering No clears it.",
     )
     annual_appraisal_due = fields.Date(
         string='Annual Appraisal Due',
@@ -169,16 +185,17 @@ class Contract(models.Model):
         for rec in self:
             rec.effective_end_date = rec.extended_end_date or rec.end_date
 
-    @api.depends('start_date')
+    @api.depends('start_date', 'is_appraisal_due')
     def _compute_annual_appraisal_due(self):
-        """The next start-date anniversary that has not passed yet.
+        """The next start-date anniversary that has not passed yet, or nothing
+        when no appraisal is due on this contract.
 
         Stored, so it can be sorted and filtered on, which means it goes stale
         as anniversaries pass - the nightly cron refreshes the ones that have.
         """
         today = fields.Date.context_today(self)
         for rec in self:
-            if not rec.start_date:
+            if rec.is_appraisal_due != 'yes' or not rec.start_date:
                 rec.annual_appraisal_due = False
                 continue
             due = rec.start_date
@@ -209,6 +226,29 @@ class Contract(models.Model):
         # The operator carries over unchanged because the mapping is increasing.
         target = fields.Date.add(today, days=value)
         return [('state', '=', 'active'), ('effective_end_date', operator, target)]
+
+    @api.onchange('is_extended')
+    def _onchange_is_extended(self):
+        """Clear the hidden date straight away, so the form stops showing an
+        effective end date taken from it."""
+        if self.is_extended != 'yes':
+            self.extended_end_date = False
+
+    @api.model
+    def _normalize_extension_vals(self, vals, records=None):
+        """Keep the extension answer and the extended date in step.
+
+        Answering No wipes the date; a date written without an answer (an
+        import, a script) is taken as a Yes. ``records`` is the recordset
+        being written, so a No that changes nothing does not add the date to
+        the values and needlessly re-arm the reminder sequence.
+        """
+        if vals.get('is_extended') == 'no':
+            if records is None or any(records.mapped('extended_end_date')):
+                vals['extended_end_date'] = False
+        elif vals.get('extended_end_date') and 'is_extended' not in vals:
+            vals['is_extended'] = 'yes'
+        return vals
 
     def _get_documents(self):
         """Every file on the record: uploaded through the form widget, or
@@ -348,6 +388,7 @@ class Contract(models.Model):
             # so the insert would fail on the NOT NULL column instead of here.
             if vals.get('contract_type') == 'sow' and not vals.get('parent_contract_id'):
                 raise ValidationError(_("A parent contract is required."))
+            self._normalize_extension_vals(vals)
         records = super().create(vals_list)
         records._link_attachments_to_record()
         # @api.constrains only fires for fields present in the values, so a
@@ -357,6 +398,7 @@ class Contract(models.Model):
         return records
 
     def write(self, vals):
+        self._normalize_extension_vals(vals, self)
         if 'end_date' in vals or 'extended_end_date' in vals:
             # A renewal or an extension pushes the end out, which has to re-arm
             # the whole reminder sequence. setdefault keeps the cron's own write

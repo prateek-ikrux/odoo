@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.5.0',
+    'version': '19.0.1.6.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -61,6 +61,11 @@ Each section exports its own filtered Excel report.
         'views/res_config_settings_views.xml',
         'views/contract_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'contracts/static/src/js/contracts_date_field.js',
+        ],
+    },
     'installable': True,
     'application': True,
     'license': 'LGPL-3',

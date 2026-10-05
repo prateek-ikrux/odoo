@@ -42,12 +42,12 @@
 
                 <group>
                     <group string="Start Date Range" name="start_range">
-                        <field name="start_date_from" string="From" placeholder="Any..."/>
-                        <field name="start_date_to" string="To" placeholder="Any..."/>
+                        <field name="start_date_from" widget="contracts_date" string="From" placeholder="Any..."/>
+                        <field name="start_date_to" widget="contracts_date" string="To" placeholder="Any..."/>
                     </group>
                     <group string="End Date Range" name="end_range">
-                        <field name="end_date_from" string="From" placeholder="Any..."/>
-                        <field name="end_date_to" string="To" placeholder="Any..."/>
+                        <field name="end_date_from" widget="contracts_date" string="From" placeholder="Any..."/>
+                        <field name="end_date_to" widget="contracts_date" string="To" placeholder="Any..."/>
                     </group>
                 </group>
 
