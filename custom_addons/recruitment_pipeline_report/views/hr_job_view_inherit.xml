@@ -39,6 +39,10 @@
                 <field name="x_role_opened_date"    string="Role Opened to Team"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="replace">
+                <!-- Hidden, not removed: the Applications button reads it in
+                     its context, and the form fails to open the applications
+                     without it. -->
+                <field name="user_id" invisible="1"/>
                 <field name="x_recruiter_team_id"
                        string="Recruiter Group"
                        options="{'no_create_edit': True}"
