@@ -28,6 +28,28 @@ YES_NO_SELECTION = [
     ('yes', 'Yes'),
 ]
 
+BILLING_CURRENCY_SELECTION = [
+    ('inr', 'INR'),
+    ('usd', 'USD'),
+    ('other', 'Others'),
+]
+
+BILLING_FREQUENCY_SELECTION = [
+    ('monthly', 'Monthly'),
+    ('quarterly', 'Quarterly'),
+    ('yearly', 'Yearly'),
+]
+
+# Set on the overarching contract and copied down to the ones placed under it.
+BILLING_FIELDS = [
+    'bill_rate',
+    'billing_currency',
+    'billing_currency_other',
+    'billing_frequency',
+    'billing_poc',
+    'billing_start_date',
+]
+
 # Fallback for the 'contracts.reminder_days' system parameter: how many days
 # before the end date an expiry reminder goes out.
 DEFAULT_REMINDER_DAYS = '45,30,7'
@@ -71,8 +93,8 @@ class Contract(models.Model):
         string='Role', tracking=True,
     )
     poc = fields.Char(
-        string='POC', required=True, tracking=True,
-        help="Point of contact for this contract.",
+        string='TA POC', required=True, tracking=True,
+        help="Talent acquisition point of contact for this contract.",
     )
     created_by_id = fields.Many2one(
         'res.users', string='Created By',
@@ -147,6 +169,44 @@ class Contract(models.Model):
     )
     remarks = fields.Text(string='Remarks')
 
+    # ── Billing ───────────────────────────────────────────────────
+    # Agreed on the overarching contract. A placed contract bills on the same
+    # terms, so it takes every one of them from the contract above it.
+    bill_rate = fields.Float(
+        string='Bill Rate', digits=(5, 2), tracking=True,
+        compute='_compute_billing', store=True, readonly=False, precompute=True,
+        recursive=True,
+        help="Bill rate, as a percentage.",
+    )
+    billing_currency = fields.Selection(
+        BILLING_CURRENCY_SELECTION, string='Billing Currency', tracking=True,
+        compute='_compute_billing', store=True, readonly=False, precompute=True,
+        recursive=True,
+    )
+    billing_currency_other = fields.Char(
+        string='Other Currency', tracking=True,
+        compute='_compute_billing', store=True, readonly=False, precompute=True,
+        recursive=True,
+        help="The currency billed in, when it is neither INR nor USD.",
+    )
+    billing_frequency = fields.Selection(
+        BILLING_FREQUENCY_SELECTION, string='Billing Frequency', tracking=True,
+        compute='_compute_billing', store=True, readonly=False, precompute=True,
+        recursive=True,
+    )
+    billing_poc = fields.Char(
+        string='Billing POC', tracking=True,
+        compute='_compute_billing', store=True, readonly=False, precompute=True,
+        recursive=True,
+        help="Person in charge of billing for this contract. Never the same "
+             "person as the TA POC.",
+    )
+    billing_start_date = fields.Date(
+        string='Billing Start Date', tracking=True,
+        compute='_compute_billing', store=True, readonly=False, precompute=True,
+        recursive=True,
+    )
+
     # ── Display name ──────────────────────────────────────────────
     @api.depends('contract_type', 'client', 'role', 'candidate')
     def _compute_display_name(self):
@@ -166,6 +226,18 @@ class Contract(models.Model):
                 rec.client = rec.parent_contract_id.client
             elif not rec.client:
                 rec.client = False
+
+    @api.depends('contract_type', *(f'parent_contract_id.{f}' for f in BILLING_FIELDS))
+    def _compute_billing(self):
+        """A placed contract always bills on the terms of the contract above it."""
+        for rec in self:
+            if rec.contract_type == 'sow' and rec.parent_contract_id:
+                for fname in BILLING_FIELDS:
+                    rec[fname] = rec.parent_contract_id[fname]
+            else:
+                for fname in BILLING_FIELDS:
+                    if not rec[fname]:
+                        rec[fname] = False
 
     @api.depends('child_contract_ids.state')
     def _compute_active_child_count(self):
@@ -233,6 +305,12 @@ class Contract(models.Model):
         effective end date taken from it."""
         if self.is_extended != 'yes':
             self.extended_end_date = False
+
+    @api.onchange('billing_currency')
+    def _onchange_billing_currency(self):
+        """The free-text currency only means something under Others."""
+        if self.billing_currency != 'other':
+            self.billing_currency_other = False
 
     @api.model
     def _normalize_extension_vals(self, vals, records=None):
@@ -357,6 +435,36 @@ class Contract(models.Model):
                       start=parent.start_date, end=parent.effective_end_date)
                 )
 
+    @api.constrains('poc', 'billing_poc')
+    def _check_billing_poc(self):
+        for rec in self:
+            if not (rec.poc and rec.billing_poc) \
+                    or rec.poc.strip().casefold() != rec.billing_poc.strip().casefold():
+                continue
+            if rec.contract_type == 'sow':
+                raise ValidationError(
+                    _("The TA POC on contract '%(name)s' cannot be %(poc)s, who is "
+                      "the Billing POC on its parent contract '%(parent)s'.",
+                      name=rec.display_name, poc=rec.billing_poc,
+                      parent=rec.parent_contract_id.display_name)
+                )
+            raise ValidationError(
+                _("The Billing POC cannot be the same person as the TA POC "
+                  "on contract '%s'.", rec.display_name)
+            )
+
+    @api.constrains('bill_rate', 'billing_currency', 'billing_currency_other')
+    def _check_billing(self):
+        for rec in self:
+            if rec.bill_rate < 0:
+                raise ValidationError(
+                    _("Bill Rate cannot be negative on contract '%s'.", rec.display_name)
+                )
+            if rec.billing_currency == 'other' and not (rec.billing_currency_other or '').strip():
+                raise ValidationError(
+                    _("Name the billing currency on contract '%s'.", rec.display_name)
+                )
+
     @api.constrains('attachment_ids')
     def _check_attachments(self):
         for rec in self:
@@ -388,6 +496,10 @@ class Contract(models.Model):
             # so the insert would fail on the NOT NULL column instead of here.
             if vals.get('contract_type') == 'sow' and not vals.get('parent_contract_id'):
                 raise ValidationError(_("A parent contract is required."))
+            if vals.get('contract_type') == 'sow':
+                # Taken from the parent; anything passed in would override that.
+                for fname in BILLING_FIELDS:
+                    vals.pop(fname, None)
             self._normalize_extension_vals(vals)
         records = super().create(vals_list)
         records._link_attachments_to_record()
@@ -406,6 +518,13 @@ class Contract(models.Model):
             vals.setdefault('reminder_sent_days', 0)
             vals.setdefault('reminder_last_sent', False)
         res = super().write(vals)
+        if any(fname in vals for fname in BILLING_FIELDS) \
+                and not self.env.context.get('contracts_billing_sync'):
+            # A placed contract cannot be given billing terms of its own; put
+            # back the ones of the contract above it. Called outside of a
+            # recompute, the assignments come back through here - hence the flag.
+            self.filtered(lambda c: c.contract_type == 'sow') \
+                .with_context(contracts_billing_sync=True)._compute_billing()
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()
         if 'end_date' in vals or 'extended_end_date' in vals or 'state' in vals:

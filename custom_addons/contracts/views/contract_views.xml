@@ -32,11 +32,16 @@
                 <field name="contract_type" column_invisible="1"/>
                 <field name="client"/>
                 <field name="poc" optional="show"/>
+                <field name="billing_poc" optional="show"/>
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                 <field name="start_date" widget="contracts_date"/>
                 <field name="end_date" widget="contracts_date"/>
                 <field name="extended_end_date" widget="contracts_date" optional="hide"/>
                 <field name="annual_appraisal_due" widget="contracts_date" optional="hide"/>
+                <field name="bill_rate" optional="hide"/>
+                <field name="billing_currency" optional="hide"/>
+                <field name="billing_frequency" optional="hide"/>
+                <field name="billing_start_date" widget="contracts_date" optional="hide"/>
                 <field name="days_left" string="Days Left"/>
                 <field name="attachment_count" string="Attachments" optional="show"/>
                 <field name="child_contract_count" string="Linked"
@@ -150,6 +155,28 @@
                         </group>
                     </group>
 
+                    <group string="Billing" name="billing">
+                        <group name="billing_terms">
+                            <label for="bill_rate"/>
+                            <div class="o_row">
+                                <field name="bill_rate" class="oe_inline"/>
+                                <span>%</span>
+                            </div>
+                            <field name="billing_currency" widget="radio"
+                                   options="{'horizontal': true}"/>
+                            <field name="billing_currency_other"
+                                   placeholder="e.g. EUR, GBP..."
+                                   invisible="billing_currency != 'other'"
+                                   required="billing_currency == 'other'"/>
+                            <field name="billing_frequency" widget="radio"
+                                   options="{'horizontal': true}"/>
+                        </group>
+                        <group name="billing_contact">
+                            <field name="billing_poc" string="Billing POC in Charge"/>
+                            <field name="billing_start_date" widget="contracts_date"/>
+                        </group>
+                    </group>
+
                     <notebook>
                         <page string="Documents" name="documents">
                             <field name="attachment_ids"
@@ -198,6 +225,7 @@
                                             </group>
                                             <group>
                                                 <field name="poc" readonly="1"/>
+                                                <field name="billing_poc" readonly="1"/>
                                                 <field name="created_by_id"
                                                        widget="many2one_avatar_user" readonly="1"/>
                                                 <field name="state" readonly="1"/>
@@ -227,6 +255,7 @@
             <search string="Search Contracts">
                 <field name="client"/>
                 <field name="poc"/>
+                <field name="billing_poc"/>
                 <field name="created_by_id"/>
 
                 <filter name="filter_active" string="Active"
@@ -256,6 +285,7 @@
                     <filter name="group_client" string="Client" domain="[]" context="{'group_by': 'client'}"/>
                     <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
                     <filter name="group_created_by" string="Created By" domain="[]" context="{'group_by': 'created_by_id'}"/>
+                    <filter name="group_billing_frequency" string="Billing Frequency" domain="[]" context="{'group_by': 'billing_frequency'}"/>
                     <filter name="group_end_date" string="End Date" domain="[]" context="{'group_by': 'end_date'}"/>
                 </group>
             </search>
@@ -329,6 +359,31 @@
                 <field name="parent_contract_id"
                        options="{'no_create': True}"
                        required="1"/>
+            </xpath>
+
+            <!-- Billing terms are agreed on the contract above and copied down,
+                 so they are shown here but changed only there. -->
+            <xpath expr="//group[@name='billing']" position="attributes">
+                <attribute name="string">Billing (from Parent Contract)</attribute>
+            </xpath>
+            <xpath expr="//group[@name='billing']//field[@name='bill_rate']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='billing']//field[@name='billing_currency']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='billing']//field[@name='billing_currency_other']" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="required">0</attribute>
+            </xpath>
+            <xpath expr="//group[@name='billing']//field[@name='billing_frequency']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='billing']//field[@name='billing_poc']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='billing']//field[@name='billing_start_date']" position="attributes">
+                <attribute name="readonly">1</attribute>
             </xpath>
 
             <!-- The linked-contracts button and tab are for the contract above;
