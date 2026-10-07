@@ -41,17 +41,16 @@ INDUSTRY_DOMAINS = [
     ('others', 'Others'),
 ]
 
-# The numbers the opportunity form asks for, with the label the form shows
+# The numbers the opportunity form requires, with the label the form shows
 # and the condition under which it shows them. The web client never enforces
 # required on a number - 0 always passes as filled in - so _check_required_numbers
 # holds the rule on the server instead.
+#
+# Open Positions, Roles Open and Commercial Agreement are optional: a deal is
+# often in the pipeline before either the requirement or the commercials are
+# known. Adding one back is a line here plus required on the form field.
 REQUIRED_NUMBERS = {
-    'open_positions': ('Open Positions', lambda lead: True),
-    'roles_open': ('Roles Open', lambda lead: True),
     'project_duration': ('Project Duration', lambda lead: lead.engagement_type != 'fte'),
-    'commercial_agreement_pct': (
-        'Commercial Agreement', lambda lead: lead.commercial_basis == 'percentage'),
-    'bill_rate_lpm': ('Commercial Agreement', lambda lead: lead.commercial_basis == 'lpm'),
 }
 
 
@@ -435,15 +434,15 @@ class CrmLead(models.Model):
 
         Only the numbers being written are checked, and those whose turn to
         show has just come - a change of engagement type or commercial basis
-        brings Project Duration or the other Commercial Agreement onto the
-        form. A new record from the form sends every field on it, so it is
-        checked in full; a lead from the mail alias sends none of these and a
-        kanban drag sends only the stage, so neither is refused for a number
-        nobody was asked for.
+        can bring one onto the form (today, Project Duration when a deal stops
+        being pure FTE). A new record from the form sends every field on it,
+        so it is checked in full; a lead from the mail alias sends none of
+        these and a kanban drag sends only the stage, so neither is refused
+        for a number nobody was asked for.
         """
         fnames = set(fnames)
         if fnames & {'engagement_type', 'commercial_basis'}:
-            fnames |= {'project_duration', 'commercial_agreement_pct', 'bill_rate_lpm'}
+            fnames |= set(REQUIRED_NUMBERS)
         checked = [fname for fname in REQUIRED_NUMBERS if fname in fnames]
         if not checked:
             return

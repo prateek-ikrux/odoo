@@ -56,17 +56,17 @@ actually lost — and a lost reason is now mandatory.
 | Initial Outreach Date | `initial_outreach_date` | Date | Yes |
 | Engagement Type | `engagement_type` | Selection: FTE / Consulting / FTE\|Consulting | Yes |
 | Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | Yes |
-| Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | Yes, on a percentage deal |
-| Bill Rate | `bill_rate_lpm` | Float, lakhs per month | Yes, on a lakhs-per-month deal |
-| Open Positions | `open_positions` | Integer | Yes |
-| Roles Open | `roles_open` | Integer | Yes |
+| Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | No |
+| Bill Rate | `bill_rate_lpm` | Float, lakhs per month | No |
+| Open Positions | `open_positions` | Integer | No |
+| Roles Open | `roles_open` | Integer | No |
 | Project Duration | `project_duration` | Integer, months | Yes, unless FTE |
 | Requirement Received | `milestone_requirement_received` (+ `_date`) | Boolean | No |
 | Delivery Started | `milestone_delivery_started` (+ `_date`) | Boolean | No |
 | Agreement Signed | `milestone_agreement_signed` (+ `_date`) | Boolean | No |
 | Client Type | `client_type` | Selection | Yes |
 | Industry / Domain | `industry_domain` | Selection | No |
-| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | Every field, once that POC is added |
+| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | Every field except Phone Number and Email, once that POC is added |
 
 Existing fields are relabelled rather than duplicated wherever one already
 said the same thing:
@@ -91,9 +91,10 @@ the customer. Both directions are switched off (19.0.1.12.0), so choosing a
 client never fills in the POC and a POC's details never overwrite the
 company's.
 
-Every field on the opportunity form is mandatory except **Industry / Domain**
-and **Expected Closure Date**. That covers all of POC 1, the opportunity's own
-contact fields included. The milestone ticks and the Notes tab are not fields
+Every field on the opportunity form is mandatory except **Industry / Domain**,
+**Expected Closure Date**, **Commercial Agreement**, **Open Positions**,
+**Roles Open**, and the **Phone Number** and **Email** of every POC. That
+covers the rest of POC 1, the opportunity's own contact fields included. The milestone ticks and the Notes tab are not fields
 anyone fills in, so they stay optional.
 
 The priority stars that CRM puts beside the closing date are off the form. The
@@ -238,7 +239,7 @@ left-hand value) orphans the records already using it; changing only its label
   had an owner is left empty, and the form asks for a BDA the next time it is
   saved.
 
-- **Client Type, Client Name and the POC 1 fields are mandatory on the form,
+- **Client Type, Client Name and the POC 1 fields (bar phone and email) are mandatory on the form,
   not on the field.** `crm.lead` also backs leads raised by the incoming-mail
   alias and the website form, and neither of those can answer all of them.
   A requirement on the field would reject them outright, so the rule is written
@@ -247,12 +248,13 @@ left-hand value) orphans the records already using it; changing only its label
   A lead that arrives by email can therefore reach the pipeline unclassified.
   It gets classified the first time somebody opens and saves it.
 
-- **The required numbers are held on the server.** Open Positions, Roles Open,
-  Project Duration and Commercial Agreement are marked required on the form,
-  but Odoo's web client lets a 0 through as filled in. `_check_required_numbers`
-  refuses a zero instead — for the numbers being written, plus Project Duration
-  and Commercial Agreement whenever the engagement type or commercial basis
-  changes. A new opportunity from the form sends every number and is checked
+- **The required numbers are held on the server.** Project Duration (on any
+  deal that is not pure FTE) is the one number still required — Open
+  Positions, Roles Open and Commercial Agreement became optional in
+  19.0.1.13.0. Odoo's web client lets a 0 through as filled in, so
+  `_check_required_numbers` refuses a zero instead — for the numbers being
+  written, plus Project Duration whenever the engagement type or commercial
+  basis changes. A new opportunity from the form sends every number and is checked
   in full; a lead from the mail alias sends none of them and a kanban drag
   sends only the stage, so neither is refused. An older opportunity still
   holding a 0 is only held to the rule once one of those numbers is edited.

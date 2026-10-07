@@ -153,14 +153,12 @@
                                invisible="commercial_basis != 'percentage'"/>
                         <div class="o_row" invisible="commercial_basis != 'percentage'">
                             <field name="commercial_agreement_pct" nolabel="1"
-                                   widget="percentage" class="oe_inline"
-                                   required="commercial_basis == 'percentage'"/>
+                                   widget="percentage" class="oe_inline"/>
                         </div>
                         <label for="bill_rate_lpm" string="Commercial Agreement"
                                invisible="commercial_basis != 'lpm'"/>
                         <div class="o_row" invisible="commercial_basis != 'lpm'">
-                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline"
-                                   required="commercial_basis == 'lpm'"/>
+                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline"/>
                             <span class="oe_inline text-muted">LPM</span>
                         </div>
                         <label for="project_duration" invisible="engagement_type == 'fte'"/>
@@ -177,15 +175,12 @@
                     <!--
                         Two counts, not one. Open Positions is how many
                         vacancies there are; Roles Open is how many distinct
-                        roles they span.
-
-                        required on a number only marks the label: the web
-                        client lets 0 through as filled in. The rule itself
-                        is held by _check_required_numbers on the model.
+                        roles they span. Both optional: early on a deal often
+                        has neither figure yet.
                     -->
                     <group string="Requirement" name="requirement">
-                        <field name="open_positions" required="1"/>
-                        <field name="roles_open" required="1"/>
+                        <field name="open_positions"/>
+                        <field name="roles_open"/>
                     </group>
                 </group>
 
@@ -244,7 +239,9 @@
                     one POC to five and stops - there is no sixth block for a
                     toggle to open.
 
-                    Every field of POC 1 is mandatory. A further block is
+                    Every field of POC 1 is mandatory except the phone number
+                    and email, which a POC may not have shared yet. The same
+                    goes for a further block, whose other fields are
                     mandatory only once it is open, keyed off its own toggle
                     rather than left to the group's invisible: the web client
                     reads required per field, not per group, so a hidden
@@ -254,8 +251,8 @@
                     <group string="POC 1" name="poc_primary">
                         <field name="contact_name" string="Name" required="1"/>
                         <field name="function" string="Designation" required="1"/>
-                        <field name="phone" string="Phone Number" widget="phone" required="1"/>
-                        <field name="email_from" string="Email" widget="email" required="1"/>
+                        <field name="phone" string="Phone Number" widget="phone"/>
+                        <field name="email_from" string="Email" widget="email"/>
                         <field name="poc1_location" string="Location" required="1"/>
                         <field name="poc1_linkedin" string="LinkedIn" widget="url" required="1"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
@@ -264,8 +261,8 @@
                     <group string="POC 2" invisible="not show_poc2">
                         <field name="poc2_name" string="Name" required="show_poc2"/>
                         <field name="poc2_designation" string="Designation" required="show_poc2"/>
-                        <field name="poc2_phone" string="Phone Number" widget="phone" required="show_poc2"/>
-                        <field name="poc2_email" string="Email" widget="email" required="show_poc2"/>
+                        <field name="poc2_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc2_email" string="Email" widget="email"/>
                         <field name="poc2_location" string="Location" required="show_poc2"/>
                         <field name="poc2_linkedin" string="LinkedIn" widget="url" required="show_poc2"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
@@ -274,8 +271,8 @@
                     <group string="POC 3" invisible="not show_poc3">
                         <field name="poc3_name" string="Name" required="show_poc3"/>
                         <field name="poc3_designation" string="Designation" required="show_poc3"/>
-                        <field name="poc3_phone" string="Phone Number" widget="phone" required="show_poc3"/>
-                        <field name="poc3_email" string="Email" widget="email" required="show_poc3"/>
+                        <field name="poc3_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc3_email" string="Email" widget="email"/>
                         <field name="poc3_location" string="Location" required="show_poc3"/>
                         <field name="poc3_linkedin" string="LinkedIn" widget="url" required="show_poc3"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
@@ -284,8 +281,8 @@
                     <group string="POC 4" invisible="not show_poc4">
                         <field name="poc4_name" string="Name" required="show_poc4"/>
                         <field name="poc4_designation" string="Designation" required="show_poc4"/>
-                        <field name="poc4_phone" string="Phone Number" widget="phone" required="show_poc4"/>
-                        <field name="poc4_email" string="Email" widget="email" required="show_poc4"/>
+                        <field name="poc4_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc4_email" string="Email" widget="email"/>
                         <field name="poc4_location" string="Location" required="show_poc4"/>
                         <field name="poc4_linkedin" string="LinkedIn" widget="url" required="show_poc4"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
@@ -294,8 +291,8 @@
                     <group string="POC 5" invisible="not show_poc5">
                         <field name="poc5_name" string="Name" required="show_poc5"/>
                         <field name="poc5_designation" string="Designation" required="show_poc5"/>
-                        <field name="poc5_phone" string="Phone Number" widget="phone" required="show_poc5"/>
-                        <field name="poc5_email" string="Email" widget="email" required="show_poc5"/>
+                        <field name="poc5_phone" string="Phone Number" widget="phone"/>
+                        <field name="poc5_email" string="Email" widget="email"/>
                         <field name="poc5_location" string="Location" required="show_poc5"/>
                         <field name="poc5_linkedin" string="LinkedIn" widget="url" required="show_poc5"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
@@ -331,7 +328,7 @@
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-users" title="Open Positions"/>
                     <div class="mb-0">
-                        <field name="open_positions" class="oe_inline me-5 o_field_highlight mb-0" required="1"/>
+                        <field name="open_positions" class="oe_inline me-5 o_field_highlight mb-0"/>
                         <field name="priority" class="oe_inline mb-0" nolabel="1" widget="priority"/>
                     </div>
                 </div>
@@ -416,8 +413,26 @@
             <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            <xpath expr="//field[@name='expected_revenue']" position="after">
-                <field name="open_positions" display="full" muted="1"/>
+            <!--
+                No priority stars on the card; they came off the form too.
+                Hidden rather than removed, so views that anchor on the node
+                still build. Any stars already given are kept in the column.
+            -->
+            <xpath expr="//footer//field[@name='priority']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!--
+                Open Positions goes on every card, beside the revenue block
+                rather than inside it: CRM only renders that block when there
+                is an Expected Revenue, which is hidden and never set here, so
+                a count placed inside it would never show.
+            -->
+            <xpath expr="//div[hasclass('o_kanban_card_crm_lead_revenue')]" position="after">
+                <div class="d-flex align-items-center text-muted" title="Open Positions">
+                    <i class="fa fa-users me-1" role="img" aria-label="Open Positions"/>
+                    <span class="me-1">Open Positions:</span>
+                    <field name="open_positions"/>
+                </div>
             </xpath>
 
             <!-- Tags are off the form, so the card does not carry them either. -->
@@ -455,6 +470,10 @@
         <field name="inherit_id" ref="crm.view_crm_lead_kanban"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='tag_ids']" position="replace"/>
+            <!-- No priority stars here either; see the pipeline card above. -->
+            <xpath expr="//footer//field[@name='priority']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 
