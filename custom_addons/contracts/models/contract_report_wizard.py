@@ -4,7 +4,7 @@ import base64
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from .contract import STATE_LABELS, STATE_SELECTION, TERM_LABELS, TYPE_SELECTION
+from .contract import STATE_LABELS, STATE_SELECTION, TYPE_SELECTION
 from .contract_report_xlsx import MSA_COLUMNS, SOW_COLUMNS, build_contract_report_xlsx
 
 # Per-section workbook settings: columns, worksheet name, download filename.
@@ -53,6 +53,13 @@ class ContractReportWizard(models.TransientModel):
         help="Only keep active contracts ending within this many days from today. "
              "Leave at 0 to ignore.",
     )
+
+    # ── Generated file ────────────────────────────────────────────
+    # Held on the wizard rather than in an attachment: the wizard is transient,
+    # so the file goes with it when the vacuum runs, instead of every export
+    # leaving a workbook behind in the database for good.
+    report_file = fields.Binary(attachment=False, readonly=True)
+    report_filename = fields.Char(readonly=True)
 
     # ── Constraints ───────────────────────────────────────────────
     @api.constrains('start_date_from', 'start_date_to', 'end_date_from', 'end_date_to')
@@ -152,9 +159,13 @@ class ContractReportWizard(models.TransientModel):
             order='client asc, effective_end_date desc, id asc',
         )
 
+        term_labels = dict(
+            self.env['contracts.contract']._fields['term']._description_selection(self.env)
+        )
         rows = []
         for seq, contract in enumerate(contracts, start=1):
             attachments = contract._get_documents()
+            open_ended = contract.term == 'until_completion'
             rows.append({
                 'seq': seq,
                 'client': contract.client or '',
@@ -162,12 +173,11 @@ class ContractReportWizard(models.TransientModel):
                 'role': contract.role or '',
                 'created_by': contract.created_by_id.name or '',
                 'start_date': contract.start_date,
+                'end_date': contract.end_date,
                 # No end date and nothing counting down: the term stands in
                 # for the one and the other is left out.
-                'end_date': contract.end_date if contract.term != 'until_completion'
-                else TERM_LABELS['until_completion'],
-                'days_left': contract.days_left if contract.term != 'until_completion'
-                else None,
+                'end_date_label': term_labels['until_completion'] if open_ended else '',
+                'days_left': None if open_ended else contract.days_left,
                 'status': STATE_LABELS.get(contract.state, contract.state),
                 'termination_date': contract.termination_date,
                 'attachment_count': len(attachments),
@@ -198,14 +208,13 @@ class ContractReportWizard(models.TransientModel):
             filter_lines=self._get_filter_lines(),
             generated_on=generated_on,
         )
-        attachment = self.env['ir.attachment'].create({
-            'name': filename,
-            'type': 'binary',
-            'datas': base64.b64encode(xlsx_data),
-            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        self.write({
+            'report_file': base64.b64encode(xlsx_data),
+            'report_filename': filename,
         })
         return {
             'type': 'ir.actions.act_url',
-            'url': f'/web/content/{attachment.id}?download=true',
+            'url': f'/web/content?model={self._name}&id={self.id}&field=report_file'
+                   f'&filename_field=report_filename&download=true',
             'target': 'self',
         }

@@ -71,12 +71,20 @@
         <field name="arch" type="xml">
             <form string="Contract">
                 <header>
+                    <!-- One confirmation either way: the plain question when
+                         nothing runs under the contract, otherwise the dialog
+                         that names what does, which asks the same thing. -->
                     <button name="action_terminate"
                             string="Terminate"
                             type="object"
                             class="btn-danger"
                             confirm="Terminate this contract? It will be closed as of today."
-                            invisible="state == 'terminated'"/>
+                            invisible="state == 'terminated' or active_child_count"/>
+                    <button name="action_terminate"
+                            string="Terminate"
+                            type="object"
+                            class="btn-danger"
+                            invisible="state == 'terminated' or not active_child_count"/>
                     <button name="action_reset_to_active"
                             string="Reset to Active"
                             type="object"
@@ -143,14 +151,17 @@
                             <field name="is_extended" widget="radio"
                                    options="{'horizontal': true}"
                                    invisible="term == 'until_completion'"/>
+                            <!-- The term only clears these on save, so switching
+                                 to it and back by mistake loses nothing; until
+                                 then they are hidden rather than wiped. -->
                             <field name="extended_end_date" widget="contracts_date"
                                    placeholder="Set when the contract is extended"
-                                   invisible="is_extended != 'yes'"
-                                   required="is_extended == 'yes'"/>
+                                   invisible="is_extended != 'yes' or term == 'until_completion'"
+                                   required="is_extended == 'yes' and term != 'until_completion'"/>
                             <!-- Only worth showing once the two dates differ;
                                  until then it just repeats the end date. -->
                             <field name="effective_end_date" widget="contracts_date" readonly="1"
-                                   invisible="not extended_end_date"/>
+                                   invisible="not extended_end_date or term == 'until_completion'"/>
                             <field name="is_appraisal_due" widget="radio"
                                    options="{'horizontal': true}"
                                    invisible="contract_type != 'sow'"/>
@@ -326,7 +337,8 @@
             <field name="client" position="after">
                 <field name="candidate"/>
                 <field name="role"/>
-                <field name="parent_contract_id" optional="hide"/>
+                <field name="parent_contract_id" optional="hide"
+                       context="{'contracts_show_period': True}"/>
             </field>
 
             <xpath expr="//header/button" position="attributes">
@@ -375,8 +387,11 @@
                 <attribute name="string">Placement &amp; Ownership</attribute>
             </xpath>
             <xpath expr="//group[@name='ownership']/field[@name='poc']" position="before">
+                <!-- One client can hold several of these over the years, so
+                     each is offered with its period to tell them apart. -->
                 <field name="parent_contract_id"
                        options="{'no_create': True}"
+                       context="{'contracts_show_period': True}"
                        required="1"/>
             </xpath>
 

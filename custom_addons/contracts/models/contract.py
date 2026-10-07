@@ -48,8 +48,6 @@ TERM_SELECTION = [
     ('until_completion', 'Until Completion of Service'),
 ]
 
-TERM_LABELS = dict(TERM_SELECTION)
-
 # Set on the overarching contract and copied down to the ones placed under it.
 BILLING_FIELDS = [
     'bill_rate',
@@ -70,6 +68,10 @@ class Contract(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Contract'
     _order = 'effective_end_date desc, id desc'
+    # There is no name field, and without this a search on the display name -
+    # typing in a many2one, or an import matching by name - matches every
+    # contract instead of filtering.
+    _rec_names_search = ['client', 'candidate', 'role']
 
     # ── Core fields ───────────────────────────────────────────────
     contract_type = fields.Selection(
@@ -77,7 +79,10 @@ class Contract(models.Model):
     )
     parent_contract_id = fields.Many2one(
         'contracts.contract', string='Parent Contract',
-        domain="[('contract_type', '=', 'msa')]",
+        # A terminated contract is not offered for new placements. Not a
+        # constraint: placements made before it was terminated stay valid, and
+        # an import of past placements still has to be able to name it.
+        domain="[('contract_type', '=', 'msa'), ('state', '!=', 'terminated')]",
         ondelete='restrict', index=True, tracking=True,
         help="The overarching contract this one is placed under.",
     )
@@ -227,14 +232,30 @@ class Contract(models.Model):
     )
 
     # ── Display name ──────────────────────────────────────────────
-    @api.depends('contract_type', 'client', 'role', 'candidate')
+    @api.depends('contract_type', 'client', 'role', 'candidate',
+                 'start_date', 'effective_end_date', 'term')
+    @api.depends_context('contracts_show_period')
     def _compute_display_name(self):
+        """Client, plus the placement for a placed contract.
+
+        Where an overarching contract is being picked, the context asks for its
+        period as well: one client can hold several of them over the years,
+        and by name alone they are indistinguishable.
+        """
+        show_period = self.env.context.get('contracts_show_period')
         for rec in self:
             if rec.contract_type == 'sow':
                 parts = [rec.client, rec.role or rec.candidate]
             else:
                 parts = [rec.client]
-            rec.display_name = ' - '.join(p for p in parts if p) or _('New Contract')
+            name = ' - '.join(p for p in parts if p) or _('New Contract')
+            if show_period and rec.contract_type == 'msa' and rec.start_date:
+                name = _('%(name)s (%(start)s to %(end)s)',
+                         name=name,
+                         start=rec.start_date.strftime('%d/%m/%y'),
+                         end=rec.effective_end_date.strftime('%d/%m/%y')
+                         if rec.effective_end_date else _('Completion of Service'))
+            rec.display_name = name
 
     # ── Computes ──────────────────────────────────────────────────
     @api.depends('contract_type', 'parent_contract_id.client')
@@ -325,14 +346,6 @@ class Contract(models.Model):
         if self.is_extended != 'yes':
             self.extended_end_date = False
 
-    @api.onchange('term')
-    def _onchange_term(self):
-        """A contract with no end has nothing to extend either."""
-        if self.term == 'until_completion':
-            self.end_date = False
-            self.is_extended = 'no'
-            self.extended_end_date = False
-
     @api.onchange('billing_currency')
     def _onchange_billing_currency(self):
         """The free-text currency only means something under Others."""
@@ -376,11 +389,14 @@ class Contract(models.Model):
         The form widget has to store files before the contract exists, so they
         land with ``res_id`` 0, which keeps them out of the standard
         attachments box until they are re-pointed here.
+
+        Only files that belong to no record yet are taken. A file already on
+        another record - an import naming one that sits on a different contract
+        or a CRM lead - stays where it is and is only linked from here, rather
+        than being pulled off the record it came from.
         """
         for rec in self:
-            stray = rec.attachment_ids.filtered(
-                lambda a: a.res_model != rec._name or a.res_id != rec.id
-            )
+            stray = rec.attachment_ids.filtered(lambda a: not a.res_id)
             if stray:
                 stray.write({'res_model': rec._name, 'res_id': rec.id})
 
@@ -390,7 +406,7 @@ class Contract(models.Model):
             rec.attachment_count = len(rec._get_documents())
 
     # ── Constraints ───────────────────────────────────────────────
-    @api.constrains('contract_type', 'term', 'end_date')
+    @api.constrains('contract_type', 'term', 'end_date', 'extended_end_date')
     def _check_end_date(self):
         for rec in self:
             if rec.term == 'until_completion':
@@ -399,6 +415,16 @@ class Contract(models.Model):
                         _("Only a Master Service Agreement can run until completion "
                           "of service; contract '%s' needs an end date.",
                           rec.display_name)
+                    )
+                # Writing the term clears both dates, so one can only be here if
+                # it was written on its own afterwards. The form hides them for
+                # this term, so a date let through would count down, remind and
+                # expire the contract with nobody able to see why.
+                if rec.end_date or rec.extended_end_date:
+                    raise ValidationError(
+                        _("Contract '%s' runs until completion of service and cannot "
+                          "have an end date. Change its Contract Term to Fixed End "
+                          "Date first.", rec.display_name)
                     )
             elif not rec.end_date:
                 raise ValidationError(
@@ -475,7 +501,7 @@ class Contract(models.Model):
             # A parent running until completion of service has no end to
             # outrun, but a placement still cannot start before it.
             if rec.start_date < parent.start_date \
-                    or (parent.effective_end_date
+                    or (parent.effective_end_date and rec.effective_end_date
                         and rec.effective_end_date > parent.effective_end_date):
                 raise ValidationError(
                     _("Contract '%(name)s' must run inside the period of the parent "
@@ -526,18 +552,28 @@ class Contract(models.Model):
 
     # ── State synchronisation ─────────────────────────────────────
     def _sync_expired_state(self):
-        """Flip active contracts whose end date has passed to 'expired'.
+        """Keep 'expired' in step with the date the contract runs to.
+
+        Both ways: an active contract whose effective end date has passed
+        becomes expired, and an expired one whose dates now run on - extended
+        after it lapsed, or switched to run until completion of service -
+        comes back to active. Terminated is a decision, not a date, so it is
+        never touched here.
 
         Uses ``super().write`` so it cannot recurse through :meth:`write`
         while still going through mail.thread and keeping the tracking log.
         """
         today = fields.Date.context_today(self)
-        to_expire = self.filtered(
-            lambda c: c.state == 'active' and c.effective_end_date
-            and c.effective_end_date < today
-        )
+
+        def ended(contract):
+            return contract.effective_end_date and contract.effective_end_date < today
+
+        to_expire = self.filtered(lambda c: c.state == 'active' and ended(c))
+        to_revive = self.filtered(lambda c: c.state == 'expired' and not ended(c))
         if to_expire:
             super(Contract, to_expire).write({'state': 'expired'})
+        if to_revive:
+            super(Contract, to_revive).write({'state': 'active'})
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -577,7 +613,7 @@ class Contract(models.Model):
                 .with_context(contracts_billing_sync=True)._compute_billing()
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()
-        if 'end_date' in vals or 'extended_end_date' in vals or 'state' in vals:
+        if any(fname in vals for fname in ('end_date', 'extended_end_date', 'term', 'state')):
             self._sync_expired_state()
         if 'start_date' in vals or 'end_date' in vals \
                 or 'extended_end_date' in vals:

@@ -157,9 +157,10 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
             val = row.get(key)
 
             if kind == 'date':
-                if isinstance(val, str):
-                    # A term standing in for a date that does not exist.
-                    worksheet.write(r, col, val, cell_fmt)
+                # '<key>_label' stands in for a date that does not exist, such
+                # as the end of a contract running until completion of service.
+                if row.get(f'{key}_label'):
+                    worksheet.write(r, col, row[f'{key}_label'], cell_fmt)
                 elif val:
                     worksheet.write_datetime(r, col, val, date_fmt)
                 else:

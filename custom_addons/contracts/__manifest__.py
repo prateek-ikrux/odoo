@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.8.0',
+    'version': '19.0.1.9.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
