@@ -36,8 +36,18 @@
             <!-- Generic property placeholders, off the form entirely. -->
             <xpath expr="//field[@name='lead_properties']" position="replace"/>
 
+            <!--
+                Client Name is the client company; the person dealt with there
+                is the POC, entered below. So only companies are offered, and
+                one created from here is a company. CRM's own context seeded a
+                new customer from the contact fields - the POC's name,
+                designation and address - which is replaced here rather than
+                extended, so none of that reaches the company record.
+            -->
             <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
                 <attribute name="required">1</attribute>
+                <attribute name="domain">[('is_company', '=', True)]</attribute>
+                <attribute name="context">{'res_partner_search_mode': 'customer', 'default_is_company': True}</attribute>
             </xpath>
 
             <!--
@@ -225,8 +235,9 @@
                 <!--
                     POC 1 is the opportunity's own contact fields, not a second
                     copy of them: the person being dealt with is the primary
-                    POC. They fill in from the client record and still drive
-                    Send Email and Send SMS.
+                    POC. They still drive Send Email and Send SMS, but are no
+                    longer filled in from the client company or written back
+                    to it - the two are different parties.
 
                     Only this one is shown. Each block below ends with the
                     toggle that asks for the next, so the form walks out from
@@ -388,6 +399,16 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
         <field name="arch" type="xml">
+            <!--
+                New opens the full form rather than the quick-create card. An
+                opportunity here needs a client type, BDAs, commercials and a
+                complete POC, none of which fit on the card, so the card could
+                only ever lead to the form anyway. This also removes the "+" on
+                each column header, which opens the same card.
+            -->
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="quick_create">false</attribute>
+            </xpath>
             <!--
                 Hidden, not deleted, for the same reason as in the list: CRM's
                 Forecast kanban is built on this view and replaces this node.

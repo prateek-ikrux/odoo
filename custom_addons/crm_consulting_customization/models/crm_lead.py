@@ -247,8 +247,13 @@ class CrmLead(models.Model):
     # name, job position, email and phone of the person being dealt with, and
     # that person is the primary POC - so POC 1 is those fields, relabelled,
     # with only the location and the LinkedIn profile genuinely new. Keeping
-    # them means the POC still fills in from the client record, still drives
-    # Send Email and Send SMS, and still shows in CRM's own lists and reports.
+    # them means the POC still drives Send Email and Send SMS, and still shows
+    # in CRM's own lists and reports.
+    #
+    # What is not kept is CRM's syncing of them with the customer. Here the
+    # Client Name is the client company and the POC a person at it, two
+    # different parties, so neither is filled in from the other - see the
+    # "Client and POC kept apart" overrides below.
     contact_name = fields.Char(string='POC Name')
     function = fields.Char(string='Designation')
     phone = fields.Char(string='Phone Number')
@@ -304,6 +309,63 @@ class CrmLead(models.Model):
         'Show POC 4', compute='_compute_show_poc', readonly=False, store=False)
     show_poc5 = fields.Boolean(
         'Show POC 5', compute='_compute_show_poc', readonly=False, store=False)
+
+    # -------------------------------------------------------------------
+    # Client and POC kept apart
+    # -------------------------------------------------------------------
+    # CRM treats the customer and the person dealt with as one party: picking
+    # a customer copies its name, designation, email and phone into the
+    # contact fields, and editing the contact's email or phone writes them
+    # back onto the customer. Here the customer is the client company and
+    # the contact fields are POC 1, so that copying put the company's details
+    # in the POC and, the other way, overwrote the company's email and phone
+    # with the POC's own.
+    #
+    # Each compute below keeps whatever the field already holds - typed in,
+    # imported, or empty - which is the same thing CRM's own computes do
+    # whenever the customer has nothing to copy, made unconditional.
+
+    @api.depends('partner_id')
+    def _compute_contact_name(self):
+        """POC Name is the person's, typed in; never the client's name."""
+        for lead in self:
+            lead.contact_name = lead.contact_name
+
+    @api.depends('partner_id')
+    def _compute_function(self):
+        """Designation is the POC's, never taken from the client record."""
+        for lead in self:
+            lead.function = lead.function
+
+    @api.depends('partner_id.email')
+    def _compute_email_from(self):
+        """POC Email is the person's, never the client company's."""
+        for lead in self:
+            lead.email_from = lead.email_from
+
+    @api.depends('partner_id.phone')
+    def _compute_phone(self):
+        """POC Phone is the person's, never the client company's."""
+        for lead in self:
+            lead.phone = lead.phone
+
+    def _inverse_email_from(self):
+        """The POC's email stays on the opportunity; the client company keeps
+        its own."""
+
+    def _inverse_phone(self):
+        """The POC's phone stays on the opportunity; the client company keeps
+        its own."""
+
+    @api.depends('email_from', 'partner_id')
+    def _compute_partner_email_update(self):
+        # Drives CRM's "this will update the customer" hint, which no longer
+        # applies now that nothing is written back.
+        self.partner_email_update = False
+
+    @api.depends('phone', 'partner_id')
+    def _compute_partner_phone_update(self):
+        self.partner_phone_update = False
 
     # -------------------------------------------------------------------
     # Computes

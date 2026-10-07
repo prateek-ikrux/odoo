@@ -83,6 +83,14 @@ said the same thing:
 
 Only **Location** and **LinkedIn** are genuinely new on POC 1.
 
+**Client Name and POC 1 are kept apart.** Client Name is the client company
+and only offers companies; POC 1 is a person at it. CRM normally treats them as
+one party - picking a customer copies its name, email and phone into the
+contact fields, and editing the contact's email or phone writes them back onto
+the customer. Both directions are switched off (19.0.1.12.0), so choosing a
+client never fills in the POC and a POC's details never overwrite the
+company's.
+
 Every field on the opportunity form is mandatory except **Industry / Domain**
 and **Expected Closure Date**. That covers all of POC 1, the opportunity's own
 contact fields included. The milestone ticks and the Notes tab are not fields
