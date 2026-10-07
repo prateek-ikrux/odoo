@@ -4,7 +4,7 @@ import base64
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from .contract import STATE_LABELS, STATE_SELECTION, TYPE_SELECTION
+from .contract import STATE_LABELS, STATE_SELECTION, TERM_LABELS, TYPE_SELECTION
 from .contract_report_xlsx import MSA_COLUMNS, SOW_COLUMNS, build_contract_report_xlsx
 
 # Per-section workbook settings: columns, worksheet name, download filename.
@@ -162,8 +162,12 @@ class ContractReportWizard(models.TransientModel):
                 'role': contract.role or '',
                 'created_by': contract.created_by_id.name or '',
                 'start_date': contract.start_date,
-                'end_date': contract.end_date,
-                'days_left': contract.days_left,
+                # No end date and nothing counting down: the term stands in
+                # for the one and the other is left out.
+                'end_date': contract.end_date if contract.term != 'until_completion'
+                else TERM_LABELS['until_completion'],
+                'days_left': contract.days_left if contract.term != 'until_completion'
+                else None,
                 'status': STATE_LABELS.get(contract.state, contract.state),
                 'termination_date': contract.termination_date,
                 'attachment_count': len(attachments),

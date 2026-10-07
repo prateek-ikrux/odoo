@@ -40,6 +40,16 @@ BILLING_FREQUENCY_SELECTION = [
     ('yearly', 'Yearly'),
 ]
 
+# An overarching contract either runs to a date or runs for as long as there is
+# work under it. The second kind has no end date at all, rather than a made-up
+# one, so it never expires, never counts down and never sends a reminder.
+TERM_SELECTION = [
+    ('fixed', 'Fixed End Date'),
+    ('until_completion', 'Until Completion of Service'),
+]
+
+TERM_LABELS = dict(TERM_SELECTION)
+
 # Set on the overarching contract and copied down to the ones placed under it.
 BILLING_FIELDS = [
     'bill_rate',
@@ -105,8 +115,17 @@ class Contract(models.Model):
         string='Start Date', required=True, tracking=True,
         default=fields.Date.context_today,
     )
+    term = fields.Selection(
+        TERM_SELECTION, string='Contract Term',
+        required=True, default='fixed', tracking=True,
+        help="Until Completion of Service: the contract runs for as long as "
+             "there is work under it and has no end date. Only an overarching "
+             "contract can run this way.",
+    )
+    # Required unless the contract runs until completion of service; held by
+    # _check_end_date rather than on the column, which has to allow the gap.
     end_date = fields.Date(
-        string='End Date', required=True, tracking=True,
+        string='End Date', tracking=True,
     )
     days_left = fields.Integer(
         string='Days Left', compute='_compute_days_left', search='_search_days_left',
@@ -306,6 +325,14 @@ class Contract(models.Model):
         if self.is_extended != 'yes':
             self.extended_end_date = False
 
+    @api.onchange('term')
+    def _onchange_term(self):
+        """A contract with no end has nothing to extend either."""
+        if self.term == 'until_completion':
+            self.end_date = False
+            self.is_extended = 'no'
+            self.extended_end_date = False
+
     @api.onchange('billing_currency')
     def _onchange_billing_currency(self):
         """The free-text currency only means something under Others."""
@@ -321,6 +348,9 @@ class Contract(models.Model):
         being written, so a No that changes nothing does not add the date to
         the values and needlessly re-arm the reminder sequence.
         """
+        if vals.get('term') == 'until_completion':
+            # No end date, so nothing to extend: whatever came with it goes.
+            vals.update(end_date=False, is_extended='no')
         if vals.get('is_extended') == 'no':
             if records is None or any(records.mapped('extended_end_date')):
                 vals['extended_end_date'] = False
@@ -360,6 +390,22 @@ class Contract(models.Model):
             rec.attachment_count = len(rec._get_documents())
 
     # ── Constraints ───────────────────────────────────────────────
+    @api.constrains('contract_type', 'term', 'end_date')
+    def _check_end_date(self):
+        for rec in self:
+            if rec.term == 'until_completion':
+                if rec.contract_type != 'msa':
+                    raise ValidationError(
+                        _("Only a Master Service Agreement can run until completion "
+                          "of service; contract '%s' needs an end date.",
+                          rec.display_name)
+                    )
+            elif not rec.end_date:
+                raise ValidationError(
+                    _("An End Date is required on contract '%s', unless it runs "
+                      "until completion of service.", rec.display_name)
+                )
+
     @api.constrains('start_date', 'end_date', 'extended_end_date')
     def _check_dates(self):
         for rec in self:
@@ -422,17 +468,21 @@ class Contract(models.Model):
             parent = rec.parent_contract_id
             if rec.contract_type != 'sow' or not parent:
                 continue
-            if not (parent.start_date and parent.effective_end_date):
+            if not parent.start_date:
                 continue
             # Compared on the effective dates: extending a placed contract past
             # the contract above it means that one has to be extended first.
+            # A parent running until completion of service has no end to
+            # outrun, but a placement still cannot start before it.
             if rec.start_date < parent.start_date \
-                    or rec.effective_end_date > parent.effective_end_date:
+                    or (parent.effective_end_date
+                        and rec.effective_end_date > parent.effective_end_date):
                 raise ValidationError(
                     _("Contract '%(name)s' must run inside the period of the parent "
                       "contract (%(start)s to %(end)s).",
                       name=rec.display_name,
-                      start=parent.start_date, end=parent.effective_end_date)
+                      start=parent.start_date,
+                      end=parent.effective_end_date or _("completion of service"))
                 )
 
     @api.constrains('poc', 'billing_poc')

@@ -157,7 +157,10 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
             val = row.get(key)
 
             if kind == 'date':
-                if val:
+                if isinstance(val, str):
+                    # A term standing in for a date that does not exist.
+                    worksheet.write(r, col, val, cell_fmt)
+                elif val:
                     worksheet.write_datetime(r, col, val, date_fmt)
                 else:
                     worksheet.write(r, col, 'N/A', na_fmt)
@@ -165,7 +168,7 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
                 worksheet.write(r, col, val or '', status_fmts.get(val, cell_fmt))
             elif kind == 'days_left':
                 days = val or 0
-                if row.get('status') != 'Active':
+                if row.get('status') != 'Active' or val is None:
                     worksheet.write(r, col, 'N/A', na_fmt)
                 elif days <= 7:
                     worksheet.write_number(r, col, days, days_urgent_fmt)

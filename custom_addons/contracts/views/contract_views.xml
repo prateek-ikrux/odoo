@@ -13,8 +13,8 @@
         <field name="model">contracts.contract</field>
         <field name="arch" type="xml">
             <list string="Contracts"
-                  decoration-success="state == 'active' and days_left &gt; 30"
-                  decoration-warning="state == 'active' and days_left &lt;= 30"
+                  decoration-success="state == 'active' and (term == 'until_completion' or days_left &gt; 30)"
+                  decoration-warning="state == 'active' and term != 'until_completion' and days_left &lt;= 30"
                   decoration-danger="state == 'expired'"
                   decoration-muted="state == 'terminated'">
                 <header>
@@ -36,13 +36,19 @@
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                 <field name="start_date" widget="contracts_date"/>
                 <field name="end_date" widget="contracts_date"/>
+                <!-- Fills the gap a contract with no end date leaves, and only
+                     that: a fixed-term row would just repeat its own end date. -->
+                <field name="term" string="Term" invisible="term != 'until_completion'"
+                       column_invisible="context.get('default_contract_type') != 'msa'"
+                       optional="show"/>
                 <field name="extended_end_date" widget="contracts_date" optional="hide"/>
                 <field name="annual_appraisal_due" widget="contracts_date" optional="hide"/>
                 <field name="bill_rate" optional="hide"/>
                 <field name="billing_currency" optional="hide"/>
                 <field name="billing_frequency" optional="hide"/>
                 <field name="billing_start_date" widget="contracts_date" optional="hide"/>
-                <field name="days_left" string="Days Left"/>
+                <field name="days_left" string="Days Left"
+                       invisible="term == 'until_completion'"/>
                 <field name="attachment_count" string="Attachments" optional="show"/>
                 <field name="child_contract_count" string="Linked"
                        column_invisible="context.get('default_contract_type') != 'msa'"
@@ -114,18 +120,29 @@
                     <group>
                         <group string="Contract Period" name="period">
                             <field name="start_date" widget="contracts_date"/>
-                            <field name="end_date" widget="contracts_date"/>
+                            <!-- Only an overarching contract can run until
+                                 completion of service; one placed under it
+                                 always has an end date. -->
+                            <field name="term" widget="radio"
+                                   invisible="contract_type != 'msa'"/>
+                            <field name="end_date" widget="contracts_date"
+                                   invisible="term == 'until_completion'"
+                                   required="term != 'until_completion'"/>
                             <!-- Bare integers read poorly on their own, so the
                                  unit rides alongside the value. -->
-                            <label for="days_left" invisible="state != 'active'"/>
-                            <div class="o_row" invisible="state != 'active'">
+                            <label for="days_left"
+                                   invisible="state != 'active' or term == 'until_completion'"/>
+                            <div class="o_row"
+                                 invisible="state != 'active' or term == 'until_completion'">
                                 <field name="days_left" class="oe_inline"/>
                                 <span class="text-muted">days remaining</span>
                             </div>
                             <!-- The date is only asked for once the contract is
-                                 said to be extended; answering No clears it. -->
+                                 said to be extended; answering No clears it.
+                                 A contract with no end has nothing to extend. -->
                             <field name="is_extended" widget="radio"
-                                   options="{'horizontal': true}"/>
+                                   options="{'horizontal': true}"
+                                   invisible="term == 'until_completion'"/>
                             <field name="extended_end_date" widget="contracts_date"
                                    placeholder="Set when the contract is extended"
                                    invisible="is_extended != 'yes'"
@@ -275,6 +292,8 @@
                         domain="[('state', '=', 'active'), ('days_left', '&lt;=', 45), ('reminder_sent_days', '=', 0)]"/>
                 <filter name="filter_my_contracts" string="My Contracts"
                         domain="[('created_by_id', '=', uid)]"/>
+                <filter name="filter_until_completion" string="Until Completion of Service"
+                        domain="[('term', '=', 'until_completion')]"/>
                 <separator/>
                 <filter name="filter_start_date" string="Start Date" date="start_date"/>
                 <filter name="filter_end_date" string="End Date" date="end_date"/>
@@ -414,6 +433,8 @@
                 <field name="role"/>
                 <field name="parent_contract_id"/>
             </field>
+            <!-- A placed contract always has an end date. -->
+            <filter name="filter_until_completion" position="replace"/>
             <filter name="group_client" position="after">
                 <filter name="group_role" string="Role" domain="[]" context="{'group_by': 'role'}"/>
                 <filter name="group_parent" string="Parent Contract" domain="[]"

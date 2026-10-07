@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.7.0',
+    'version': '19.0.1.8.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -36,6 +36,12 @@ Settings, so the schedule can be changed without a deploy, and the same screen
 switches the reminders off altogether. Recipients start out empty, so nothing
 is sent until they are filled in. Every reminder is logged in the contract's chatter, and extending an end
 date starts the sequence over.
+
+An overarching contract can instead run Until Completion of Service - for as
+long as there is work under it. It then has no end date at all: it never
+expires, shows no days left and sends no reminders, and the contracts placed
+under it are bound only by its start date. A placed contract always has an
+end date.
 
 A contract that is extended records an Extended End Date. From then on it,
 not the original end date, is what the contract runs to - expiry, days left
