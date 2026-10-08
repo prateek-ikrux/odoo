@@ -11,47 +11,21 @@ MILESTONE_DATE_FIELDS = {
     'milestone_agreement_signed': 'milestone_agreement_signed_date',
 }
 
-# Both lists are selections rather than free text so that a report grouped by
-# either one has a fixed, countable set of buckets. Extending a list is a
-# one-line edit here; see the README for the procedure.
 # The fields a POC block 2-5 is made of. Named once so _compute_show_poc
 # cannot fall behind the field definitions below.
 POC_SUFFIXES = ('name', 'designation', 'phone', 'email', 'location', 'linkedin')
-
-CLIENT_TYPES = [
-    ('product_isv', 'Product / ISV'),
-    ('it_services', 'IT Services & Consulting'),
-    ('gcc_captive', 'GCC / Captive'),
-    ('staffing_partner', 'Staffing & Recruitment Partner'),
-    ('startup', 'Startup'),
-    ('enterprise_non_it', 'Enterprise (non-IT)'),
-    ('others', 'Others'),
-]
-
-INDUSTRY_DOMAINS = [
-    ('bfsi', 'BFSI'),
-    ('healthcare', 'Healthcare & Life Sciences'),
-    ('manufacturing', 'Manufacturing & Industrial'),
-    ('retail_ecommerce', 'Retail & E-commerce'),
-    ('telecom_media', 'Telecom & Media'),
-    ('energy_utilities', 'Energy & Utilities'),
-    ('logistics', 'Logistics & Transportation'),
-    ('technology_saas', 'Technology & SaaS'),
-    ('public_sector', 'Public Sector / Government'),
-    ('others', 'Others'),
-]
 
 # The numbers the opportunity form requires, with the label the form shows
 # and the condition under which it shows them. The web client never enforces
 # required on a number - 0 always passes as filled in - so _check_required_numbers
 # holds the rule on the server instead.
 #
-# Open Positions, Roles Open and Commercial Agreement are optional: a deal is
-# often in the pipeline before either the requirement or the commercials are
-# known. Adding one back is a line here plus required on the form field.
-REQUIRED_NUMBERS = {
-    'project_duration': ('Project Duration', lambda lead: lead.engagement_type != 'fte'),
-}
+# None is required today: Open Positions, Roles Open, Commercial Agreement and
+# Project Duration are all optional, since a deal is often in the pipeline
+# before the requirement or the commercials are known. Making one mandatory
+# again is a line here plus required on the form field, for example:
+#     'project_duration': ('Project Duration', lambda lead: lead.engagement_type != 'fte'),
+REQUIRED_NUMBERS = {}
 
 
 class CrmLead(models.Model):
@@ -82,7 +56,12 @@ class CrmLead(models.Model):
     # on the form - it follows the BDA list, and the list is what people edit.
     user_id = fields.Many2one(string='Primary BDA')
 
-    partner_id = fields.Many2one(string='Client Name')
+    # The opportunity's own title carries the client's name; the customer
+    # link is off every view. It keeps a label of its own so the two are not
+    # confused in an export, a filter or the import field list, and so
+    # opportunities that already point at a company keep that link.
+    name = fields.Char(string='Client Name')
+    partner_id = fields.Many2one(string='Client Company')
 
     # Client Type and Industry / Domain belong to the opportunity. They are
     # entered here and held here; nothing reads them off the client record, so
@@ -95,25 +74,33 @@ class CrmLead(models.Model):
     # requirement on the field would reject those outright. Everything a
     # person creates goes through a form, which is where the rule has to hold.
     # Industry / Domain is the one classification left optional.
-    client_type = fields.Selection(
-        selection=CLIENT_TYPES,
+    #
+    # Both pick from a master list kept under CRM > Configuration (see
+    # crm_classification.py), so a report grouped by either one still has a
+    # fixed, countable set of buckets, but the Sales Manager owns the list.
+    # The names predate the lists, when both were selections, and are kept so
+    # import sheets and saved filters keep working.
+    client_type = fields.Many2one(
+        'crm.client.type',
         string='Client Type',
         index=True,
         tracking=True,
+        ondelete='restrict',
     )
 
-    industry_domain = fields.Selection(
-        selection=INDUSTRY_DOMAINS,
+    industry_domain = fields.Many2one(
+        'crm.industry.domain',
         string='Industry / Domain',
         index=True,
         tracking=True,
+        ondelete='restrict',
     )
 
     client_status = fields.Selection(
         selection=[
             ('active', 'Active'),
-            ('dormant', 'Dormant'),
-            ('passive', 'Passive'),
+            ('inactive', 'Inactive'),
+            ('hold', 'Hold'),
         ],
         string='Client Status',
         required=True,
@@ -123,7 +110,7 @@ class CrmLead(models.Model):
 
     initial_outreach_date = fields.Date(
         'Initial Outreach Date',
-        required=True,
+        # Optional, but pre-filled with the day the opportunity is created.
         default=fields.Date.context_today,
         tracking=True,
         help='The day first contact was made. Start of the cycle time measured '

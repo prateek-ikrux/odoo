@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The starting Client Types and Industries / Domains.
+
+    Seeded once and then the Sales Manager's to rename, reorder, archive or add
+    to under CRM > Configuration; noupdate keeps an upgrade from undoing that.
+    The external ids carry the codes these entries had when both lists were
+    fixed selections, which is what migrations/19.0.1.19.0/post-migrate.py
+    matches existing opportunities on.
+-->
+<odoo noupdate="1">
+
+    <!-- Client Type -->
+    <record id="client_type_product_isv" model="crm.client.type">
+        <field name="name">Product / ISV</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="client_type_it_services" model="crm.client.type">
+        <field name="name">IT Services &amp; Consulting</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="client_type_gcc_captive" model="crm.client.type">
+        <field name="name">GCC / Captive</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="client_type_staffing_partner" model="crm.client.type">
+        <field name="name">Staffing &amp; Recruitment Partner</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="client_type_startup" model="crm.client.type">
+        <field name="name">Startup</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <record id="client_type_enterprise_non_it" model="crm.client.type">
+        <field name="name">Enterprise (non-IT)</field>
+        <field name="sequence">60</field>
+    </record>
+
+    <record id="client_type_others" model="crm.client.type">
+        <field name="name">Others</field>
+        <field name="sequence">70</field>
+    </record>
+
+    <!-- Industry / Domain -->
+    <record id="industry_domain_bfsi" model="crm.industry.domain">
+        <field name="name">BFSI</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="industry_domain_healthcare" model="crm.industry.domain">
+        <field name="name">Healthcare &amp; Life Sciences</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="industry_domain_manufacturing" model="crm.industry.domain">
+        <field name="name">Manufacturing &amp; Industrial</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="industry_domain_retail_ecommerce" model="crm.industry.domain">
+        <field name="name">Retail &amp; E-commerce</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="industry_domain_telecom_media" model="crm.industry.domain">
+        <field name="name">Telecom &amp; Media</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <record id="industry_domain_energy_utilities" model="crm.industry.domain">
+        <field name="name">Energy &amp; Utilities</field>
+        <field name="sequence">60</field>
+    </record>
+
+    <record id="industry_domain_logistics" model="crm.industry.domain">
+        <field name="name">Logistics &amp; Transportation</field>
+        <field name="sequence">70</field>
+    </record>
+
+    <record id="industry_domain_technology_saas" model="crm.industry.domain">
+        <field name="name">Technology &amp; SaaS</field>
+        <field name="sequence">80</field>
+    </record>
+
+    <record id="industry_domain_public_sector" model="crm.industry.domain">
+        <field name="name">Public Sector / Government</field>
+        <field name="sequence">90</field>
+    </record>
+
+    <record id="industry_domain_others" model="crm.industry.domain">
+        <field name="name">Others</field>
+        <field name="sequence">100</field>
+    </record>
+
+</odoo>

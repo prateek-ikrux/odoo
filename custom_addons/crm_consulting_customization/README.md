@@ -51,29 +51,29 @@ actually lost — and a lost reason is now mandatory.
 |---|---|---|---|
 | BDA | `bda_ids` | Many2many to users | Yes |
 | POC Location | `poc1_location` | Char | Yes |
-| POC LinkedIn | `poc1_linkedin` | Char, url widget | Yes |
-| Client Status | `client_status` | Selection: Active / Dormant / Passive | Yes |
-| Initial Outreach Date | `initial_outreach_date` | Date | Yes |
+| POC LinkedIn | `poc1_linkedin` | Char, url widget | No (19.0.1.17.0) |
+| Client Status | `client_status` | Selection: Active / Inactive / Hold | Yes |
+| Initial Outreach Date | `initial_outreach_date` | Date | No (pre-filled with today) |
 | Engagement Type | `engagement_type` | Selection: FTE / Consulting / FTE\|Consulting | Yes |
-| Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | Yes |
+| Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | No (set from Engagement Type) |
 | Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | No |
 | Bill Rate | `bill_rate_lpm` | Float, lakhs per month | No |
 | Open Positions | `open_positions` | Integer | No |
 | Roles Open | `roles_open` | Integer | No |
-| Project Duration | `project_duration` | Integer, months | Yes, unless FTE |
+| Project Duration | `project_duration` | Integer, months | No |
 | Requirement Received | `milestone_requirement_received` (+ `_date`) | Boolean | No |
 | Delivery Started | `milestone_delivery_started` (+ `_date`) | Boolean | No |
 | Agreement Signed | `milestone_agreement_signed` (+ `_date`) | Boolean | No |
-| Client Type | `client_type` | Selection | Yes |
-| Industry / Domain | `industry_domain` | Selection | No |
-| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | Every field except Phone Number and Email, once that POC is added |
+| Client Type | `client_type` | Many2one to the Client Types list | Yes |
+| Industry / Domain | `industry_domain` | Many2one to the Industries / Domains list | No |
+| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | Name, Designation and Location, once that POC is added |
 
 Existing fields are relabelled rather than duplicated wherever one already
 said the same thing:
 
 | Shown as | Is really | Why it was not a new field |
 |---|---|---|
-| Client Name | `partner_id` | The client is the opportunity's customer |
+| Client Name | `name` | The opportunity's own title is the client's name (19.0.1.15.0) |
 | Expected Closure Date | `date_deadline` | Native forecasting already reads it |
 | **BDA** | `bda_ids`, replacing Salesperson on the form | Salesperson and BDA are one idea, so one field |
 | POC 1 → Name | `contact_name` | The person being dealt with **is** the primary POC |
@@ -83,19 +83,27 @@ said the same thing:
 
 Only **Location** and **LinkedIn** are genuinely new on POC 1.
 
-**Client Name and POC 1 are kept apart.** Client Name is the client company
-and only offers companies; POC 1 is a person at it. CRM normally treats them as
+**Client Name is the opportunity's title.** Since 19.0.1.15.0 the client's
+name is typed into the title at the top of the form, relabelled Client Name in
+the form, list, search and import. CRM's customer link (`partner_id`, now
+labelled Client Company) is off every view and no longer required; it is kept,
+hidden, so opportunities that already point at a company keep that link.
+
+**The customer link and POC 1 are kept apart.** The customer link only offers
+companies; POC 1 is a person at it. CRM normally treats them as
 one party - picking a customer copies its name, email and phone into the
 contact fields, and editing the contact's email or phone writes them back onto
 the customer. Both directions are switched off (19.0.1.12.0), so choosing a
 client never fills in the POC and a POC's details never overwrite the
 company's.
 
-Every field on the opportunity form is mandatory except **Industry / Domain**,
-**Expected Closure Date**, **Commercial Agreement**, **Open Positions**,
-**Roles Open**, and the **Phone Number** and **Email** of every POC. That
-covers the rest of POC 1, the opportunity's own contact fields included. The milestone ticks and the Notes tab are not fields
-anyone fills in, so they stay optional.
+Mandatory on the opportunity form (19.0.1.16.0): **Client Name**, **Client
+Type**, **BDA**, **Client Status**, **Engagement Type**, and POC 1's **Name**,
+**Designation** and **Location**. POC 2-5 ask for the same three
+once that POC is added. LinkedIn became optional on every POC in 19.0.1.17.0.
+Everything else is optional, and a Lost Reason is asked
+for only when an opportunity is marked lost from the form, so a bulk import of
+lost deals is not blocked by it.
 
 The priority stars that CRM puts beside the closing date are off the form. The
 column is untouched, so stars already given are kept.
@@ -117,10 +125,10 @@ second field to fill in and it is not on the form — it follows the BDA list:
 ### The Contacts tab
 
 Removed. Everything on it was already somewhere better — the company name and
-address belong to the client record that Client Name points at, the contact
+address belong to the client record, the contact
 name and job position were the primary POC, and campaign, medium and source
 are marketing, which is out of scope. The one thing worth keeping, how the
-client is classified, is now on the front page beside Client Name.
+client is classified, is now on the front page.
 
 The opportunity form is left with a single **Notes** tab; everything else is on
 the main screen.
@@ -176,14 +184,22 @@ Type is mandatory; Industry / Domain is optional. Nothing is read from or writte
 company can be classified one way on one opportunity and another way on the
 next, and neither affects the other.
 
-The lists are fixed, deliberately — a report only groups cleanly into buckets
-that cannot be typed freehand. Changing them is a one-line edit in
-`models/crm_lead.py`, in the `CLIENT_TYPES` and `INDUSTRY_DOMAINS` lists at the
-top of the file, followed by a module upgrade.
+Both are picked from a master list:
 
-Add to the end of a list to be safe. Changing the code of an existing entry (the
-left-hand value) orphans the records already using it; changing only its label
-(the right-hand text) is always safe.
+- **CRM > Configuration > Pipeline > Client Types**
+- **CRM > Configuration > Pipeline > Industries / Domains**
+
+Add, rename and drag to reorder entries there; the opportunity dropdown follows.
+The dropdown cannot create entries itself, so a report only ever groups into
+buckets someone chose on purpose. Two entries cannot share a name.
+
+An entry already used by an opportunity cannot be deleted. **Archive** it
+instead: it leaves the dropdown, and the opportunities on it keep it. Each
+list shows how many opportunities use an entry, with a button to open them.
+
+The starting entries are seeded once, on install or on the upgrade to
+19.0.1.19.0, and are not reset by later upgrades. Bulk-upload sheets fill
+both columns by entry name, exactly as they did before.
 
 ---
 
@@ -239,7 +255,7 @@ left-hand value) orphans the records already using it; changing only its label
   had an owner is left empty, and the form asks for a BDA the next time it is
   saved.
 
-- **Client Type, Client Name and the POC 1 fields (bar phone and email) are mandatory on the form,
+- **Client Type and the POC 1 fields (bar phone and email) are mandatory on the form,
   not on the field.** `crm.lead` also backs leads raised by the incoming-mail
   alias and the website form, and neither of those can answer all of them.
   A requirement on the field would reject them outright, so the rule is written
@@ -248,13 +264,13 @@ left-hand value) orphans the records already using it; changing only its label
   A lead that arrives by email can therefore reach the pipeline unclassified.
   It gets classified the first time somebody opens and saves it.
 
-- **The required numbers are held on the server.** Project Duration (on any
-  deal that is not pure FTE) is the one number still required — Open
-  Positions, Roles Open and Commercial Agreement became optional in
-  19.0.1.13.0. Odoo's web client lets a 0 through as filled in, so
-  `_check_required_numbers` refuses a zero instead — for the numbers being
-  written, plus Project Duration whenever the engagement type or commercial
-  basis changes. A new opportunity from the form sends every number and is checked
+- **Required numbers would be held on the server.** None is required today:
+  Open Positions, Roles Open and Commercial Agreement became optional in
+  19.0.1.13.0 and Project Duration in 19.0.1.16.0. The mechanism stays for
+  when one is wanted again: Odoo's web client lets a 0 through as filled in,
+  so `_check_required_numbers` refuses a zero for any number listed in
+  `REQUIRED_NUMBERS` — for the numbers being written, plus those listed
+  whenever the engagement type or commercial basis changes. A new opportunity from the form sends every number and is checked
   in full; a lead from the mail alias sends none of them and a kanban drag
   sends only the stage, so neither is refused. An older opportunity still
   holding a 0 is only held to the rule once one of those numbers is edited.
@@ -292,6 +308,23 @@ left-hand value) orphans the records already using it; changing only its label
   kanban views.** CRM's own Forecast and My Activities views are built on top of
   those and reach for those exact nodes; deleting one stops that view being
   built at all.
+
+- **Client Type and Industry / Domain became master lists in 19.0.1.19.0.**
+  They were selections; they are now many2ones to `crm.client.type` and
+  `crm.industry.domain`, under the same field names so import sheets and saved
+  filters keep working. `migrations/19.0.1.19.0/pre-migrate.py` moves each old
+  column of codes aside before the module loads, and `post-migrate.py` points
+  every opportunity at the seeded entry for its code (external ids
+  `client_type_<code>` and `industry_domain_<code>`), then drops the old
+  columns. A code with no seeded entry gets one of its own, named after the
+  code. Past chatter tracking keeps the old labels as text.
+
+- **Client Status was reworked in 19.0.1.18.0.** Active / Dormant / Passive
+  became Active / Inactive / Hold. `migrations/19.0.1.18.0/pre-migrate.py`
+  moves every Dormant and Passive opportunity to Inactive before the old
+  values go; Active is untouched. The chatter keeps the old values in past
+  tracking messages. A bulk-upload sheet or saved filter still using Dormant
+  or Passive has to follow.
 
 - **Buyers became POCs in 19.0.1.4.0**, columns included.
   `buyer1_location` and the whole `buyer2_*`–`buyer5_*` block were renamed

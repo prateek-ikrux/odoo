@@ -37,17 +37,23 @@
             <xpath expr="//field[@name='lead_properties']" position="replace"/>
 
             <!--
-                Client Name is the client company; the person dealt with there
-                is the POC, entered below. So only companies are offered, and
-                one created from here is a company. CRM's own context seeded a
-                new customer from the contact fields - the POC's name,
-                designation and address - which is replaced here rather than
-                extended, so none of that reaches the company record.
+                The client's name is the opportunity's own title, typed in at
+                the top of the form, so the customer link is not asked for at
+                all. Hidden rather than removed: the fields placed after it
+                below anchor on it, and opportunities that already point at a
+                company keep that link.
+
+                Should it ever come back, its rules still apply: only
+                companies offered, one created from here made a company, and
+                none of the POC's details seeded onto it.
             -->
             <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
-                <attribute name="required">1</attribute>
+                <attribute name="invisible">1</attribute>
                 <attribute name="domain">[('is_company', '=', True)]</attribute>
                 <attribute name="context">{'res_partner_search_mode': 'customer', 'default_is_company': True}</attribute>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]//field[@name='name']" position="attributes">
+                <attribute name="placeholder">e.g. Microsoft</attribute>
             </xpath>
 
             <!--
@@ -57,8 +63,8 @@
                 changes nothing outside this opportunity.
             -->
             <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="after">
-                <field name="client_type" required="1"/>
-                <field name="industry_domain"/>
+                <field name="client_type" required="1" options="{'no_create': True, 'no_open': True}"/>
+                <field name="industry_domain" options="{'no_create': True, 'no_open': True}"/>
                 <field name="client_status"/>
             </xpath>
 
@@ -133,7 +139,7 @@
                             to set. A blended engagement could have been struck
                             either way, so there it is theirs.
                         -->
-                        <field name="commercial_basis" required="1"
+                        <field name="commercial_basis"
                                readonly="engagement_type != 'fte_consulting'"/>
                         <!--
                             One line, called Commercial Agreement whichever way
@@ -163,8 +169,7 @@
                         </div>
                         <label for="project_duration" invisible="engagement_type == 'fte'"/>
                         <div class="o_row" invisible="engagement_type == 'fte'">
-                            <field name="project_duration" nolabel="1" class="oe_inline"
-                                   required="engagement_type != 'fte'"/>
+                            <field name="project_duration" nolabel="1" class="oe_inline"/>
                             <span class="oe_inline text-muted">months</span>
                         </div>
                         <label string="Project Duration" for="engagement_type"
@@ -239,8 +244,8 @@
                     one POC to five and stops - there is no sixth block for a
                     toggle to open.
 
-                    Every field of POC 1 is mandatory except the phone number
-                    and email, which a POC may not have shared yet. The same
+                    Every field of POC 1 is mandatory except the phone number,
+                    email and LinkedIn, which a POC may not have shared yet. The same
                     goes for a further block, whose other fields are
                     mandatory only once it is open, keyed off its own toggle
                     rather than left to the group's invisible: the web client
@@ -254,7 +259,7 @@
                         <field name="phone" string="Phone Number" widget="phone"/>
                         <field name="email_from" string="Email" widget="email"/>
                         <field name="poc1_location" string="Location" required="1"/>
-                        <field name="poc1_linkedin" string="LinkedIn" widget="url" required="1"
+                        <field name="poc1_linkedin" string="LinkedIn" widget="url"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
                         <field name="show_poc2" string="Add another POC" widget="boolean_toggle"/>
                     </group>
@@ -264,7 +269,7 @@
                         <field name="poc2_phone" string="Phone Number" widget="phone"/>
                         <field name="poc2_email" string="Email" widget="email"/>
                         <field name="poc2_location" string="Location" required="show_poc2"/>
-                        <field name="poc2_linkedin" string="LinkedIn" widget="url" required="show_poc2"
+                        <field name="poc2_linkedin" string="LinkedIn" widget="url"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
                         <field name="show_poc3" string="Add another POC" widget="boolean_toggle"/>
                     </group>
@@ -274,7 +279,7 @@
                         <field name="poc3_phone" string="Phone Number" widget="phone"/>
                         <field name="poc3_email" string="Email" widget="email"/>
                         <field name="poc3_location" string="Location" required="show_poc3"/>
-                        <field name="poc3_linkedin" string="LinkedIn" widget="url" required="show_poc3"
+                        <field name="poc3_linkedin" string="LinkedIn" widget="url"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
                         <field name="show_poc4" string="Add another POC" widget="boolean_toggle"/>
                     </group>
@@ -284,7 +289,7 @@
                         <field name="poc4_phone" string="Phone Number" widget="phone"/>
                         <field name="poc4_email" string="Email" widget="email"/>
                         <field name="poc4_location" string="Location" required="show_poc4"/>
-                        <field name="poc4_linkedin" string="LinkedIn" widget="url" required="show_poc4"
+                        <field name="poc4_linkedin" string="LinkedIn" widget="url"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
                         <field name="show_poc5" string="Add another POC" widget="boolean_toggle"/>
                     </group>
@@ -294,7 +299,7 @@
                         <field name="poc5_phone" string="Phone Number" widget="phone"/>
                         <field name="poc5_email" string="Email" widget="email"/>
                         <field name="poc5_location" string="Location" required="show_poc5"/>
-                        <field name="poc5_linkedin" string="LinkedIn" widget="url" required="show_poc5"
+                        <field name="poc5_linkedin" string="LinkedIn" widget="url"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
                     </group>
                 </group>
@@ -354,8 +359,13 @@
                 <attribute name="optional"/>
                 <attribute name="sum"/>
             </xpath>
+            <!-- The title is the client's name; the customer link is off. -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="string">Client Name</attribute>
+            </xpath>
             <xpath expr="//field[@name='partner_id']" position="attributes">
-                <attribute name="optional">show</attribute>
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="optional"/>
             </xpath>
             <!-- Tags are off the form, so they come out of the list too. -->
             <xpath expr="//field[@name='tag_ids']" position="replace"/>
@@ -419,6 +429,19 @@
                 still build. Any stars already given are kept in the column.
             -->
             <xpath expr="//footer//field[@name='priority']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!--
+                The card's title is the client's name, so the customer line
+                under it goes; the POC it would have hidden shows instead.
+            -->
+            <xpath expr="//div[field[@name='partner_id'][@widget='many2one_avatar']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='contact_name']" position="attributes">
+                <attribute name="invisible"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_name']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             <!--
@@ -491,6 +514,10 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='user_id']" position="replace">
                 <field name="bda_ids" string="BDA"/>
+            </xpath>
+            <!-- Searching the title is searching by client. -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="string">Client Name</attribute>
             </xpath>
 
             <!-- Tags are off the form, so they come out of the search too. -->

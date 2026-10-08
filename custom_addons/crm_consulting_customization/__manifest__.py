@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.14.0',
+    'version': '19.0.1.19.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -41,9 +41,12 @@ may see or do what is whatever the Sales privilege already says.
 """,
     'depends': ['crm', 'contacts', 'sales_team', 'mail'],
     'data': [
+        'security/ir.model.access.csv',
         'data/crm_stage_data.xml',
+        'data/crm_classification_data.xml',
         'data/crm_lost_reason_data.xml',
         'views/crm_lead_views.xml',
+        'views/crm_classification_views.xml',
         'views/res_partner_views.xml',
     ],
     # ordinal_date, the "21st July 2024" date widget. Neither strftime nor
