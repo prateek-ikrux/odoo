@@ -319,6 +319,13 @@ both columns by entry name, exactly as they did before.
   columns. A code with no seeded entry gets one of its own, named after the
   code. Past chatter tracking keeps the old labels as text.
 
+  The pre-migrate also deletes the old selection options. Some Odoo 19 builds
+  otherwise fail at the very end of the upgrade with `AttributeError: 'str'
+  object has no attribute 'get'` - after the migration and the new version
+  are already committed, so a retry skips the 19.0.1.19.0 scripts and fails
+  again. `migrations/19.0.1.20.0/pre-migrate.py` repeats that clean-up for a
+  database left in that state.
+
 - **Client Status was reworked in 19.0.1.18.0.** Active / Dormant / Passive
   became Active / Inactive / Hold. `migrations/19.0.1.18.0/pre-migrate.py`
   moves every Dormant and Passive opportunity to Inactive before the old
