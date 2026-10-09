@@ -4,6 +4,7 @@ import logging
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
+from odoo.tools.misc import format_date
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -199,7 +200,7 @@ class Contract(models.Model):
         compute='_compute_annual_appraisal_due', store=True,
         help="Next anniversary of the start date still to come.",
     )
-    remarks = fields.Text(string='Remarks')
+    remarks = fields.Text(string='Remarks', tracking=True)
 
     # ── Billing ───────────────────────────────────────────────────
     # Agreed on the overarching contract. A placed contract bills on the same
@@ -625,6 +626,7 @@ class Contract(models.Model):
         # create that never mentions attachment_ids would slip through.
         records._check_attachments()
         records._sync_expired_state()
+        records._send_change_notification('created')
         return records
 
     def write(self, vals):
@@ -653,6 +655,109 @@ class Contract(models.Model):
             # placed under it running outside of it.
             self.child_contract_ids._check_parent_period()
         return res
+
+    # ── Change notifications ──────────────────────────────────────
+    def _message_track(self, fields_iter, initial_values_dict):
+        """Mail the change recipients whatever the audit log just recorded.
+
+        This is where mail.thread turns tracked-field changes into the
+        chatter's log entry, once per record per transaction, so hooking in
+        here mails exactly what the log shows - from the form, an import, a
+        script or the nightly cron alike.
+        """
+        tracking = super()._message_track(fields_iter, initial_values_dict)
+        for rec in self:
+            changes = tracking.get(rec.id, (None, None))[0]
+            if changes:
+                rec._send_change_notification(
+                    'updated', rec._format_changes(changes, initial_values_dict[rec.id]))
+        return tracking
+
+    def _format_changes(self, changes, initial_values):
+        """Old and new value of each changed field, as display text, in the
+        order the fields are declared."""
+        self.ensure_one()
+        return [
+            {
+                'field': self._fields[fname]._description_string(self.env),
+                'old': self._format_tracked_value(fname, initial_values.get(fname)),
+                'new': self._format_tracked_value(fname, self[fname]),
+            }
+            for fname in self._fields if fname in changes
+        ]
+
+    def _format_tracked_value(self, fname, value):
+        field = self._fields[fname]
+        if field.type == 'boolean':
+            return _('Yes') if value else _('No')
+        if field.type in ('integer', 'float', 'monetary'):
+            return f'{value:.2f}' if field.type != 'integer' else str(value or 0)
+        if value is None or value is False or value == '':
+            return '—'
+        if field.type == 'selection':
+            return dict(field._description_selection(self.env)).get(value, value)
+        if field.type in ('many2one', 'many2many', 'one2many'):
+            return ', '.join(value.mapped('display_name')) or '—'
+        if field.type == 'date':
+            return format_date(self.env, value)
+        return str(value)
+
+    @api.model
+    def _get_change_recipients(self):
+        """Partners to mail, or nothing while the notifications are off."""
+        params = self.env['ir.config_parameter'].sudo()
+        if not params.get_param('contracts.change_notify'):
+            return self.env['res.partner']
+        return self._recipient_partners(
+            self.env.company.sudo().contracts_change_recipient_ids)
+
+    @api.model
+    def _recipient_partners(self, users):
+        """The partners behind picked users who can actually be mailed."""
+        return users.filtered(lambda u: u.active and u.email).partner_id
+
+    def _send_change_notification(self, event, changes=None):
+        """Queue one email per contract: 'created', or 'updated' with the
+        list of changes. Goes through the mail queue inside the same
+        transaction, so a save that fails sends nothing."""
+        partners = self._get_change_recipients()
+        if not partners or not self:
+            return
+        template = self.env.ref(
+            'contracts.mail_template_contract_created' if event == 'created'
+            else 'contracts.mail_template_contract_updated',
+            raise_if_not_found=False,
+        )
+        if not template:
+            _logger.warning("Contract change notification: mail template is missing.")
+            return
+        template = template.sudo().with_context(
+            contracts_changes=changes or [],
+            # The nightly cron runs as the superuser; naming OdooBot would
+            # only puzzle the reader.
+            contracts_changed_by=_("Automatic update") if self.env.user._is_superuser()
+            else self.env.user.name,
+        )
+        for rec in self:
+            try:
+                with self.env.cr.savepoint():
+                    template.with_context(contracts_url=rec._get_form_url()).send_mail(
+                        rec.id,
+                        email_values={'recipient_ids': [(6, 0, partners.ids)]},
+                        force_send=False,
+                    )
+            except Exception:
+                # A notification must never block the change it reports on.
+                _logger.exception(
+                    "Contract change notification failed for contract %s (id %s).",
+                    rec.display_name, rec.id,
+                )
+
+    def _get_form_url(self):
+        """Link straight to the contract in its own section's screen."""
+        self.ensure_one()
+        action = 'action_contracts_sow' if self.contract_type == 'sow' else 'action_contracts_msa'
+        return f'{self.get_base_url()}/odoo/action-contracts.{action}/{self.id}'
 
     # ── Actions ───────────────────────────────────────────────────
     def action_terminate(self):
@@ -736,8 +841,12 @@ class Contract(models.Model):
         schedule can be changed without a deploy. Anything that is not a
         plain number is ignored rather than breaking the run.
         """
-        raw = self.env['ir.config_parameter'].sudo().get_param(
-            'contracts.reminder_days', DEFAULT_REMINDER_DAYS)
+        # get_param falls back to the default for an empty value too, which
+        # would bring back reminders cleared on purpose in the settings. Only
+        # a parameter that does not exist at all takes the default.
+        raw = self.env['ir.config_parameter'].sudo()._get_param('contracts.reminder_days')
+        if raw is None:
+            raw = DEFAULT_REMINDER_DAYS
         days = set()
         for chunk in (raw or '').split(','):
             chunk = chunk.strip()
@@ -747,15 +856,14 @@ class Contract(models.Model):
 
     @api.model
     def _get_reminder_recipients(self):
-        """Who expiry reminders go to, as a comma-separated address list.
+        """Partners expiry reminders go to.
 
         The contract itself carries no email address - the client and the POC
-        are free text - so the recipients are an internal list held in the
-        'contracts.reminder_emails' system parameter.
+        are free text - so the recipients are users picked under Contracts >
+        Configuration > Settings.
         """
-        raw = self.env['ir.config_parameter'].sudo().get_param(
-            'contracts.reminder_emails', '')
-        return ','.join(e.strip() for e in (raw or '').split(',') if e.strip())
+        return self._recipient_partners(
+            self.env.company.sudo().contracts_reminder_recipient_ids)
 
     # ── Scheduled actions ─────────────────────────────────────────
     @api.model
@@ -799,8 +907,8 @@ class Contract(models.Model):
         if not days or not recipients:
             _logger.warning(
                 "Contract expiry reminders: no milestones in "
-                "'contracts.reminder_days' or no recipients in "
-                "'contracts.reminder_emails'; skipping run."
+                "'contracts.reminder_days' or no recipient with an email "
+                "address picked in the settings; skipping run."
             )
             return True
 
@@ -837,9 +945,11 @@ class Contract(models.Model):
                 # whole run, and an error would otherwise leave the cursor
                 # unusable for the contracts after it.
                 with self.env.cr.savepoint():
-                    template.with_context(reminder_days=milestone).send_mail(
+                    template.with_context(
+                        reminder_days=milestone, contracts_url=rec._get_form_url(),
+                    ).send_mail(
                         rec.id,
-                        email_values={'email_to': recipients},
+                        email_values={'recipient_ids': [(6, 0, recipients.ids)]},
                         force_send=False,
                     )
                     rec.write({

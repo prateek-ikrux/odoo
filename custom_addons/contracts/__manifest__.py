@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.11.0',
+    'version': '19.0.1.14.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -34,11 +34,12 @@ inside its period.
 
 Before a contract runs out, a nightly scheduled action emails an internal list
 at a set of day milestones - 45, 30 and 7 days left by default. Both the
-milestones and the recipients are set under Contracts > Configuration >
-Settings, so the schedule can be changed without a deploy, and the same screen
-switches the reminders off altogether. Recipients start out empty, so nothing
-is sent until they are filled in. Every reminder is logged in the contract's chatter, and extending an end
-date starts the sequence over.
+milestones and the recipients - users picked from a list - are set under
+Contracts > Configuration > Settings, so the schedule can be changed without a
+deploy, and the same screen switches the reminders off altogether. Recipients
+start out empty, so nothing is sent until someone is picked. Every reminder is
+logged in the contract's chatter, and extending an end date starts the sequence
+over.
 
 An overarching contract can instead run Until Completion of Service - for as
 long as there is work under it. It then has no end date at all: it never
@@ -52,13 +53,23 @@ and the reminders all follow it, and extending re-arms the reminder sequence.
 A placed contract also carries the next annual appraisal date, taken from the
 start date, and free-text remarks.
 
+Every change recorded in a contract's audit log - and every new contract - can
+be emailed to a list of users picked under Contracts > Configuration >
+Settings, kept apart from the expiry reminder recipients.
+
+Access is granted per user from the user form, like any other app: Contracts
+User works with MSAs and SOWs, Contracts Administrator also deletes them and
+maintains the Contract Types master list.
+
 Each section exports its own filtered Excel report.
 """,
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
+        'security/contracts_security.xml',
         'security/ir.model.access.csv',
         'data/ir_config_parameter_data.xml',
         'data/contract_type_data.xml',
+        'data/contract_reminder_milestone_data.xml',
         'data/mail_template_data.xml',
         'data/ir_cron_data.xml',
         # the wizard action is referenced by a button in the contract list view,

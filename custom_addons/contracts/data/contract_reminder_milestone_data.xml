@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The choices offered in the Send at picker out of the box. Any other
+         number can be typed into it and is added on the fly. -->
+    <data noupdate="1">
+        <record id="reminder_milestone_90" model="contracts.reminder.milestone"><field name="days">90</field></record>
+        <record id="reminder_milestone_60" model="contracts.reminder.milestone"><field name="days">60</field></record>
+        <record id="reminder_milestone_45" model="contracts.reminder.milestone"><field name="days">45</field></record>
+        <record id="reminder_milestone_30" model="contracts.reminder.milestone"><field name="days">30</field></record>
+        <record id="reminder_milestone_15" model="contracts.reminder.milestone"><field name="days">15</field></record>
+        <record id="reminder_milestone_7" model="contracts.reminder.milestone"><field name="days">7</field></record>
+        <record id="reminder_milestone_3" model="contracts.reminder.milestone"><field name="days">3</field></record>
+        <record id="reminder_milestone_1" model="contracts.reminder.milestone"><field name="days">1</field></record>
+    </data>
+</odoo>

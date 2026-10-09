@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
-from odoo.tools.mail import email_normalize, single_email_re
-
-from .contract import DEFAULT_REMINDER_DAYS
+from odoo import api, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -18,54 +14,30 @@ class ResConfigSettings(models.TransientModel):
              "deactivates the nightly scheduled action.",
     )
 
-    # These two are stored as system parameters, which is what
-    # contracts.contract reads. This screen only makes them editable without
-    # developer mode, and refuses values the reminder cron would silently drop.
-    contracts_reminder_days = fields.Char(
-        string='Reminder Schedule',
-        config_parameter='contracts.reminder_days',
-        default=DEFAULT_REMINDER_DAYS,
-        help="Days before the end date an expiry reminder goes out, comma "
-             "separated. The most urgent milestone reached is the one sent.",
+    # Shown as chips, but still saved to the 'contracts.reminder_days' system
+    # parameter the reminder cron reads; get_values and set_values translate.
+    contracts_reminder_milestone_ids = fields.Many2many(
+        'contracts.reminder.milestone', string='Send at',
+        help="When reminders go out, in days before the end date. The most "
+             "urgent one reached is the one sent.",
     )
-    # Deliberately no default: get_param falls back to the default when the
-    # stored value is an empty string, so one here would quietly reinstate
-    # recipients on a database where they were cleared on purpose.
-    contracts_reminder_emails = fields.Char(
-        string='Reminder Recipients',
-        config_parameter='contracts.reminder_emails',
-        help="Comma-separated addresses that receive expiry reminders. "
-             "Leave empty to send none.",
+    # Users rather than free-text addresses, so a recipient who leaves is
+    # simply archived; held on the company because a settings field cannot
+    # keep a many2many in a system parameter.
+    contracts_reminder_recipient_ids = fields.Many2many(
+        related='company_id.contracts_reminder_recipient_ids', readonly=False,
     )
 
-    @api.constrains('contracts_reminder_days', 'contracts_reminder_emails')
-    def _check_contracts_reminder_settings(self):
-        """Refuse what the cron would otherwise drop without telling anyone."""
-        for rec in self:
-            for chunk in (rec.contracts_reminder_days or '').split(','):
-                chunk = chunk.strip()
-                if not chunk:
-                    continue
-                if not chunk.isdigit() or int(chunk) <= 0:
-                    raise ValidationError(
-                        _("'%s' is not a valid number of days. Enter whole "
-                          "numbers above zero, separated by commas - for "
-                          "example 45,30,7.", chunk)
-                    )
-            for token in (rec.contracts_reminder_emails or '').split(','):
-                token = token.strip()
-                if not token:
-                    continue
-                # email_normalize only extracts an address - it returns
-                # '@nope' and 'x@y' happily - so the extracted value still has
-                # to be checked against the strict pattern. Going through it
-                # first is what lets 'Bob <b@c.com>' through.
-                normalized = email_normalize(token)
-                if not normalized or not single_email_re.match(normalized):
-                    raise ValidationError(
-                        _("'%s' is not a valid email address. Separate "
-                          "recipients with commas.", token)
-                    )
+    # ── Change notifications ──────────────────────────────────────
+    contracts_change_notify = fields.Boolean(
+        string='Change Notifications',
+        config_parameter='contracts.change_notify',
+        help="Email the recipients below whenever a contract is created or a "
+             "change is recorded in its audit log.",
+    )
+    contracts_change_recipient_ids = fields.Many2many(
+        related='company_id.contracts_change_recipient_ids', readonly=False,
+    )
 
     # ── Reminder scheduled action ─────────────────────────────────
     def _get_reminder_cron(self):
@@ -80,10 +52,20 @@ class ResConfigSettings(models.TransientModel):
         values = super().get_values()
         cron = self._get_reminder_cron()
         values['contracts_reminders_enabled'] = bool(cron and cron.active)
+        # Any number in the parameter not yet offered as a chip - set from
+        # developer mode, say - becomes one, so saving cannot drop it.
+        Milestone = self.env['contracts.reminder.milestone'].sudo()
+        milestones = Milestone.browse()
+        for days in self.env['contracts.contract']._get_reminder_days():
+            milestones |= Milestone._get_or_create(days)
+        values['contracts_reminder_milestone_ids'] = [(6, 0, milestones.ids)]
         return values
 
     def set_values(self):
         super().set_values()
+        days = sorted(set(self.contracts_reminder_milestone_ids.mapped('days')), reverse=True)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'contracts.reminder_days', ','.join(map(str, days)))
         cron = self._get_reminder_cron()
         if cron and cron.active != self.contracts_reminders_enabled:
             cron.active = self.contracts_reminders_enabled

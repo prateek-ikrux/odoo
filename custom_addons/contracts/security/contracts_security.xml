@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Gives the user form a Contracts line, like every other app: left
+         empty, the user has no access to Contracts at all. The category is the
+         one the manifest's 'Services/Contracts' already creates. -->
+    <record id="res_groups_privilege_contracts" model="res.groups.privilege">
+        <field name="name">Contracts</field>
+        <field name="sequence">40</field>
+        <field name="category_id" ref="base.module_category_services_contracts"/>
+    </record>
+
+    <record id="group_contracts_user" model="res.groups">
+        <field name="name">User</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_contracts"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Can see, create and edit MSAs and SOWs, and export them to Excel.</field>
+    </record>
+
+    <record id="group_contracts_manager" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_contracts"/>
+        <field name="implied_ids" eval="[(4, ref('group_contracts_user'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Can also delete contracts and maintain the Contract Types master list.</field>
+    </record>
+
+</odoo>

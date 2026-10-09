@@ -6,7 +6,8 @@
         id="menu_contracts_root"
         name="Contracts"
         web_icon="contracts,static/description/icon.png"
-        sequence="90"/>
+        sequence="90"
+        groups="group_contracts_user"/>
 
     <menuitem
         id="menu_contracts_msa"
@@ -22,14 +23,15 @@
         action="action_contracts_sow"
         sequence="20"/>
 
-    <!-- Admin only: res.config.settings.execute() refuses non-admins, so a
-         visible entry would lead nowhere but an access error. -->
+    <!-- Contracts administrators maintain the master lists. Settings stays
+         with system admins: res.config.settings.execute() refuses anyone
+         else, so a visible entry would lead nowhere but an access error. -->
     <menuitem
         id="menu_contracts_config"
         name="Configuration"
         parent="menu_contracts_root"
         sequence="100"
-        groups="base.group_system"/>
+        groups="group_contracts_manager"/>
 
     <menuitem
         id="menu_contracts_config_settings"
@@ -45,6 +47,6 @@
         parent="menu_contracts_config"
         action="action_contracts_type"
         sequence="20"
-        groups="base.group_system"/>
+        groups="group_contracts_manager"/>
 
 </odoo>

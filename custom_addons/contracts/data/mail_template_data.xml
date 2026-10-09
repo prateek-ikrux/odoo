@@ -2,70 +2,239 @@
 <odoo>
     <!-- No noupdate here, unlike the cron and the system parameters: the
          wording carries no user-owned state, so reworded copy should land on
-         the next upgrade. -->
+         the next upgrade.
+
+         All three share one layout: a coloured header naming what happened,
+         a short sentence saying what to do about it, the contract's details,
+         a button straight into the record, and a footer saying why the reader
+         got the email. Recipients are supplied per send, from the users picked
+         under Contracts > Configuration > Settings; email_from is left out so
+         it falls back to the company address the outgoing mail server expects.
+         The link comes in through the context as contracts_url. -->
     <data>
 
+        <!-- ── Expiry reminder ───────────────────────────────────────── -->
         <record id="mail_template_contract_expiry_reminder" model="mail.template">
-            <field name="name">Contract: Expiry Reminder</field>
+            <field name="name">Contracts: Expiry Reminder</field>
             <field name="model_id" ref="model_contracts_contract"/>
-            <field name="subject">{{ object.display_name }} expires in {{ ctx.get('reminder_days') }} days ({{ format_date(object.effective_end_date) }})</field>
-            <!-- email_to is supplied per send by the cron, from the
-                 'contracts.reminder_emails' system parameter. email_from is
-                 left out so it falls back to the company address the outgoing
-                 mail server expects. -->
+            <!-- Days left, not the milestone: after downtime a contract can be
+                 caught up on with fewer days left than the milestone it hit. -->
+            <field name="subject">{{ 'SOW' if object.contract_type == 'sow' else 'MSA' }} ending {{ 'today' if object.days_left == 0 else ('tomorrow' if object.days_left == 1 else 'in %s days' % object.days_left) }}: {{ object.display_name }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent by the nightly scheduled action when a contract reaches a reminder milestone before its end date.</field>
+            <field name="description">Sent by the nightly scheduled action when an MSA or SOW reaches one of the reminder milestones before its end date.</field>
             <field name="body_html" type="html">
-                <div style="margin: 0px; padding: 0px; font-size: 13px;">
-                    <p>
-                        The following contract expires in
-                        <strong><t t-out="ctx.get('reminder_days') or ''"/> days</strong>,
-                        on <strong t-out="format_date(object.effective_end_date) or ''"/>.
-                    </p>
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="is_sow" t-value="object.contract_type == 'sow'"/>
+    <t t-set="days" t-value="object.days_left"/>
+    <t t-set="accent" t-value="'#C0392B' if days &lt;= 7 else ('#D68910' if days &lt;= 30 else '#2471A3')"/>
 
-                    <table width="100%" style="border-collapse: collapse; margin: 16px 0;">
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Client</td>
-                            <td style="padding: 4px 0;"><t t-out="object.client or ''"/></td>
-                        </tr>
-                        <tr t-if="object.contract_type == 'sow'">
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Candidate</td>
-                            <td style="padding: 4px 0;"><t t-out="object.candidate or ''"/></td>
-                        </tr>
-                        <tr t-if="object.contract_type == 'sow'">
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Role</td>
-                            <td style="padding: 4px 0;"><t t-out="object.role or ''"/></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">POC</td>
-                            <td style="padding: 4px 0;"><t t-out="object.poc or ''"/></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Start Date</td>
-                            <td style="padding: 4px 0;"><t t-out="format_date(object.start_date) or ''"/></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">End Date</td>
-                            <td style="padding: 4px 0;"><t t-out="format_date(object.end_date) or ''"/></td>
-                        </tr>
-                        <tr t-if="object.extended_end_date">
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Extended End Date</td>
-                            <td style="padding: 4px 0;"><strong t-out="format_date(object.extended_end_date) or ''"/></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Days Left</td>
-                            <td style="padding: 4px 0;"><t t-out="object.days_left"/></td>
-                        </tr>
-                        <tr t-if="object.created_by_id">
-                            <td style="padding: 4px 12px 4px 0; color: #888888;">Created By</td>
-                            <td style="padding: 4px 0;"><t t-out="object.created_by_id.name or ''"/></td>
-                        </tr>
-                    </table>
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">
+            Expiry Reminder
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="object.display_name or ''"/>
+        <div style="font-size: 13px; color: #888888;">
+            <t t-if="is_sow">Statement of Work</t><t t-else="">Master Service Agreement</t>
+        </div>
+    </div>
 
-                    <p style="color: #888888;">
-                        Sent automatically by the Contracts scheduled action.
-                    </p>
-                </div>
+    <p style="margin: 0 0 16px 0;">
+        This contract ends
+        <strong t-attf-style="color: {{ accent }};"><t t-if="days == 0">today</t><t t-elif="days == 1">tomorrow</t><t t-else="">in <t t-out="days"/> days</t></strong>,
+        on <strong t-out="format_date(object.effective_end_date) or ''"/>.
+        If it is being renewed or extended, record the new end date on the
+        contract and the reminders will start over from there.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-size: 14px;">
+        <tr>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%;">Client</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.client or ''"/>
+        </tr>
+        <tr t-if="is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Candidate</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.candidate or ''"/>
+        </tr>
+        <tr t-if="is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Role</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.role or ''"/>
+        </tr>
+        <tr t-if="is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Under MSA</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.parent_contract_id.display_name or ''"/>
+        </tr>
+        <tr t-if="not is_sow and object.type_id">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract Type</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.type_id.name"/>
+        </tr>
+        <tr>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract POC</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.poc or ''"/>
+        </tr>
+        <tr>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Period</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;">
+                <t t-out="format_date(object.start_date) or ''"/> to <t t-out="format_date(object.effective_end_date) or ''"/>
+                <span t-if="object.extended_end_date" style="color: #888888;">
+                    (extended from <t t-out="format_date(object.end_date) or ''"/>)
+                </span>
+            </td>
+        </tr>
+        <tr t-if="object.created_by_id">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Created By</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.created_by_id.name"/>
+        </tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('contracts_url')"
+           style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+            Open Contract
+        </a>
+    </p>
+
+    <p style="margin: 0; font-size: 12px; color: #999999;">
+        You are receiving this because you are on the expiry reminder list in
+        Contracts settings.
+    </p>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Contract created ──────────────────────────────────────── -->
+        <record id="mail_template_contract_created" model="mail.template">
+            <field name="name">Contracts: New Contract</field>
+            <field name="model_id" ref="model_contracts_contract"/>
+            <field name="subject">New {{ 'SOW' if object.contract_type == 'sow' else 'MSA' }}: {{ object.display_name }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the change notification list when an MSA or SOW is created.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="is_sow" t-value="object.contract_type == 'sow'"/>
+
+    <div style="border-left: 4px solid #1E8449; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #1E8449;">
+            New Contract
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="object.display_name or ''"/>
+        <div style="font-size: 13px; color: #888888;">
+            <t t-if="is_sow">Statement of Work</t><t t-else="">Master Service Agreement</t>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        <strong t-out="ctx.get('contracts_changed_by') or 'Someone'"/> added
+        <t t-if="is_sow">a new Statement of Work</t><t t-else="">a new Master Service Agreement</t>.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-size: 14px;">
+        <tr>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%;">Client</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.client or ''"/>
+        </tr>
+        <tr t-if="is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Candidate</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.candidate or ''"/>
+        </tr>
+        <tr t-if="is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Role</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.role or ''"/>
+        </tr>
+        <tr t-if="is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Under MSA</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.parent_contract_id.display_name or ''"/>
+        </tr>
+        <tr t-if="not is_sow">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract Type</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.type_id.name or 'Not set'"/>
+        </tr>
+        <tr>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract POC</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.poc or ''"/>
+        </tr>
+        <tr>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Period</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;">
+                <t t-out="format_date(object.start_date) or ''"/> to
+                <t t-if="object.term == 'until_completion'">completion of service</t>
+                <t t-else="" t-out="format_date(object.end_date) or ''"/>
+            </td>
+        </tr>
+        <tr t-if="object.billing_poc">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Billing POC</td>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.billing_poc"/>
+        </tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('contracts_url')"
+           style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+            Open Contract
+        </a>
+    </p>
+
+    <p style="margin: 0; font-size: 12px; color: #999999;">
+        You are receiving this because you are on the change notification list
+        in Contracts settings.
+    </p>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Contract updated ──────────────────────────────────────── -->
+        <record id="mail_template_contract_updated" model="mail.template">
+            <field name="name">Contracts: Contract Updated</field>
+            <field name="model_id" ref="model_contracts_contract"/>
+            <field name="subject">{{ 'SOW' if object.contract_type == 'sow' else 'MSA' }} updated: {{ object.display_name }} ({{ len(ctx.get('contracts_changes') or []) }} {{ 'change' if len(ctx.get('contracts_changes') or []) == 1 else 'changes' }})</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the change notification list whenever a change to an MSA or SOW is saved in its audit log.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="is_sow" t-value="object.contract_type == 'sow'"/>
+    <t t-set="changes" t-value="ctx.get('contracts_changes') or []"/>
+
+    <div style="border-left: 4px solid #2471A3; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #2471A3;">
+            Contract Updated
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="object.display_name or ''"/>
+        <div style="font-size: 13px; color: #888888;">
+            <t t-if="is_sow">Statement of Work</t><t t-else="">Master Service Agreement</t>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        <strong t-out="ctx.get('contracts_changed_by') or 'Someone'"/> made
+        <t t-if="len(changes) == 1">a change</t>
+        <t t-else=""><t t-out="len(changes)"/> changes</t>
+        to this contract:
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-size: 14px;">
+        <tr>
+            <th style="padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase; width: 34%;">Field</th>
+            <th style="padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase; width: 33%;">Before</th>
+            <th style="padding: 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;">After</th>
+        </tr>
+        <tr t-foreach="changes" t-as="change">
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;" t-out="change['field']"/>
+            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top; color: #999999;" t-out="change['old']"/>
+            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;"><strong t-out="change['new']"/></td>
+        </tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('contracts_url')"
+           style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+            Open Contract
+        </a>
+    </p>
+
+    <p style="margin: 0; font-size: 12px; color: #999999;">
+        You are receiving this because you are on the change notification list
+        in Contracts settings.
+    </p>
+</div>
             </field>
         </record>
 
