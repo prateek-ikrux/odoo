@@ -877,9 +877,15 @@ class Contract(models.Model):
         def short_date(value):
             return format_date(self.env, value, date_format='d MMM y') if value else ''
 
+        def label(fname):
+            return dict(self._fields[fname]._description_selection(self.env)).get(self[fname], '')
+
         later = [d for d in days if d < milestone and d < self.days_left]
         next_days = max(later) if later else 0
-        children = self.child_contract_ids.filtered(lambda c: c.state == 'active')             .sorted(lambda c: (c.effective_end_date or fields.Date.today(), c.id))
+        children = self.child_contract_ids.filtered(lambda c: c.state == 'active') \
+            .sorted(lambda c: (c.effective_end_date or fields.Date.today(), c.id))
+        currency = self.billing_currency_other if self.billing_currency == 'other' \
+            else label('billing_currency')
         return {
             'days_left': self.days_left,
             'urgent': self.days_left <= 7,
@@ -887,7 +893,19 @@ class Contract(models.Model):
                       else '#D68910' if self.days_left <= 30 else '#2471A3',
             'ends_on': long_date(self.effective_end_date),
             'started_on': short_date(self.start_date),
+            'end_date': short_date(self.end_date),
+            'extended_end': short_date(self.extended_end_date),
             'original_end': short_date(self.end_date) if self.extended_end_date else '',
+            # Shown in the user's own timezone, not UTC, so a contract
+            # created late in the evening does not read as the next day.
+            'created_on': short_date(fields.Datetime.context_timestamp(
+                self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
+            'appraisal_due': short_date(self.annual_appraisal_due),
+            'bill_rate': f'{self.bill_rate:g}%' if self.bill_rate else '',
+            'billing_currency': currency or '',
+            'billing_frequency': label('billing_frequency'),
+            'billing_start': short_date(self.billing_start_date),
+            'documents': len(self._get_documents()),
             'parent_ends_on': short_date(self.parent_contract_id.effective_end_date)
                               if self.parent_contract_id.effective_end_date else '',
             'next_days': next_days,

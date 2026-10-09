@@ -42,7 +42,6 @@
         <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="object.display_name or ''"/>
         <div style="font-size: 13px; color: #888888;">
             <t t-if="is_sow">Statement of Work</t><t t-else="">Master Service Agreement</t>
-            <t t-if="not is_sow and object.type_id"> - <t t-out="object.type_id.name"/></t>
         </div>
     </div>
 
@@ -72,52 +71,40 @@
         </tr>
     </table>
 
-    <!-- What to do -->
-    <div style="font-size: 15px; font-weight: bold; margin: 0 0 8px 0;">What needs to happen</div>
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-        <tr>
-            <td width="28" valign="top" style="padding: 6px 0; font-size: 16px; color: #1E8449;">&#8635;</td>
-            <td style="padding: 6px 0;">
-                <strong>Being renewed or extended?</strong>
-                Open the contract, set <em>Is Contract Getting Extended?</em> to Yes and
-                enter the new end date. Reminders start over from that date.
-                <t t-if="not is_sow and r.get('children')">Extend the MSA before any SOW under it.</t>
-            </td>
-        </tr>
-        <tr>
-            <td width="28" valign="top" style="padding: 6px 0; font-size: 16px; color: #2471A3;">&#10003;</td>
-            <td style="padding: 6px 0;">
-                <strong>Ending as planned?</strong>
-                Nothing to do - it moves to Expired on its own the day after it ends.
-            </td>
-        </tr>
-        <tr>
-            <td width="28" valign="top" style="padding: 6px 0; font-size: 16px; color: #C0392B;">&#10005;</td>
-            <td style="padding: 6px 0;">
-                <strong>Ending early?</strong>
-                Use <em>Terminate</em> on the contract so it stops counting down.
-            </td>
-        </tr>
-    </table>
-
-    <!-- Details -->
-    <div style="font-size: 15px; font-weight: bold; margin: 0 0 4px 0;">Contract details</div>
+    <!-- Details, in four groups. A row only appears when it has a value, so
+         an MSA without billing terms yet does not show a block of blanks. -->
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+    <t t-set="group_td" t-value="'padding: 18px 0 6px 0; border-bottom: 2px solid #DDDDDD; color: #555555; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;'"/>
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <!-- Contract -->
+        <tr><td colspan="2" t-att-style="group_td + ' padding-top: 0;'">Contract</td></tr>
         <tr>
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%;">Client</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.client or ''"/>
+            <td t-att-style="label_td">Client</td>
+            <td t-att-style="value_td" t-out="object.client or ''"/>
+        </tr>
+        <tr t-if="not is_sow">
+            <td t-att-style="label_td">Contract Type</td>
+            <td t-att-style="value_td" t-out="object.type_id.name or 'Not set'"/>
+        </tr>
+        <tr t-if="not is_sow and object.child_contract_ids">
+            <td t-att-style="label_td">SOWs Under It</td>
+            <td t-att-style="value_td">
+                <t t-out="len(r.get('children') or [])"/> active
+                <span style="color: #888888;">of <t t-out="len(object.child_contract_ids)"/> in total</span>
+            </td>
         </tr>
         <tr t-if="is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Candidate</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.candidate or ''"/>
+            <td t-att-style="label_td">Candidate</td>
+            <td t-att-style="value_td" t-out="object.candidate or ''"/>
         </tr>
         <tr t-if="is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Role</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.role or ''"/>
+            <td t-att-style="label_td">Role</td>
+            <td t-att-style="value_td" t-out="object.role or ''"/>
         </tr>
         <tr t-if="is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Under MSA</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;">
+            <td t-att-style="label_td">Under MSA</td>
+            <td t-att-style="value_td">
                 <t t-out="object.parent_contract_id.client or ''"/>
                 <span style="color: #888888;">
                     <t t-if="r.get('parent_ends_on')">- runs until <t t-out="r['parent_ends_on']"/></t>
@@ -126,20 +113,78 @@
             </td>
         </tr>
         <tr>
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract POC</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.poc or ''"/>
+            <td t-att-style="label_td">Contract POC</td>
+            <td t-att-style="value_td" t-out="object.poc or ''"/>
         </tr>
-        <tr t-if="object.billing_poc">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Billing POC</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.billing_poc"/>
+
+        <!-- Dates -->
+        <tr><td colspan="2" t-att-style="group_td">Dates</td></tr>
+        <tr>
+            <td t-att-style="label_td">Start Date</td>
+            <td t-att-style="value_td" t-out="r.get('started_on') or format_date(object.start_date)"/>
         </tr>
+        <tr>
+            <td t-att-style="label_td">End Date</td>
+            <td t-att-style="value_td">
+                <t t-out="r.get('end_date') or format_date(object.end_date)"/>
+                <span t-if="r.get('extended_end')" style="color: #888888;">(original)</span>
+            </td>
+        </tr>
+        <tr t-if="r.get('extended_end')">
+            <td t-att-style="label_td">Extended End Date</td>
+            <td t-att-style="value_td"><strong t-out="r['extended_end']"/></td>
+        </tr>
+        <tr t-if="is_sow and r.get('appraisal_due')">
+            <td t-att-style="label_td">Annual Appraisal Due</td>
+            <td t-att-style="value_td" t-out="r['appraisal_due']"/>
+        </tr>
+
+        <!-- Billing -->
+        <t t-if="r.get('bill_rate') or r.get('billing_currency') or r.get('billing_frequency') or r.get('billing_start') or object.billing_poc">
+            <tr><td colspan="2" t-att-style="group_td">
+                Billing<span t-if="is_sow" style="font-weight: normal; text-transform: none; letter-spacing: 0; color: #888888;"> - from the MSA</span>
+            </td></tr>
+            <tr t-if="r.get('bill_rate')">
+                <td t-att-style="label_td">Bill Rate</td>
+                <td t-att-style="value_td" t-out="r['bill_rate']"/>
+            </tr>
+            <tr t-if="r.get('billing_currency')">
+                <td t-att-style="label_td">Currency</td>
+                <td t-att-style="value_td" t-out="r['billing_currency']"/>
+            </tr>
+            <tr t-if="r.get('billing_frequency')">
+                <td t-att-style="label_td">Frequency</td>
+                <td t-att-style="value_td" t-out="r['billing_frequency']"/>
+            </tr>
+            <tr t-if="r.get('billing_start')">
+                <td t-att-style="label_td">Billing Start Date</td>
+                <td t-att-style="value_td" t-out="r['billing_start']"/>
+            </tr>
+            <tr t-if="object.billing_poc">
+                <td t-att-style="label_td">Billing POC</td>
+                <td t-att-style="value_td" t-out="object.billing_poc"/>
+            </tr>
+        </t>
+
+        <!-- Record -->
+        <tr><td colspan="2" t-att-style="group_td">Record</td></tr>
         <tr t-if="object.created_by_id">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Created By</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.created_by_id.name"/>
+            <td t-att-style="label_td">Created By</td>
+            <td t-att-style="value_td" t-out="object.created_by_id.name"/>
+        </tr>
+        <tr t-if="r.get('created_on')">
+            <td t-att-style="label_td">Created On</td>
+            <td t-att-style="value_td" t-out="r['created_on']"/>
+        </tr>
+        <tr>
+            <td t-att-style="label_td">Documents</td>
+            <td t-att-style="value_td">
+                <t t-out="r.get('documents', 0)"/> <t t-if="r.get('documents') == 1">file</t><t t-else="">files</t> attached
+            </td>
         </tr>
         <tr t-if="object.remarks">
-            <td valign="top" style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Remarks</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE; white-space: pre-line;" t-out="object.remarks"/>
+            <td t-att-style="label_td">Remarks</td>
+            <td t-att-style="value_td + ' white-space: pre-line;'" t-out="object.remarks"/>
         </tr>
     </table>
 
