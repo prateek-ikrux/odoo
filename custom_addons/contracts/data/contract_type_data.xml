@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Seed value only. Statements of Work are placed only under consulting
+         contracts, so this one type allows them out of the box; noupdate
+         keeps a rename or other edit from being reverted by an upgrade. -->
+    <data noupdate="1">
+        <record id="contract_type_consulting" model="contracts.type">
+            <field name="name">Consulting</field>
+            <field name="sequence">10</field>
+            <field name="allows_sow" eval="True"/>
+        </record>
+    </data>
+</odoo>

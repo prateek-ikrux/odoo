@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.9.0',
+    'version': '19.0.1.11.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -23,11 +23,14 @@ Every contract moves through three states:
 * Expired - the end date has passed; flipped automatically by a nightly scheduled action.
 * Terminated - closed midway; set manually.
 
-A contract records the client, the point of contact, who created it (read only),
-the start and end dates, the number of days left, and at least one mandatory
-document. A placed contract additionally names the candidate and the role, must
-reference the contract it sits under, takes its client from that contract, and
-has to run inside its period.
+A contract records the client, the point of contact, who created it (read
+only), the start and end dates, the number of days left, and at least one
+mandatory document. An overarching contract also has a contract type, picked
+from a master list kept under Contracts > Configuration > Contract Types. A
+placed contract has no type; it additionally names the candidate and the role,
+must reference the contract it sits under - one whose type allows Statements of
+Work, such as Consulting - takes its client from that contract, and has to run
+inside its period.
 
 Before a contract runs out, a nightly scheduled action emails an internal list
 at a set of day milestones - 45, 30 and 7 days left by default. Both the
@@ -55,12 +58,14 @@ Each section exports its own filtered Excel report.
     'data': [
         'security/ir.model.access.csv',
         'data/ir_config_parameter_data.xml',
+        'data/contract_type_data.xml',
         'data/mail_template_data.xml',
         'data/ir_cron_data.xml',
         # the wizard action is referenced by a button in the contract list view,
         # so it has to be loaded first
         'views/contract_report_wizard_views.xml',
         'views/contract_terminate_wizard_views.xml',
+        'views/contract_type_views.xml',
         'views/contract_views.xml',
         # the settings action is referenced by the Configuration menu,
         # so it has to be loaded first

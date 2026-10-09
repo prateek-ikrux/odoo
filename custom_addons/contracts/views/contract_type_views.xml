@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Master list: Contract Types ─────────────────────────────────── -->
+    <!-- Edited in place: a type is just a name, so a form would be one field
+         on an otherwise empty sheet. -->
+    <record id="view_contracts_type_list" model="ir.ui.view">
+        <field name="name">contracts.type.list</field>
+        <field name="model">contracts.type</field>
+        <field name="arch" type="xml">
+            <list string="Contract Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="allows_sow"/>
+                <field name="description" optional="show"/>
+                <field name="contract_count" string="Contracts"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_contracts_type_search" model="ir.ui.view">
+        <field name="name">contracts.type.search</field>
+        <field name="model">contracts.type</field>
+        <field name="arch" type="xml">
+            <search string="Search Contract Types">
+                <field name="name"/>
+                <filter name="filter_archived" string="Archived"
+                        domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_contracts_type" model="ir.actions.act_window">
+        <field name="name">Contract Types</field>
+        <field name="res_model">contracts.type</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_contracts_type_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add your first contract type</p>
+            <p>
+                The types listed here are the ones offered in the Contract Type
+                field on every contract. Archive a type to stop offering it
+                without touching the contracts already recorded with it.
+            </p>
+        </field>
+    </record>
+
+</odoo>

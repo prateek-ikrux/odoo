@@ -39,4 +39,12 @@
         sequence="10"
         groups="base.group_system"/>
 
+    <menuitem
+        id="menu_contracts_config_types"
+        name="Contract Types"
+        parent="menu_contracts_config"
+        action="action_contracts_type"
+        sequence="20"
+        groups="base.group_system"/>
+
 </odoo>

@@ -20,7 +20,7 @@ class ContractReportWizard(models.TransientModel):
 
     # ── Contract filters ──────────────────────────────────────────
     contract_type = fields.Selection(
-        TYPE_SELECTION, required=True,
+        TYPE_SELECTION, string='Section', required=True,
     )
     client = fields.Char(
         string='Client',
@@ -41,6 +41,11 @@ class ContractReportWizard(models.TransientModel):
     created_by_ids = fields.Many2many(
         'res.users', string='Created By',
         help="Leave empty to include contracts created by anyone.",
+    )
+    type_ids = fields.Many2many(
+        'contracts.type', string='Contract Type',
+        help="Leave empty to include every contract type. Overarching "
+             "contracts only.",
     )
 
     # ── Date filters ──────────────────────────────────────────────
@@ -91,6 +96,8 @@ class ContractReportWizard(models.TransientModel):
             domain.append(('state', '=', self.state))
         if self.created_by_ids:
             domain.append(('created_by_id', 'in', self.created_by_ids.ids))
+        if self.contract_type == 'msa' and self.type_ids:
+            domain.append(('type_id', 'in', self.type_ids.ids))
         if self.start_date_from:
             domain.append(('start_date', '>=', self.start_date_from))
         if self.start_date_to:
@@ -132,6 +139,8 @@ class ContractReportWizard(models.TransientModel):
             lines.append(_("Status: %s", STATE_LABELS.get(self.state, self.state)))
         if self.created_by_ids:
             lines.append(_("Created By: %s", ', '.join(self.created_by_ids.mapped('name'))))
+        if self.contract_type == 'msa' and self.type_ids:
+            lines.append(_("Contract Type: %s", ', '.join(self.type_ids.mapped('name'))))
         if self.start_date_from or self.start_date_to:
             lines.append(_(
                 "Start Date: %(start)s to %(end)s",
@@ -169,6 +178,7 @@ class ContractReportWizard(models.TransientModel):
             rows.append({
                 'seq': seq,
                 'client': contract.client or '',
+                'contract_type': contract.type_id.name or '',
                 'candidate': contract.candidate or '',
                 'role': contract.role or '',
                 'created_by': contract.created_by_id.name or '',

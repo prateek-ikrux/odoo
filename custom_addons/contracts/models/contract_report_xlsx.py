@@ -7,6 +7,7 @@ import io
 
 _CLIENT_COLUMN = [
     ('Client',           'client',           24, 'text'),
+    ('Contract Type',    'contract_type',    20, 'text'),
 ]
 _COMMON_COLUMNS = [
     ('Created By',       'created_by',       20, 'text'),

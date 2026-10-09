@@ -74,15 +74,23 @@ class Contract(models.Model):
     _rec_names_search = ['client', 'candidate', 'role']
 
     # ── Core fields ───────────────────────────────────────────────
+    # Labelled apart from type_id, which is the one users see as Contract Type.
     contract_type = fields.Selection(
-        TYPE_SELECTION, required=True, index=True, copy=True,
+        TYPE_SELECTION, string='Section', required=True, index=True, copy=True,
+    )
+    type_id = fields.Many2one(
+        'contracts.type', string='Contract Type', tracking=True, index=True,
+        ondelete='restrict',
+        help="Picked from the master list under Contracts > Configuration > "
+             "Contract Types. Only an overarching contract carries one.",
     )
     parent_contract_id = fields.Many2one(
         'contracts.contract', string='Parent Contract',
         # A terminated contract is not offered for new placements. Not a
         # constraint: placements made before it was terminated stay valid, and
         # an import of past placements still has to be able to name it.
-        domain="[('contract_type', '=', 'msa'), ('state', '!=', 'terminated')]",
+        domain="[('contract_type', '=', 'msa'), ('state', '!=', 'terminated'), "
+               "('type_id.allows_sow', '=', True)]",
         ondelete='restrict', index=True, tracking=True,
         help="The overarching contract this one is placed under.",
     )
@@ -108,8 +116,8 @@ class Contract(models.Model):
         string='Role', tracking=True,
     )
     poc = fields.Char(
-        string='TA POC', required=True, tracking=True,
-        help="Talent acquisition point of contact for this contract.",
+        string='Contract POC', required=True, tracking=True,
+        help="Point of contact for this contract.",
     )
     created_by_id = fields.Many2one(
         'res.users', string='Created By',
@@ -223,7 +231,7 @@ class Contract(models.Model):
         compute='_compute_billing', store=True, readonly=False, precompute=True,
         recursive=True,
         help="Person in charge of billing for this contract. Never the same "
-             "person as the TA POC.",
+             "person as the Contract POC.",
     )
     billing_start_date = fields.Date(
         string='Billing Start Date', tracking=True,
@@ -463,6 +471,15 @@ class Contract(models.Model):
                         _("Contract '%s' cannot be used as a parent contract.",
                           rec.parent_contract_id.display_name)
                     )
+                # Checked only when the parent is set or changed, so SOWs
+                # placed before types existed stay valid until then.
+                if not rec.parent_contract_id.type_id.allows_sow:
+                    raise ValidationError(
+                        _("Contract '%(parent)s' is not of a contract type that "
+                          "allows Statements of Work (%(type)s).",
+                          parent=rec.parent_contract_id.display_name,
+                          type=rec.parent_contract_id.type_id.name or _("no type set"))
+                    )
             elif rec.parent_contract_id:
                 raise ValidationError(
                     _("Contract '%s' cannot be placed under another contract.",
@@ -471,6 +488,21 @@ class Contract(models.Model):
             if rec.parent_contract_id == rec:
                 raise ValidationError(
                     _("Contract '%s' cannot be its own parent.", rec.display_name)
+                )
+
+    @api.constrains('contract_type', 'type_id')
+    def _check_type(self):
+        for rec in self:
+            if rec.contract_type != 'msa' and rec.type_id:
+                raise ValidationError(
+                    _("Only a Master Service Agreement has a contract type; "
+                      "contract '%s' cannot.", rec.display_name)
+                )
+            if rec.child_contract_ids and not rec.type_id.allows_sow:
+                raise ValidationError(
+                    _("Contract '%(name)s' has Statements of Work placed under "
+                      "it, so its type has to be one that allows them.",
+                      name=rec.display_name)
                 )
 
     @api.constrains('contract_type', 'role', 'candidate')
@@ -519,13 +551,13 @@ class Contract(models.Model):
                 continue
             if rec.contract_type == 'sow':
                 raise ValidationError(
-                    _("The TA POC on contract '%(name)s' cannot be %(poc)s, who is "
+                    _("The Contract POC on contract '%(name)s' cannot be %(poc)s, who is "
                       "the Billing POC on its parent contract '%(parent)s'.",
                       name=rec.display_name, poc=rec.billing_poc,
                       parent=rec.parent_contract_id.display_name)
                 )
             raise ValidationError(
-                _("The Billing POC cannot be the same person as the TA POC "
+                _("The Billing POC cannot be the same person as the Contract POC "
                   "on contract '%s'.", rec.display_name)
             )
 

@@ -31,6 +31,8 @@
 
                 <field name="contract_type" column_invisible="1"/>
                 <field name="client"/>
+                <field name="type_id" optional="show"
+                       column_invisible="context.get('default_contract_type') != 'msa'"/>
                 <field name="poc" optional="show"/>
                 <field name="billing_poc" optional="show"/>
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
@@ -171,6 +173,12 @@
                                    invisible="state != 'terminated'"/>
                         </group>
                         <group string="Ownership" name="ownership">
+                            <!-- Only the types an admin keeps in the master
+                                 list; nothing is added from here. A placed
+                                 contract has no type of its own. -->
+                            <field name="type_id"
+                                   options="{'no_create': True, 'no_open': True}"
+                                   invisible="contract_type != 'msa'"/>
                             <field name="poc"/>
                             <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                             <field name="create_date" widget="contracts_datetime" string="Created On" readonly="1"/>
@@ -282,6 +290,7 @@
         <field name="arch" type="xml">
             <search string="Search Contracts">
                 <field name="client"/>
+                <field name="type_id"/>
                 <field name="poc"/>
                 <field name="billing_poc"/>
                 <field name="created_by_id"/>
@@ -313,6 +322,7 @@
 
                 <group>
                     <filter name="group_client" string="Client" domain="[]" context="{'group_by': 'client'}"/>
+                    <filter name="group_type" string="Contract Type" domain="[]" context="{'group_by': 'type_id'}"/>
                     <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
                     <filter name="group_created_by" string="Created By" domain="[]" context="{'group_by': 'created_by_id'}"/>
                     <filter name="group_billing_frequency" string="Billing Frequency" domain="[]" context="{'group_by': 'billing_frequency'}"/>
@@ -448,8 +458,10 @@
                 <field name="role"/>
                 <field name="parent_contract_id"/>
             </field>
-            <!-- A placed contract always has an end date. -->
+            <!-- A placed contract always has an end date, and no type. -->
             <filter name="filter_until_completion" position="replace"/>
+            <field name="type_id" position="replace"/>
+            <filter name="group_type" position="replace"/>
             <filter name="group_client" position="after">
                 <filter name="group_role" string="Role" domain="[]" context="{'group_by': 'role'}"/>
                 <filter name="group_parent" string="Parent Contract" domain="[]"
