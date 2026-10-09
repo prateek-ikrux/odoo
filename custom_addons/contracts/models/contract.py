@@ -753,6 +753,83 @@ class Contract(models.Model):
                     rec.display_name, rec.id,
                 )
 
+    def unlink(self):
+        self._send_deletion_notification()
+        return super().unlink()
+
+    def _send_deletion_notification(self):
+        """One email listing every contract about to be deleted.
+
+        Built before the delete, while the records can still be read, and not
+        linked to them: mail.thread removes every message tied to a record it
+        deletes, which would take a queued email with it. If the delete itself
+        fails - an MSA with SOWs under it - the transaction rolls the email
+        back too.
+        """
+        partners = self._get_change_recipients()
+        if not partners or not self:
+            return
+        template = self.env.ref('contracts.mail_template_contract_deleted',
+                                raise_if_not_found=False)
+        if not template:
+            _logger.warning("Contract deletion notification: mail template is missing.")
+            return
+        try:
+            with self.env.cr.savepoint():
+                lead = self[0]
+                if len(self) == 1:
+                    subject = _('%(kind)s deleted: %(name)s',
+                                kind='SOW' if lead.contract_type == 'sow' else 'MSA',
+                                name=lead.display_name)
+                else:
+                    names = ', '.join(self[:3].mapped('display_name'))
+                    subject = _('%(count)s contracts deleted: %(names)s%(more)s',
+                                count=len(self), names=names,
+                                more=_(' and more') if len(self) > 3 else '')
+                template = template.sudo().with_context(
+                    contracts_subject=subject,
+                    contracts_deleted=[rec._get_deletion_values() for rec in self],
+                    contracts_changed_by=self.env.user.name,
+                )
+                self.env['mail.mail'].sudo().create({
+                    'subject': template._render_field('subject', lead.ids)[lead.id],
+                    'body_html': template._render_field('body_html', lead.ids)[lead.id],
+                    'recipient_ids': [(6, 0, partners.ids)],
+                    'auto_delete': True,
+                })
+        except Exception:
+            # A notification must never block the deletion it reports on.
+            _logger.exception("Contract deletion notification failed for %s.", self.ids)
+
+    def _get_deletion_values(self):
+        """What is worth keeping about a contract once it is gone."""
+        self.ensure_one()
+
+        def short_date(value):
+            return format_date(self.env, value, date_format='d MMM y') if value else ''
+
+        is_sow = self.contract_type == 'sow'
+        return {
+            'kind': _('Statement of Work') if is_sow else _('Master Service Agreement'),
+            'is_sow': is_sow,
+            'name': self.display_name,
+            'client': self.client or '',
+            'contract_type': '' if is_sow else (self.type_id.name or _('Not set')),
+            'candidate': self.candidate or '',
+            'role': self.role or '',
+            'parent': self.parent_contract_id.display_name or '',
+            'poc': self.poc or '',
+            'period': _('%(start)s to %(end)s',
+                        start=short_date(self.start_date),
+                        end=short_date(self.effective_end_date) if self.effective_end_date
+                        else _('completion of service')),
+            'status': dict(self._fields['state']._description_selection(self.env)).get(self.state, ''),
+            'created_by': self.created_by_id.name or '',
+            'created_on': short_date(fields.Datetime.context_timestamp(
+                self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
+            'documents': len(self._get_documents()),
+        }
+
     def _get_form_url(self):
         """Link straight to the contract in its own section's screen."""
         self.ensure_one()

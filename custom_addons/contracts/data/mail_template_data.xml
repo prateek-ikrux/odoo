@@ -372,5 +372,106 @@
             </field>
         </record>
 
+        <!-- ── Contract deleted ──────────────────────────────────────── -->
+        <!-- Rendered before the delete, from ctx['contracts_deleted'] (see
+             contracts.contract._get_deletion_values), since the records are
+             gone by the time anyone reads it. No Open Contract button for the
+             same reason. -->
+        <record id="mail_template_contract_deleted" model="mail.template">
+            <field name="name">Contracts: Contract Deleted</field>
+            <field name="model_id" ref="model_contracts_contract"/>
+            <field name="subject">{{ ctx.get('contracts_subject') or 'Contract deleted' }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the change notification list when MSAs or SOWs are deleted. Rendered before the delete and not linked to the deleted records.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="deleted" t-value="ctx.get('contracts_deleted') or []"/>
+    <t t-set="label_td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div style="border-left: 4px solid #7B7D7D; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #7B7D7D;">
+            <t t-if="len(deleted) == 1">Contract Deleted</t>
+            <t t-else="">Contracts Deleted</t>
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;">
+            <t t-if="len(deleted) == 1" t-out="deleted[0]['name']"/>
+            <t t-else=""><t t-out="len(deleted)"/> contracts</t>
+        </div>
+        <div t-if="len(deleted) == 1" style="font-size: 13px; color: #888888;" t-out="deleted[0]['kind']"/>
+    </div>
+
+    <p style="margin: 0 0 20px 0;">
+        <strong t-out="ctx.get('contracts_changed_by') or 'Someone'"/> permanently deleted
+        <t t-if="len(deleted) == 1">this contract</t>
+        <t t-else="">these contracts</t>
+        from Contracts, along with <t t-if="len(deleted) == 1">its</t><t t-else="">their</t>
+        audit log. This is what <t t-if="len(deleted) == 1">it</t><t t-else="">they</t> held:
+    </p>
+
+    <table t-foreach="deleted" t-as="c" width="100%" cellpadding="0" cellspacing="0"
+           style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr t-if="len(deleted) &gt; 1">
+            <td colspan="2" style="padding: 0 0 6px 0; border-bottom: 2px solid #DDDDDD;">
+                <strong t-out="c['name']"/>
+                <span style="color: #888888; font-size: 13px;"> - <t t-out="c['kind']"/></span>
+            </td>
+        </tr>
+        <tr>
+            <td t-att-style="label_td">Client</td>
+            <td t-att-style="value_td" t-out="c['client']"/>
+        </tr>
+        <tr t-if="not c['is_sow']">
+            <td t-att-style="label_td">Contract Type</td>
+            <td t-att-style="value_td" t-out="c['contract_type']"/>
+        </tr>
+        <tr t-if="c['is_sow']">
+            <td t-att-style="label_td">Candidate</td>
+            <td t-att-style="value_td" t-out="c['candidate']"/>
+        </tr>
+        <tr t-if="c['is_sow']">
+            <td t-att-style="label_td">Role</td>
+            <td t-att-style="value_td" t-out="c['role']"/>
+        </tr>
+        <tr t-if="c['is_sow'] and c['parent']">
+            <td t-att-style="label_td">Under MSA</td>
+            <td t-att-style="value_td" t-out="c['parent']"/>
+        </tr>
+        <tr>
+            <td t-att-style="label_td">Contract POC</td>
+            <td t-att-style="value_td" t-out="c['poc']"/>
+        </tr>
+        <tr>
+            <td t-att-style="label_td">Period</td>
+            <td t-att-style="value_td" t-out="c['period']"/>
+        </tr>
+        <tr>
+            <td t-att-style="label_td">Status When Deleted</td>
+            <td t-att-style="value_td" t-out="c['status']"/>
+        </tr>
+        <tr t-if="c['created_by']">
+            <td t-att-style="label_td">Created</td>
+            <td t-att-style="value_td">
+                <t t-out="c['created_on']"/> by <t t-out="c['created_by']"/>
+            </td>
+        </tr>
+        <tr>
+            <td t-att-style="label_td">Documents</td>
+            <td t-att-style="value_td">
+                <t t-out="c['documents']"/> <t t-if="c['documents'] == 1">file</t><t t-else="">files</t> attached
+            </td>
+        </tr>
+    </table>
+
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        A deleted contract cannot be restored from Contracts. If this was a mistake,
+        it has to be created again.
+        <br/>
+        You are receiving this because you are on the change notification list in Contracts settings.
+    </div>
+</div>
+            </field>
+        </record>
+
     </data>
 </odoo>
