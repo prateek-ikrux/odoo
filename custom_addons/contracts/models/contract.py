@@ -865,6 +865,42 @@ class Contract(models.Model):
         return self._recipient_partners(
             self.env.company.sudo().contracts_reminder_recipient_ids)
 
+    def _get_expiry_reminder_values(self, milestone, days):
+        """Everything the expiry reminder shows beyond the record itself,
+        already formatted: the template's own format_date helper cannot be
+        given a date pattern in this version."""
+        self.ensure_one()
+
+        def long_date(value):
+            return format_date(self.env, value, date_format='EEEE, d MMMM y') if value else ''
+
+        def short_date(value):
+            return format_date(self.env, value, date_format='d MMM y') if value else ''
+
+        later = [d for d in days if d < milestone and d < self.days_left]
+        next_days = max(later) if later else 0
+        children = self.child_contract_ids.filtered(lambda c: c.state == 'active')             .sorted(lambda c: (c.effective_end_date or fields.Date.today(), c.id))
+        return {
+            'days_left': self.days_left,
+            'urgent': self.days_left <= 7,
+            'accent': '#C0392B' if self.days_left <= 7
+                      else '#D68910' if self.days_left <= 30 else '#2471A3',
+            'ends_on': long_date(self.effective_end_date),
+            'started_on': short_date(self.start_date),
+            'original_end': short_date(self.end_date) if self.extended_end_date else '',
+            'parent_ends_on': short_date(self.parent_contract_id.effective_end_date)
+                              if self.parent_contract_id.effective_end_date else '',
+            'next_days': next_days,
+            'next_on': short_date(fields.Date.subtract(self.effective_end_date, days=next_days))
+                       if next_days else '',
+            'children': [{
+                'candidate': child.candidate or '',
+                'role': child.role or '',
+                'ends_on': short_date(child.effective_end_date),
+                'ends_with_parent': child.effective_end_date == self.effective_end_date,
+            } for child in children],
+        }
+
     # ── Scheduled actions ─────────────────────────────────────────
     @api.model
     def _cron_expire_contracts(self):
@@ -947,6 +983,7 @@ class Contract(models.Model):
                 with self.env.cr.savepoint():
                     template.with_context(
                         reminder_days=milestone, contracts_url=rec._get_form_url(),
+                        contracts_reminder=rec._get_expiry_reminder_values(milestone, days),
                     ).send_mail(
                         rec.id,
                         email_values={'recipient_ids': [(6, 0, recipients.ids)]},
