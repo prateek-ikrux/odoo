@@ -614,6 +614,12 @@ class CrmLead(models.Model):
     def _long_date(env, value):
         return format_date(env, value, date_format='EEEE, d MMMM y') if value else ''
 
+    @staticmethod
+    def _plain_number(value):
+        """A number as entered: 1200000 stays 1200000 (:g would give
+        1.2e+06), and 12.50 drops its trailing zero to 12.5."""
+        return f'{value or 0:f}'.rstrip('0').rstrip('.')
+
     def _selection_label(self, fname):
         return dict(self._fields[fname]._description_selection(self.env)).get(self[fname], '')
 
@@ -622,9 +628,9 @@ class CrmLead(models.Model):
         self.ensure_one()
         lead = self.sudo()
         if lead.commercial_basis == 'lpm':
-            commercial = _('%s lakhs / month', f'{lead.bill_rate_lpm:g}') if lead.bill_rate_lpm else ''
+            commercial = _('%s lakhs / month', self._plain_number(lead.bill_rate_lpm)) if lead.bill_rate_lpm else ''
         else:
-            commercial = f'{lead.commercial_agreement_pct * 100:g}%' if lead.commercial_agreement_pct else ''
+            commercial = f'{self._plain_number(lead.commercial_agreement_pct * 100)}%' if lead.commercial_agreement_pct else ''
         next_activity = lead.activity_ids.sorted(lambda a: (a.date_deadline, a.id))[:1]
         created_on = fields.Datetime.context_timestamp(
             lead.with_user(lead.create_uid), lead.create_date) if lead.create_date else False
@@ -739,7 +745,7 @@ class CrmLead(models.Model):
         if field.type == 'boolean':
             return _('Yes') if value else _('No')
         if field.type in ('integer', 'float', 'monetary'):
-            return f'{value or 0:g}'
+            return self._plain_number(value)
         if value is None or value is False or value == '':
             return empty
         if field.type == 'selection':

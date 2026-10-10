@@ -957,7 +957,11 @@ class Contract(models.Model):
         def label(fname):
             return dict(self._fields[fname]._description_selection(self.env)).get(self[fname], '')
 
-        later = [d for d in days if d < milestone and d < self.days_left]
+        def number(value):
+            # As entered: 1200000 stays 1200000 (:g would give 1.2e+06)
+            return f'{value or 0:f}'.rstrip('0').rstrip('.')
+
+        later =[d for d in days if d < milestone and d < self.days_left]
         next_days = max(later) if later else 0
         children = self.child_contract_ids.filtered(lambda c: c.state == 'active') \
             .sorted(lambda c: (c.effective_end_date or fields.Date.today(), c.id))
@@ -978,7 +982,7 @@ class Contract(models.Model):
             'created_on': short_date(fields.Datetime.context_timestamp(
                 self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
             'appraisal_due': short_date(self.annual_appraisal_due),
-            'bill_rate': f'{self.bill_rate:g}%' if self.bill_rate else '',
+            'bill_rate': f'{number(self.bill_rate)}%' if self.bill_rate else '',
             'billing_currency': currency or '',
             'billing_frequency': label('billing_frequency'),
             'billing_start': short_date(self.billing_start_date),

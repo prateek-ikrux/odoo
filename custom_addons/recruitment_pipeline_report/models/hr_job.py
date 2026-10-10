@@ -354,9 +354,9 @@ class HrJob(models.Model):
         job = self.sudo()
         applicants = self.env['hr.applicant'].sudo().search([('job_id', '=', job.id)])
         if job.x_employment_type == 'consulting':
-            commercial = _('%s LPM', f'{job.x_bill_rate_lpm:g}') if job.x_bill_rate_lpm else ''
+            commercial = _('%s LPM', self._rn_number(job.x_bill_rate_lpm)) if job.x_bill_rate_lpm else ''
         else:
-            commercial = _('%s LPA', f'{job.x_budget_lpa:g}') if job.x_budget_lpa else ''
+            commercial = _('%s LPA', self._rn_number(job.x_budget_lpa)) if job.x_budget_lpa else ''
         if job.x_min_experience and not job.x_max_experience:
             experience = _('%s+ yrs', job.x_min_experience)
         elif job.x_min_experience or job.x_max_experience:
