@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Same layout as Contracts settings: a switch per kind of email, and
+         its details only while it is on. Every kind also goes to the
+         opportunity's own BDAs, so "Send to" is for anyone on top of them. -->
+    <record id="res_config_settings_view_form_consulting" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.crm.consulting</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="crm.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='crm']" position="inside">
+                <block title="Email Notifications" name="crm_consulting_notifications">
+
+                    <setting id="crm_change_notify_setting"
+                             string="Change Notifications"
+                             help="Email whenever an opportunity is created, deleted, or a change to it is saved in its audit log.">
+                        <field name="crm_change_notify"/>
+                        <div class="content-group mt16" invisible="not crm_change_notify">
+                            <div class="row">
+                                <label for="crm_change_recipient_ids" string="Also send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="crm_change_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick anyone else to notify..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                    The opportunity's BDAs always receive these.
+                                </div>
+                            </div>
+                        </div>
+                    </setting>
+
+                    <setting id="crm_stage_reminders_setting"
+                             string="Stuck-in-Stage Reminders"
+                             help="Email when an active client's opportunity stays in the same stage too long.">
+                        <field name="crm_stage_reminders"/>
+                        <div class="content-group mt16" invisible="not crm_stage_reminders">
+                            <div class="row">
+                                <label for="crm_stage_reminder_day_ids" string="Send after"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_stage_reminder_day_ids"
+                                           widget="many2many_tags"
+                                           placeholder="Pick or type days..."
+                                           options="{'no_create_edit': True}"/>
+                                    <div class="text-muted small mt-1">
+                                        in the same stage - type a number to add your own
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_stage_reminder_recipient_ids" string="Also send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="crm_stage_reminder_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick anyone else to remind..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                    The opportunity's BDAs always receive these. Choose which
+                                    stages send them under CRM > Configuration > Stages.
+                                </div>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="crm_stage_reminder_day_ids">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>No days picked, so no reminders will go out.</span>
+                            </div>
+                        </div>
+                    </setting>
+
+                    <setting id="crm_activity_reminders_setting"
+                             string="Activity Reminders"
+                             help="Email before a scheduled activity on an opportunity is due.">
+                        <field name="crm_activity_reminders"/>
+                        <div class="content-group mt16" invisible="not crm_activity_reminders">
+                            <div class="row">
+                                <label for="crm_activity_reminder_day_ids" string="Send at"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_activity_reminder_day_ids"
+                                           widget="many2many_tags"
+                                           placeholder="Pick or type days..."
+                                           options="{'no_create_edit': True}"/>
+                                    <div class="text-muted small mt-1">
+                                        before the due date - type a number to add your own
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_activity_reminder_type_ids" string="For"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="crm_activity_reminder_type_ids" class="col-lg-9"
+                                       widget="many2many_tags"
+                                       placeholder="Pick activity types..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_activity_reminder_recipient_ids" string="Also send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="crm_activity_reminder_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick anyone else to remind..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                    The person the activity is assigned to and the opportunity's
+                                    BDAs always receive these.
+                                </div>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert"
+                                 invisible="crm_activity_reminder_day_ids and crm_activity_reminder_type_ids">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Pick at least one day and one activity type, or no reminders will go out.</span>
+                            </div>
+                        </div>
+                    </setting>
+
+                </block>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -22,3 +22,20 @@ def post_init_hook(env):
     ])
     for lead in leads:
         lead.bda_ids = [(4, lead.user_id.id)]
+    setup_notification_defaults(env)
+
+
+def setup_notification_defaults(env):
+    """Starting values for the email notifications, set once.
+
+    The won stage is where a deal is meant to rest, so it sends no
+    stuck-in-stage reminders until someone ticks it. Activity reminders start
+    out covering calls and meetings. Both are the Admin's to change after.
+    """
+    env['crm.stage'].search([('is_won', '=', True)]).write({'stage_reminders': False})
+    types = env['mail.activity.type']
+    for xmlid in ('mail.mail_activity_data_call', 'mail.mail_activity_data_meeting'):
+        types |= env.ref(xmlid, raise_if_not_found=False) or types
+    for company in env['res.company'].search([]):
+        if not company.crm_activity_reminder_type_ids:
+            company.crm_activity_reminder_type_ids = types

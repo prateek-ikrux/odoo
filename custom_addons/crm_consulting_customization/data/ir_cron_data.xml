@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: the time of day and the interval are the Admin's to change.
+         Whether anything is sent is decided by the toggles in CRM settings,
+         which both jobs read on every run. -->
+    <data noupdate="1">
+
+        <record id="ir_cron_crm_stage_reminders" model="ir.cron">
+            <field name="name">CRM: Stuck-in-Stage Reminders</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_stage_reminders()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="ir_cron_crm_activity_reminders" model="ir.cron">
+            <field name="name">CRM: Activity Reminders</field>
+            <field name="model_id" ref="mail.model_mail_activity"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_crm_activity_reminders()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

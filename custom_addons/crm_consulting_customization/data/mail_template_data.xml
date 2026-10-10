@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- No noupdate here: the wording carries no user-owned state, so
+         reworded copy lands on the next upgrade.
+
+         All five share one layout with the Contracts emails: a coloured label
+         saying what happened, the opportunity's name, one sentence, a details
+         table, a button straight into the opportunity, and a footer saying
+         why the reader got it. Values arrive pre-formatted in the context -
+         ctx['crm_details'] from crm.lead._get_mail_details, plus one dict per
+         kind - because the template's own format_date cannot be given a date
+         pattern in this version. Recipients are supplied per send. -->
+    <data>
+
+        <!-- ── New opportunity ───────────────────────────────────────── -->
+        <record id="mail_template_crm_lead_created" model="mail.template">
+            <field name="name">CRM: New Opportunity</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">New opportunity: {{ object.name }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the change notification list and the BDAs when an opportunity is created.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div style="border-left: 4px solid #1E8449; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #1E8449;">New Opportunity</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">Stage: <t t-out="d.get('stage')"/></div>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        <strong t-out="ctx.get('crm_changed_by') or 'Someone'"/> added a new opportunity to the pipeline.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr t-if="d.get('client_type')"><td t-att-style="label_td">Client Type</td><td t-att-style="value_td" t-out="d['client_type']"/></tr>
+        <tr t-if="d.get('industry')"><td t-att-style="label_td">Industry / Domain</td><td t-att-style="value_td" t-out="d['industry']"/></tr>
+        <tr><td t-att-style="label_td">Engagement Type</td><td t-att-style="value_td" t-out="d.get('engagement_type')"/></tr>
+        <tr t-if="d.get('commercial')"><td t-att-style="label_td">Commercial Agreement</td><td t-att-style="value_td" t-out="d['commercial']"/></tr>
+        <tr><td t-att-style="label_td">Client Status</td><td t-att-style="value_td" t-out="d.get('client_status')"/></tr>
+        <tr><td t-att-style="label_td">BDAs</td><td t-att-style="value_td" t-out="d.get('bdas')"/></tr>
+        <tr t-if="d.get('poc')"><td t-att-style="label_td">POC</td><td t-att-style="value_td">
+            <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
+        </td></tr>
+        <tr t-if="d.get('expected_closure')"><td t-att-style="label_td">Expected Closure</td><td t-att-style="value_td" t-out="d['expected_closure']"/></tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        You are receiving this as a BDA on this opportunity or because you are on the change notification list in CRM settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Opportunity updated ───────────────────────────────────── -->
+        <record id="mail_template_crm_lead_updated" model="mail.template">
+            <field name="name">CRM: Opportunity Updated</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">Opportunity updated: {{ object.name }} ({{ len(ctx.get('crm_changes') or []) }} {{ 'change' if len(ctx.get('crm_changes') or []) == 1 else 'changes' }})</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the change notification list and the BDAs whenever a change to an opportunity is saved in its audit log.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
+    <t t-set="changes" t-value="ctx.get('crm_changes') or []"/>
+    <t t-set="th" t-value="'padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
+    <t t-set="td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div style="border-left: 4px solid #2471A3; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #2471A3;">Opportunity Updated</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">
+            Stage: <t t-out="d.get('stage')"/> - BDAs: <t t-out="d.get('bdas')"/>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        <strong t-out="ctx.get('crm_changed_by') or 'Someone'"/> made
+        <t t-if="len(changes) == 1">a change</t><t t-else=""><t t-out="len(changes)"/> changes</t>
+        to this opportunity:
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr>
+            <th t-att-style="th + ' width: 34%;'">Field</th>
+            <th t-att-style="th + ' width: 33%;'">Before</th>
+            <th t-att-style="th">After</th>
+        </tr>
+        <tr t-foreach="changes" t-as="change">
+            <td t-att-style="td" t-out="change['field']"/>
+            <td t-att-style="td + ' color: #999999;'" t-out="change['old']"/>
+            <td t-att-style="td"><strong t-out="change['new']"/></td>
+        </tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        You are receiving this as a BDA on this opportunity or because you are on the change notification list in CRM settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Opportunity deleted ───────────────────────────────────── -->
+        <!-- Rendered before the delete and not linked to the deleted records;
+             no button, since there is nothing left to open. -->
+        <record id="mail_template_crm_lead_deleted" model="mail.template">
+            <field name="name">CRM: Opportunity Deleted</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">{{ ctx.get('crm_subject') or 'Opportunity deleted' }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the change notification list and the BDAs when opportunities are deleted.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="deleted" t-value="ctx.get('crm_deleted') or []"/>
+    <t t-set="label_td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div style="border-left: 4px solid #7B7D7D; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #7B7D7D;">
+            <t t-if="len(deleted) == 1">Opportunity Deleted</t><t t-else="">Opportunities Deleted</t>
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;">
+            <t t-if="len(deleted) == 1" t-out="deleted[0]['name']"/>
+            <t t-else=""><t t-out="len(deleted)"/> opportunities</t>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 20px 0;">
+        <strong t-out="ctx.get('crm_changed_by') or 'Someone'"/> permanently deleted
+        <t t-if="len(deleted) == 1">this opportunity, along with its audit log. This is what it held:</t>
+        <t t-else="">these opportunities, along with their audit logs. This is what they held:</t>
+    </p>
+
+    <table t-foreach="deleted" t-as="d" width="100%" cellpadding="0" cellspacing="0"
+           style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr t-if="len(deleted) &gt; 1">
+            <td colspan="2" style="padding: 0 0 6px 0; border-bottom: 2px solid #DDDDDD;"><strong t-out="d['name']"/></td>
+        </tr>
+        <tr><td t-att-style="label_td">Stage</td><td t-att-style="value_td">
+            <t t-out="d['stage']"/> <span style="color: #888888;">(<t t-out="d['status']"/><t t-if="d.get('lost_reason')"> - <t t-out="d['lost_reason']"/></t>)</span>
+        </td></tr>
+        <tr t-if="d.get('client_type')"><td t-att-style="label_td">Client Type</td><td t-att-style="value_td" t-out="d['client_type']"/></tr>
+        <tr><td t-att-style="label_td">Engagement Type</td><td t-att-style="value_td" t-out="d['engagement_type']"/></tr>
+        <tr t-if="d.get('commercial')"><td t-att-style="label_td">Commercial Agreement</td><td t-att-style="value_td" t-out="d['commercial']"/></tr>
+        <tr><td t-att-style="label_td">BDAs</td><td t-att-style="value_td" t-out="d['bdas']"/></tr>
+        <tr t-if="d.get('poc')"><td t-att-style="label_td">POC</td><td t-att-style="value_td">
+            <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
+        </td></tr>
+        <tr t-if="d.get('created_by')"><td t-att-style="label_td">Created</td><td t-att-style="value_td"><t t-out="d['created_on']"/> by <t t-out="d['created_by']"/></td></tr>
+    </table>
+
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        A deleted opportunity cannot be restored from CRM. If this was a mistake, it has to be created again.
+        <br/>You are receiving this as a BDA on it or because you are on the change notification list in CRM settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Stuck in stage ────────────────────────────────────────── -->
+        <record id="mail_template_crm_lead_stuck" model="mail.template">
+            <field name="name">CRM: Stuck in Stage</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">Stuck {{ (ctx.get('crm_stuck') or {}).get('days', '') }} days in {{ object.stage_id.name }}: {{ object.name }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent by the nightly scheduled action when an active client's opportunity stays in the same stage past one of the reminder marks.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
+    <t t-set="s" t-value="ctx.get('crm_stuck') or {}"/>
+    <t t-set="accent" t-value="s.get('accent') or '#D68910'"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Stuck in Stage</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">Active client - BDAs: <t t-out="d.get('bdas')"/></div>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: separate; border: 1px solid #E5E5E5; border-radius: 6px; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; color: #333333;">
+        <tr>
+            <td width="110" align="center" valign="middle" t-attf-style="background-color: {{ accent }}; color: #FFFFFF; border-radius: 5px 0 0 5px; padding: 14px 8px;">
+                <div style="font-size: 36px; font-weight: bold; line-height: 1.1;" t-out="s.get('days')"/>
+                <div style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">days in stage</div>
+            </td>
+            <td valign="middle" style="padding: 12px 18px;">
+                <div style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">Still in</div>
+                <div style="font-size: 17px; font-weight: bold;" t-out="d.get('stage')"/>
+                <div style="font-size: 13px; color: #888888; margin-top: 4px;">since <t t-out="s.get('entered_on')"/></div>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin: 0 0 16px 0;">
+        This opportunity has not moved stage in <strong><t t-out="s.get('days')"/> days</strong>.
+        <t t-if="d.get('next_activity')">Its next planned step is below.</t>
+        <t t-else=""><strong t-attf-style="color: {{ accent }};">Nothing is scheduled on it</strong> - plan the next step or move it on.</t>
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr><td t-att-style="label_td">Next Activity</td><td t-att-style="value_td">
+            <t t-if="d.get('next_activity')" t-out="d['next_activity']"/>
+            <span t-else="" t-attf-style="color: {{ accent }};">None scheduled</span>
+        </td></tr>
+        <tr t-if="d.get('client_type')"><td t-att-style="label_td">Client Type</td><td t-att-style="value_td" t-out="d['client_type']"/></tr>
+        <tr><td t-att-style="label_td">Engagement Type</td><td t-att-style="value_td" t-out="d.get('engagement_type')"/></tr>
+        <tr t-if="d.get('commercial')"><td t-att-style="label_td">Commercial Agreement</td><td t-att-style="value_td" t-out="d['commercial']"/></tr>
+        <tr t-if="d.get('poc')"><td t-att-style="label_td">POC</td><td t-att-style="value_td">
+            <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
+        </td></tr>
+        <tr t-if="d.get('expected_closure')"><td t-att-style="label_td">Expected Closure</td><td t-att-style="value_td" t-out="d['expected_closure']"/></tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        <t t-if="s.get('next_mark')">
+            Next reminder after <t t-out="s['next_mark']"/> days in this stage, on <t t-out="s['next_on']"/> - unless it moves first.
+        </t>
+        <t t-else="">This is the last reminder for this stage.</t>
+        <br/>You are receiving this as a BDA on this opportunity or because you are on the stuck-in-stage reminder list in CRM settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Activity due ──────────────────────────────────────────── -->
+        <record id="mail_template_crm_activity_due" model="mail.template">
+            <field name="name">CRM: Activity Due</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">{{ (ctx.get('crm_activity') or {}).get('type') or 'Activity' }} due {{ 'today' if (ctx.get('crm_activity') or {}).get('days_left') == 0 else ('tomorrow' if (ctx.get('crm_activity') or {}).get('days_left') == 1 else 'in %s days' % (ctx.get('crm_activity') or {}).get('days_left')) }}: {{ object.name }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent by the nightly scheduled action before a scheduled activity on an opportunity is due.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
+    <t t-set="a" t-value="ctx.get('crm_activity') or {}"/>
+    <t t-set="days" t-value="a.get('days_left', 0)"/>
+    <t t-set="accent" t-value="a.get('accent') or '#D68910'"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Activity Reminder</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">Stage: <t t-out="d.get('stage')"/></div>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: separate; border: 1px solid #E5E5E5; border-radius: 6px; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; color: #333333;">
+        <tr>
+            <td width="110" align="center" valign="middle" t-attf-style="background-color: {{ accent }}; color: #FFFFFF; border-radius: 5px 0 0 5px; padding: 14px 8px;">
+                <t t-if="days == 0">
+                    <div style="font-size: 22px; font-weight: bold; line-height: 1.1;">TODAY</div>
+                </t>
+                <t t-elif="days == 1">
+                    <div style="font-size: 18px; font-weight: bold; line-height: 1.1;">TOMORROW</div>
+                </t>
+                <t t-else="">
+                    <div style="font-size: 36px; font-weight: bold; line-height: 1.1;" t-out="days"/>
+                    <div style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">days to go</div>
+                </t>
+            </td>
+            <td valign="middle" style="padding: 12px 18px;">
+                <div style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;" t-out="a.get('type')"/>
+                <div style="font-size: 17px; font-weight: bold;" t-out="a.get('summary') or a.get('type')"/>
+                <div style="font-size: 13px; color: #888888; margin-top: 4px;">Due <t t-out="a.get('due_on')"/></div>
+            </td>
+        </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr><td t-att-style="label_td">Assigned To</td><td t-att-style="value_td"><strong t-out="a.get('assigned_to')"/></td></tr>
+        <tr t-if="a.get('scheduled_by')"><td t-att-style="label_td">Scheduled By</td><td t-att-style="value_td" t-out="a['scheduled_by']"/></tr>
+        <tr t-if="not is_html_empty(a.get('note'))"><td t-att-style="label_td">Note</td><td t-att-style="value_td" t-out="a['note']"/></tr>
+        <tr><td t-att-style="label_td">BDAs</td><td t-att-style="value_td" t-out="d.get('bdas')"/></tr>
+        <tr t-if="d.get('poc')"><td t-att-style="label_td">POC</td><td t-att-style="value_td">
+            <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
+        </td></tr>
+        <tr><td t-att-style="label_td">Engagement Type</td><td t-att-style="value_td" t-out="d.get('engagement_type')"/></tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        You are receiving this as the person assigned, a BDA on this opportunity, or because you are on the activity reminder list in CRM settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>
