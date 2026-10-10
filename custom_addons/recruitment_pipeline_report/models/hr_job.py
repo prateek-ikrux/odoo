@@ -4,6 +4,17 @@ from odoo.exceptions import ValidationError
 from .pipeline_constants import ROLE_STATUS_SELECTION, SUB_STATUS_SELECTION
 
 
+# What can still be written on a closed role. Role Status and its remarks so
+# it can be reopened; active so it can be archived; the rest because Odoo
+# itself writes them: starring a role as a favourite, and the hiring target
+# moving when one of its candidates is hired or un-hired.
+CLOSED_ROLE_WRITABLE = {
+    'x_role_status', 'x_sub_status', 'active',
+    'favorite_user_ids', 'is_favorite', 'no_of_recruitment',
+    'is_published', 'website_published',
+}
+
+
 class HrJob(models.Model):
     _name = 'hr.job'
     _inherit = ['hr.job', 'recruitment.notify.mixin']
@@ -238,7 +249,23 @@ class HrJob(models.Model):
                 job.x_recruiter_ids = [(4, job.user_id.id)]
         return jobs
 
+    def _check_closed_role_lock(self, vals):
+        """A closed role is read-only until it is reopened, so nothing about
+        it changes by accident. Reopening it in the same save is allowed, and
+        Odoo's own sudo writes are left alone."""
+        if self.env.su or vals.get('x_role_status', 'closed') != 'closed':
+            return
+        locked = set(vals) - CLOSED_ROLE_WRITABLE
+        closed = self.filtered(lambda job: job.x_role_status == 'closed')
+        if locked and closed:
+            raise ValidationError(_(
+                '%(roles)s is closed, so it cannot be changed. Set its Role Status '
+                'back to an open status first if the role is being reopened.',
+                roles=', '.join(closed[:3].mapped('display_name')),
+            ))
+
     def write(self, vals):
+        self._check_closed_role_lock(vals)
         # Auto-generate Req ID per-record when "Req ID Available?" is set to
         # "No" and no Req ID was explicitly supplied in this write. Handled
         # record-by-record so each job that needs one gets its own unique

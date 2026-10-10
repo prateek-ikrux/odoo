@@ -11,32 +11,59 @@
                  explicit here so it always shows the red asterisk. -->
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="required">1</attribute>
+                <attribute name="readonly">x_role_status == 'closed'</attribute>
+            </xpath>
+
+            <!-- A closed role is read-only (enforced on the server too) until
+                 its Role Status is set back to an open one. -->
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-secondary mb-0 text-center" role="status"
+                     invisible="x_role_status != 'closed'">
+                    This role is closed and locked. To change it, set Role Status back to an open status first.
+                </div>
             </xpath>
 
             <xpath expr="//field[@name='department_id']" position="attributes">
                 <attribute name="string">Client</attribute>
                 <attribute name="required">1</attribute>
+                <attribute name="readonly">x_role_status == 'closed'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='no_of_recruitment']" position="attributes">
+                <attribute name="readonly">x_role_status == 'closed'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='description']" position="attributes">
+                <attribute name="readonly">x_role_status == 'closed'</attribute>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="x_req_id_available" string="Req ID Available?" widget="radio" options="{'horizontal': true}"/>
+                <field name="x_req_id_available" string="Req ID Available?" widget="radio" options="{'horizontal': true}"
+                       readonly="x_role_status == 'closed'"/>
                 <field name="x_req_id"          string="Req ID"
-                       readonly="x_req_id_available == 'no'"
+                       readonly="x_req_id_available == 'no' or x_role_status == 'closed'"
                        required="x_req_id_available == 'yes'"
                        placeholder="Auto-generated on save"/>
-                <field name="x_employment_type" string="Employment Type" required="1"/>
+                <field name="x_employment_type" string="Employment Type" required="1"
+                       readonly="x_role_status == 'closed'"/>
                 <field name="x_poc_id"          string="Point of Contact (POC)"
                        context="{'default_x_client_department_id': department_id}"
-                       required="1"/>
+                       required="1" readonly="x_role_status == 'closed'"/>
                 <field name="x_role_status"     string="Role Status" required="1"/>
                 <field name="x_sub_status"      string="Role Status Remarks" required="1"/>
-                <field name="x_min_experience"  string="Min Experience (Yrs)" required="1"/>
-                <field name="x_max_experience"  string="Max Experience (Yrs)" required="1"/>
-                <field name="x_budget_lpa"      invisible="x_employment_type not in ('fte', 'fte_consulting')" required="x_employment_type in ('fte', 'fte_consulting')"/>
-                <field name="x_bill_rate_lpm"   invisible="x_employment_type != 'consulting'" required="x_employment_type == 'consulting'"/>
-                <field name="x_location_ids"    widget="many2many_tags" string="Job Locations" options="{'no_create_edit': True}" required="1"/>
-                <field name="x_skill_ids"       widget="many2many_tags" string="Required Skills" options="{'no_create_edit': True}" required="1"/>
-                <field name="x_role_received_date" string="Role Received from Client"/>
-                <field name="x_role_opened_date"    string="Role Opened to Team"/>
+                <field name="x_min_experience"  string="Min Experience (Yrs)" required="1"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_max_experience"  string="Max Experience (Yrs)" required="1"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_budget_lpa"      invisible="x_employment_type not in ('fte', 'fte_consulting')" required="x_employment_type in ('fte', 'fte_consulting')"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_bill_rate_lpm"   invisible="x_employment_type != 'consulting'" required="x_employment_type == 'consulting'"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_location_ids"    widget="many2many_tags" string="Job Locations" options="{'no_create_edit': True}" required="1"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_skill_ids"       widget="many2many_tags" string="Required Skills" options="{'no_create_edit': True}" required="1"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_role_received_date" string="Role Received from Client"
+                       readonly="x_role_status == 'closed'"/>
+                <field name="x_role_opened_date"    string="Role Opened to Team"
+                       readonly="x_role_status == 'closed'"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="replace">
                 <!-- Hidden, not removed: the Applications button reads it in
@@ -47,11 +74,12 @@
                        string="Recruiter Group"
                        options="{'no_create_edit': True}"
                        context="{'form_view_ref': 'recruitment_pipeline_report.view_recruiter_team_form'}"
-                       placeholder="Select a group to auto-fill Recruiters below…"/>
+                       placeholder="Select a group to auto-fill Recruiters below…"
+                       readonly="x_role_status == 'closed'"/>
                 <field name="x_recruiter_ids" widget="many2many_tags"
                        string="Recruiters"
                        options="{'no_create': True}"
-                       required="1"/>
+                       required="1" readonly="x_role_status == 'closed'"/>
             </xpath>
             <!-- Hide native fields -->
             <xpath expr="//field[@name='contract_type_id']/.." position="attributes">
@@ -221,7 +249,23 @@
             <xpath expr="//filter[@name='employment_type']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
+            <!-- On by default (see the actions below); remove it to see the
+                 closed roles too, or use Closed Roles to see only those. -->
+            <xpath expr="//filter[@name='archived']" position="before">
+                <filter name="open_roles" string="Open Roles" domain="[('x_role_status', '!=', 'closed')]"/>
+                <filter name="closed_roles" string="Closed Roles" domain="[('x_role_status', '=', 'closed')]"/>
+                <separator/>
+            </xpath>
         </field>
+    </record>
+
+    <!-- Closed roles are hidden from the Recruitment dashboard and the Job
+         Positions list unless the Open Roles filter is removed. -->
+    <record id="hr_recruitment.action_hr_job" model="ir.actions.act_window">
+        <field name="context">{'search_default_open_roles': 1}</field>
+    </record>
+    <record id="hr_recruitment.action_hr_job_config" model="ir.actions.act_window">
+        <field name="context">{'search_default_in_recruitment': 1, 'search_default_open_roles': 1}</field>
     </record>
 
     <!-- Job Positions sidebar search panel (Recruitment) -->
