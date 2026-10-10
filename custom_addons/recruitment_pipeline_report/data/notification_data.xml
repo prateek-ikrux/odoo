@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Starting values only; noupdate keeps the Admin's later choices from
+         being reverted by an upgrade. Every kind of email itself starts
+         switched off: nothing is sent until it is turned on in the settings.
+         Once it is, the creator and the assigned people receive it unless
+         unticked there. -->
+    <data noupdate="1">
+
+        <record id="param_client_notify_creator" model="ir.config_parameter">
+            <field name="key">recruitment_pipeline.client_notify_creator</field>
+            <field name="value">True</field>
+        </record>
+        <record id="param_client_notify_assigned" model="ir.config_parameter">
+            <field name="key">recruitment_pipeline.client_notify_assigned</field>
+            <field name="value">True</field>
+        </record>
+        <record id="param_role_notify_creator" model="ir.config_parameter">
+            <field name="key">recruitment_pipeline.role_notify_creator</field>
+            <field name="value">True</field>
+        </record>
+        <record id="param_role_notify_assigned" model="ir.config_parameter">
+            <field name="key">recruitment_pipeline.role_notify_assigned</field>
+            <field name="value">True</field>
+        </record>
+        <record id="param_stuck_notify_creator" model="ir.config_parameter">
+            <field name="key">recruitment_pipeline.stuck_notify_creator</field>
+            <field name="value">True</field>
+        </record>
+        <record id="param_stuck_notify_assigned" model="ir.config_parameter">
+            <field name="key">recruitment_pipeline.stuck_notify_assigned</field>
+            <field name="value">True</field>
+        </record>
+
+        <!-- The day chips offered out of the box; any other number can be
+             typed into the picker and is added on the fly. -->
+        <record id="reminder_day_1" model="recruitment.reminder.day"><field name="days">1</field></record>
+        <record id="reminder_day_2" model="recruitment.reminder.day"><field name="days">2</field></record>
+        <record id="reminder_day_3" model="recruitment.reminder.day"><field name="days">3</field></record>
+        <record id="reminder_day_5" model="recruitment.reminder.day"><field name="days">5</field></record>
+        <record id="reminder_day_7" model="recruitment.reminder.day"><field name="days">7</field></record>
+        <record id="reminder_day_10" model="recruitment.reminder.day"><field name="days">10</field></record>
+        <record id="reminder_day_14" model="recruitment.reminder.day"><field name="days">14</field></record>
+        <record id="reminder_day_21" model="recruitment.reminder.day"><field name="days">21</field></record>
+        <record id="reminder_day_30" model="recruitment.reminder.day"><field name="days">30</field></record>
+
+        <!-- Whether anything is sent is decided by the switch in the
+             settings, which the job reads on every run. -->
+        <record id="ir_cron_stuck_candidate_reminders" model="ir.cron">
+            <field name="name">Recruitment: Stuck-Candidate Reminders</field>
+            <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_stuck_candidate_reminders()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

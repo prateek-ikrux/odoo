@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Same layout as the Contracts and CRM settings: a switch per kind of
+         email, and its details only while it is on. Each kind says whether
+         the creator and the assigned people get it, and who else does. -->
+    <record id="res_config_settings_view_form_inherit_pipeline" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.recruitment.pipeline</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="hr_recruitment.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='hr_recruitment']" position="inside">
+                <block title="Email Notifications" name="rp_notifications">
+
+                    <setting id="rp_client_notify_setting"
+                             string="Client Notifications"
+                             help="Email when a client is created, deleted, or a change to it is saved in its audit log.">
+                        <field name="x_rp_client_notify"/>
+                        <div class="content-group mt16" invisible="not x_rp_client_notify">
+                            <div class="d-flex align-items-center gap-2">
+                                <field name="x_rp_client_notify_creator" class="w-auto"/>
+                                <label for="x_rp_client_notify_creator" class="o_light_label"/>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <field name="x_rp_client_notify_assigned" class="w-auto"/>
+                                <label for="x_rp_client_notify_assigned" class="o_light_label"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="x_rp_client_recipient_ids" string="Also send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="x_rp_client_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick anyone else to notify..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                        </div>
+                    </setting>
+
+                    <setting id="rp_role_notify_setting"
+                             string="Role Notifications"
+                             help="Email when a role is created, closed, deleted, or a change to it is saved in its audit log.">
+                        <field name="x_rp_role_notify"/>
+                        <div class="content-group mt16" invisible="not x_rp_role_notify">
+                            <div class="d-flex align-items-center gap-2">
+                                <field name="x_rp_role_notify_creator" class="w-auto"/>
+                                <label for="x_rp_role_notify_creator" class="o_light_label"/>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <field name="x_rp_role_notify_assigned" class="w-auto"/>
+                                <label for="x_rp_role_notify_assigned" class="o_light_label"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="x_rp_role_recipient_ids" string="Also send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="x_rp_role_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick anyone else to notify..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                        </div>
+                    </setting>
+
+                    <setting id="rp_stuck_notify_setting"
+                             string="Stuck-Candidate Reminders"
+                             help="Email when a candidate stays in the same stage too long.">
+                        <field name="x_rp_stuck_notify"/>
+                        <div class="content-group mt16" invisible="not x_rp_stuck_notify">
+                            <div class="row">
+                                <label for="x_rp_stuck_day_ids" string="Send after"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="x_rp_stuck_day_ids"
+                                           widget="many2many_tags"
+                                           placeholder="Pick or type days..."
+                                           options="{'color_field': 'color', 'no_create_edit': True}"/>
+                                    <div class="text-muted small mt-1">
+                                        in the same stage - type a number to add your own
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mt8">
+                                <field name="x_rp_stuck_notify_creator" class="w-auto"/>
+                                <label for="x_rp_stuck_notify_creator" class="o_light_label"/>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <field name="x_rp_stuck_notify_assigned" class="w-auto"/>
+                                <label for="x_rp_stuck_notify_assigned" class="o_light_label"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="x_rp_stuck_recipient_ids" string="Also send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="x_rp_stuck_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick anyone else to remind..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="text-muted small mt-2">
+                                Choose which stages send these under Recruitment &gt; Configuration &gt; Stages.
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="x_rp_stuck_day_ids">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>No days picked, so no reminders will go out.</span>
+                            </div>
+                        </div>
+                    </setting>
+
+                </block>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

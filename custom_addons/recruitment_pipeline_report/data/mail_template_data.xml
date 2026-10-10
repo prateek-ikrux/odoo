@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- No noupdate here: the wording carries no user-owned state, so
+         reworded copy lands on the next upgrade.
+
+         The same layout as the Contracts and CRM emails: a coloured label
+         saying what happened, the record's name, one sentence, the details,
+         a button straight into the record, and a footer saying why the
+         reader got it. Values arrive pre-formatted in the context -
+         ctx['rn_details'] from _rn_details on the record, ctx['rn_event']
+         saying what happened, ctx['rn_changes'] for an update and
+         ctx['rn_deleted'] for a deletion - because the template's own
+         format_date cannot be given a date pattern in this version. -->
+    <data>
+
+        <!-- ── Client: created / updated / deleted ───────────────────── -->
+        <record id="mail_template_rp_client" model="mail.template">
+            <field name="name">Recruitment: Client Notification</field>
+            <field name="model_id" ref="hr.model_hr_department"/>
+            <field name="subject">{{ ctx.get('rn_subject') or ('New client: %s' % object.name if ctx.get('rn_event') == 'created' else 'Client updated: %s (%s %s)' % (object.name, len(ctx.get('rn_changes') or []), 'change' if len(ctx.get('rn_changes') or []) == 1 else 'changes')) }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent when a client is created, deleted, or a change to it is saved in its audit log.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="event" t-value="ctx.get('rn_event')"/>
+    <t t-set="d" t-value="ctx.get('rn_details') or {}"/>
+    <t t-set="deleted" t-value="ctx.get('rn_deleted') or []"/>
+    <t t-set="changes" t-value="ctx.get('rn_changes') or []"/>
+    <t t-set="accent" t-value="{'created': '#1E8449', 'deleted': '#7B7D7D'}.get(event, '#2471A3')"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+    <t t-set="th" t-value="'padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
+
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">
+            <t t-if="event == 'created'">New Client</t>
+            <t t-elif="event == 'deleted'"><t t-if="len(deleted) == 1">Client Deleted</t><t t-else="">Clients Deleted</t></t>
+            <t t-else="">Client Updated</t>
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;">
+            <t t-if="event == 'deleted' and len(deleted) &gt; 1"><t t-out="len(deleted)"/> clients</t>
+            <t t-else="" t-out="d.get('name')"/>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        <strong t-out="ctx.get('rn_changed_by') or 'Someone'"/>
+        <t t-if="event == 'created'">added a new client.</t>
+        <t t-elif="event == 'deleted'">permanently deleted
+            <t t-if="len(deleted) == 1">this client. This is what it held:</t>
+            <t t-else="">these clients. This is what they held:</t></t>
+        <t t-else="">made <t t-if="len(changes) == 1">a change</t><t t-else=""><t t-out="len(changes)"/> changes</t> to this client:</t>
+    </p>
+
+    <!-- What changed -->
+    <table t-if="event == 'updated'" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr><th t-att-style="th + ' width: 34%;'">Field</th><th t-att-style="th + ' width: 33%;'">Before</th><th t-att-style="th">After</th></tr>
+        <tr t-foreach="changes" t-as="change">
+            <td t-att-style="value_td + ' padding-right: 16px;'" t-out="change['field']"/>
+            <td t-att-style="value_td + ' padding-right: 16px; color: #999999;'" t-out="change['old']"/>
+            <td t-att-style="value_td"><strong t-out="change['new']"/></td>
+        </tr>
+    </table>
+
+    <!-- The client's details: one block, or one per deleted client -->
+    <t t-foreach="deleted if event == 'deleted' else ([d] if event == 'created' else [])" t-as="c">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+            <tr t-if="len(deleted) &gt; 1"><td colspan="2" style="padding: 0 0 6px 0; border-bottom: 2px solid #DDDDDD;"><strong t-out="c['name']"/></td></tr>
+            <tr t-if="c.get('parent')"><td t-att-style="label_td">Parent</td><td t-att-style="value_td" t-out="c['parent']"/></tr>
+            <tr><td t-att-style="label_td">Manager</td><td t-att-style="value_td" t-out="c.get('manager') or 'Not set'"/></tr>
+            <tr><td t-att-style="label_td">Roles</td><td t-att-style="value_td"><t t-out="c.get('open_roles', 0)"/> open <span style="color: #888888;">of <t t-out="c.get('roles', 0)"/></span></td></tr>
+            <tr><td t-att-style="label_td">POC Contacts</td><td t-att-style="value_td" t-out="c.get('pocs', 0)"/></tr>
+            <tr t-if="c.get('created_by')"><td t-att-style="label_td">Created</td><td t-att-style="value_td"><t t-out="c['created_on']"/> by <t t-out="c['created_by']"/></td></tr>
+        </table>
+    </t>
+
+    <p t-if="event != 'deleted'" style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('rn_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Client</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        <t t-if="event == 'deleted'">A deleted client cannot be restored. If this was a mistake, it has to be created again.<br/></t>
+        You are receiving this because of your part on this client or because you are on the client notification list in Recruitment settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Role: created / updated / closed / deleted ─────────────── -->
+        <record id="mail_template_rp_role" model="mail.template">
+            <field name="name">Recruitment: Role Notification</field>
+            <field name="model_id" ref="hr.model_hr_job"/>
+            <field name="subject">{{ ctx.get('rn_subject') or ({'created': 'New role: ', 'closed': 'Role closed: '}.get(ctx.get('rn_event'), 'Role updated: ') + object.display_name) }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent when a role is created, closed, deleted, or a change to it is saved in its audit log.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="event" t-value="ctx.get('rn_event')"/>
+    <t t-set="d" t-value="ctx.get('rn_details') or {}"/>
+    <t t-set="deleted" t-value="ctx.get('rn_deleted') or []"/>
+    <t t-set="changes" t-value="ctx.get('rn_changes') or []"/>
+    <t t-set="accent" t-value="{'created': '#1E8449', 'deleted': '#7B7D7D', 'closed': '#7D3C98'}.get(event, '#2471A3')"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+    <t t-set="th" t-value="'padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
+
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">
+            <t t-if="event == 'created'">New Role</t>
+            <t t-elif="event == 'closed'">Role Closed</t>
+            <t t-elif="event == 'deleted'"><t t-if="len(deleted) == 1">Role Deleted</t><t t-else="">Roles Deleted</t></t>
+            <t t-else="">Role Updated</t>
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;">
+            <t t-if="event == 'deleted' and len(deleted) &gt; 1"><t t-out="len(deleted)"/> roles</t>
+            <t t-else="" t-out="d.get('name')"/>
+        </div>
+        <div t-if="not (event == 'deleted' and len(deleted) &gt; 1)" style="font-size: 13px; color: #888888;">
+            <t t-out="d.get('client') or 'No client'"/><t t-if="d.get('req_id')"> - <t t-out="d['req_id']"/></t>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        <strong t-out="ctx.get('rn_changed_by') or 'Someone'"/>
+        <t t-if="event == 'created'">opened a new role.</t>
+        <t t-elif="event == 'closed'">closed this role<t t-if="d.get('sub_status')"> (<t t-out="d['sub_status']"/>)</t>.
+            <t t-if="d.get('candidates')">It has <t t-out="d['candidates']"/> candidate<t t-if="d['candidates'] != 1">s</t> in the pipeline.</t></t>
+        <t t-elif="event == 'deleted'">permanently deleted
+            <t t-if="len(deleted) == 1">this role. This is what it held:</t>
+            <t t-else="">these roles. This is what they held:</t></t>
+        <t t-else="">made <t t-if="len(changes) == 1">a change</t><t t-else=""><t t-out="len(changes)"/> changes</t> to this role:</t>
+    </p>
+
+    <!-- What changed (also shown when a role is closed) -->
+    <table t-if="event in ('updated', 'closed') and changes" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr><th t-att-style="th + ' width: 34%;'">Field</th><th t-att-style="th + ' width: 33%;'">Before</th><th t-att-style="th">After</th></tr>
+        <tr t-foreach="changes" t-as="change">
+            <td t-att-style="value_td + ' padding-right: 16px;'" t-out="change['field']"/>
+            <td t-att-style="value_td + ' padding-right: 16px; color: #999999;'" t-out="change['old']"/>
+            <td t-att-style="value_td"><strong t-out="change['new']"/></td>
+        </tr>
+    </table>
+
+    <!-- The role's details: on creation and closing, and per deleted role -->
+    <t t-foreach="deleted if event == 'deleted' else ([d] if event in ('created', 'closed') else [])" t-as="r">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+            <tr t-if="len(deleted) &gt; 1"><td colspan="2" style="padding: 0 0 6px 0; border-bottom: 2px solid #DDDDDD;"><strong t-out="r['name']"/> <span style="color: #888888; font-size: 13px;">- <t t-out="r['client']"/></span></td></tr>
+            <tr t-if="event == 'deleted' and len(deleted) == 1"><td t-att-style="label_td">Client</td><td t-att-style="value_td" t-out="r['client'] or 'No client'"/></tr>
+            <tr><td t-att-style="label_td">Status</td><td t-att-style="value_td"><t t-out="r['role_status']"/><span t-if="r.get('sub_status')" style="color: #888888;"> - <t t-out="r['sub_status']"/></span></td></tr>
+            <tr><td t-att-style="label_td">Employment Type</td><td t-att-style="value_td" t-out="r['employment_type']"/></tr>
+            <tr><td t-att-style="label_td">Positions</td><td t-att-style="value_td" t-out="r['positions']"/></tr>
+            <tr t-if="r.get('experience')"><td t-att-style="label_td">Experience</td><td t-att-style="value_td" t-out="r['experience']"/></tr>
+            <tr t-if="r.get('commercial')"><td t-att-style="label_td">Budget / Bill Rate</td><td t-att-style="value_td" t-out="r['commercial']"/></tr>
+            <tr t-if="r.get('locations')"><td t-att-style="label_td">Locations</td><td t-att-style="value_td" t-out="r['locations']"/></tr>
+            <tr t-if="r.get('poc')"><td t-att-style="label_td">Client POC</td><td t-att-style="value_td" t-out="r['poc']"/></tr>
+            <tr><td t-att-style="label_td">Recruitment Manager</td><td t-att-style="value_td" t-out="r['manager'] or 'Not set'"/></tr>
+            <tr><td t-att-style="label_td">Recruiters</td><td t-att-style="value_td" t-out="r['recruiters'] or 'None'"/></tr>
+            <tr t-if="r.get('received_on')"><td t-att-style="label_td">Received from Client</td><td t-att-style="value_td" t-out="r['received_on']"/></tr>
+            <tr t-if="r.get('created_by')"><td t-att-style="label_td">Created</td><td t-att-style="value_td"><t t-out="r['created_on']"/> by <t t-out="r['created_by']"/></td></tr>
+        </table>
+    </t>
+
+    <p t-if="event != 'deleted'" style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('rn_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Role</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        <t t-if="event == 'deleted'">A deleted role cannot be restored. If this was a mistake, it has to be created again.<br/></t>
+        You are receiving this because of your part on this role or because you are on the role notification list in Recruitment settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Candidate stuck in stage ──────────────────────────────── -->
+        <record id="mail_template_rp_stuck_candidate" model="mail.template">
+            <field name="name">Recruitment: Stuck Candidate</field>
+            <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+            <field name="subject">Stuck {{ (ctx.get('rn_stuck') or {}).get('days', '') }} days in {{ object.stage_id.name }}: {{ object.partner_name or object.display_name }} ({{ object.job_id.name or 'no role' }})</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent by the nightly scheduled action when a candidate stays in the same stage past one of the reminder marks.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="d" t-value="ctx.get('rn_details') or {}"/>
+    <t t-set="s" t-value="ctx.get('rn_stuck') or {}"/>
+    <t t-set="accent" t-value="s.get('accent') or '#D68910'"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Stuck Candidate</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">
+            <t t-out="d.get('role') or 'No role'"/><t t-if="d.get('client')"> - <t t-out="d['client']"/></t>
+        </div>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: separate; border: 1px solid #E5E5E5; border-radius: 6px; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; color: #333333;">
+        <tr>
+            <td width="110" align="center" valign="middle" t-attf-style="background-color: {{ accent }}; color: #FFFFFF; border-radius: 5px 0 0 5px; padding: 14px 8px;">
+                <div style="font-size: 36px; font-weight: bold; line-height: 1.1;" t-out="s.get('days')"/>
+                <div style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">days in stage</div>
+            </td>
+            <td valign="middle" style="padding: 12px 18px;">
+                <div style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">Still in</div>
+                <div style="font-size: 17px; font-weight: bold;" t-out="d.get('stage')"/>
+                <div style="font-size: 13px; color: #888888; margin-top: 4px;">since <t t-out="s.get('entered_on')"/></div>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin: 0 0 16px 0;">
+        This candidate has not moved stage in <strong><t t-out="s.get('days')"/> days</strong>.
+        <t t-if="d.get('next_activity')">The next planned step is below.</t>
+        <t t-else=""><strong t-attf-style="color: {{ accent }};">Nothing is scheduled</strong> - plan the next step, move them on, or refuse them.</t>
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr><td t-att-style="label_td">Next Activity</td><td t-att-style="value_td">
+            <t t-if="d.get('next_activity')" t-out="d['next_activity']"/>
+            <span t-else="" t-attf-style="color: {{ accent }};">None scheduled</span>
+        </td></tr>
+        <tr><td t-att-style="label_td">Recruiter</td><td t-att-style="value_td" t-out="d.get('recruiter') or 'Not set'"/></tr>
+        <tr t-if="d.get('manager')"><td t-att-style="label_td">Recruitment Manager</td><td t-att-style="value_td" t-out="d['manager']"/></tr>
+        <tr t-if="d.get('req_id')"><td t-att-style="label_td">Req ID</td><td t-att-style="value_td" t-out="d['req_id']"/></tr>
+        <tr t-if="d.get('experience')"><td t-att-style="label_td">Experience</td><td t-att-style="value_td" t-out="d['experience']"/></tr>
+        <tr t-if="d.get('notice')"><td t-att-style="label_td">Notice Period</td><td t-att-style="value_td" t-out="d['notice']"/></tr>
+        <tr t-if="d.get('contact')"><td t-att-style="label_td">Contact</td><td t-att-style="value_td" t-out="d['contact']"/></tr>
+        <tr t-if="d.get('created_by')"><td t-att-style="label_td">Added</td><td t-att-style="value_td"><t t-out="d['created_on']"/> by <t t-out="d['created_by']"/></td></tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('rn_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Candidate</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        <t t-if="s.get('next_mark')">
+            Next reminder after <t t-out="s['next_mark']"/> days in this stage, on <t t-out="s['next_on']"/> - unless they move first.
+        </t>
+        <t t-else="">This is the last reminder for this stage.</t>
+        <br/>You are receiving this because of your part on this candidate or because you are on the stuck-candidate reminder list in Recruitment settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

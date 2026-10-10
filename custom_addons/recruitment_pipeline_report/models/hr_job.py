@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from .pipeline_constants import ROLE_STATUS_SELECTION, SUB_STATUS_SELECTION
 
 
 class HrJob(models.Model):
-    _inherit = 'hr.job'
+    _name = 'hr.job'
+    _inherit = ['hr.job', 'recruitment.notify.mixin']
+    _rn_kind = 'role'
+    _rn_action = 'hr_recruitment.action_hr_job_config'
 
     department_id = fields.Many2one(string='Client')
+
+    # Recorded in the audit log, so a change to any of them is mailed.
+    name = fields.Char(tracking=True)
+    no_of_recruitment = fields.Integer(tracking=True)
+    active = fields.Boolean(tracking=True)
 
     x_employment_type = fields.Selection(
         selection=[
@@ -16,6 +24,7 @@ class HrJob(models.Model):
             ('fte_consulting',  'FTE/Consulting'),
         ],
         string='Employment Type',
+        tracking=True,
     )
 
     x_poc_id = fields.Many2one(
@@ -23,17 +32,20 @@ class HrJob(models.Model):
         string='Point of Contact (POC)',
         domain="[('x_client_department_id', '=', department_id)]",
         help='External client contact who handles this job position.',
+        tracking=True,
     )
 
     x_role_status = fields.Selection(
         selection=ROLE_STATUS_SELECTION,
         string='Role Status',
         default='active',
+        tracking=True,
     )
 
     x_sub_status = fields.Selection(
         selection=SUB_STATUS_SELECTION,
         string='Role Status Remarks',
+        tracking=True,
     )
 
     # ── New fields ────────────────────────────────────────────────
@@ -51,6 +63,7 @@ class HrJob(models.Model):
         copy=False,
         help='Requisition ID for this job position. Enter manually (e.g. REQ-2024-001) '
              'if available, or set "Req ID Available?" to "No" to auto-generate one on save.',
+        tracking=True,
     )
 
     _x_req_id_uniq = models.Constraint(
@@ -72,11 +85,13 @@ class HrJob(models.Model):
     x_min_experience = fields.Integer(
         string='Min Experience (Yrs)',
         default=0,
+        tracking=True,
     )
 
     x_max_experience = fields.Integer(
         string='Max Experience (Yrs)',
         default=0,
+        tracking=True,
     )
 
     @api.constrains('x_min_experience', 'x_max_experience')
@@ -97,22 +112,26 @@ class HrJob(models.Model):
         'recruitment.city',
         'hr_job_city_rel',
         'job_id', 'city_id',
-        string='Job Locations'
+        string='Job Locations',
+        tracking=True,
     )
 
     x_skill_ids = fields.Many2many(
         'recruitment.skill',
         'hr_job_skill_rel',
         'job_id', 'skill_id',
-        string='Required Skills'
+        string='Required Skills',
+        tracking=True,
     )
 
     x_role_received_date = fields.Date(
         string='Role Received from Client',
+        tracking=True,
     )
 
     x_role_opened_date = fields.Date(
         string='Role Opened to Team',
+        tracking=True,
     )
 
     x_display_name = fields.Char(
@@ -127,6 +146,7 @@ class HrJob(models.Model):
         'job_id', 'user_id',
         string='Recruiters',
         domain="[('share', '=', False)]",
+        tracking=True,
     )
 
     x_recruiter_team_id = fields.Many2one(
@@ -135,6 +155,7 @@ class HrJob(models.Model):
         help='Pick a saved Recruiter Group to fill Recruiters and Team Lead in one step. '
              'If you edit Recruiters afterwards, the Recruiter Group link is cleared '
              'automatically (the job keeps whichever recruiters are listed).',
+        tracking=True,
     )
 
     @api.onchange('x_recruiter_team_id')
@@ -155,12 +176,14 @@ class HrJob(models.Model):
 
     x_budget_lpa = fields.Float(
         string='Budget (LPA)',
-        help='Approved budget for FTE roles in Lakhs Per Annum.'
+        help='Approved budget for FTE roles in Lakhs Per Annum.',
+        tracking=True,
     )
 
     x_bill_rate_lpm = fields.Float(
         string='Bill Rate (LPM)',
-        help='Agreed bill rate for Consulting roles in Lakhs Per Month.'
+        help='Agreed bill rate for Consulting roles in Lakhs Per Month.',
+        tracking=True,
     )
 
     # @api.constrains('x_budget_lpa', 'x_bill_rate_lpm')
@@ -320,3 +343,79 @@ class HrJob(models.Model):
             'views': [(form_view_id, 'form')],
             'target': 'current',
         }
+
+    # ── Email notifications ───────────────────────────────────────
+    def _rn_assigned_users(self):
+        """The role team: its Recruitment Manager and its Recruiters."""
+        return self.user_id | self.x_recruiter_ids
+
+    def _rn_details(self):
+        self.ensure_one()
+        job = self.sudo()
+        applicants = self.env['hr.applicant'].sudo().search([('job_id', '=', job.id)])
+        if job.x_employment_type == 'consulting':
+            commercial = _('%s LPM', f'{job.x_bill_rate_lpm:g}') if job.x_bill_rate_lpm else ''
+        else:
+            commercial = _('%s LPA', f'{job.x_budget_lpa:g}') if job.x_budget_lpa else ''
+        if job.x_min_experience and not job.x_max_experience:
+            experience = _('%s+ yrs', job.x_min_experience)
+        elif job.x_min_experience or job.x_max_experience:
+            experience = _('%(min)s-%(max)s yrs', min=job.x_min_experience, max=job.x_max_experience)
+        else:
+            experience = ''
+        return {
+            'name': job.name or '',
+            'req_id': job.x_req_id or '',
+            'client': job.department_id.name or '',
+            'poc': job.x_poc_id.name or '',
+            'employment_type': self._rn_format_value('x_employment_type', job.x_employment_type),
+            'role_status': self._rn_format_value('x_role_status', job.x_role_status),
+            'sub_status': job.x_sub_status and self._rn_format_value('x_sub_status', job.x_sub_status) or '',
+            'positions': job.no_of_recruitment,
+            'experience': experience,
+            'commercial': commercial,
+            'locations': ', '.join(job.x_location_ids.mapped('name')),
+            'manager': job.user_id.name or '',
+            'recruiters': ', '.join(job.x_recruiter_ids.mapped('name')),
+            'candidates': len(applicants),
+            'received_on': self._rn_date(job.x_role_received_date),
+            'created_by': job.create_uid.name or '',
+            'created_on': self._rn_local_date(job.create_date),
+        }
+
+    def _rn_notify(self, event, changes=None):
+        if not self._rn_enabled('role'):
+            return
+        for job in self:
+            job._rn_send('recruitment_pipeline_report.mail_template_rp_role',
+                         job._rn_partners('role'),
+                         {'rn_event': event, 'rn_changes': changes or []})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        jobs = super().create(vals_list)
+        jobs._rn_notify('created')
+        return jobs
+
+    def _message_track(self, fields_iter, initial_values_dict):
+        """Mail whatever the audit log just recorded about a role. A change
+        of Role Status to Closed is sent as its own Role Closed email."""
+        tracking = super()._message_track(fields_iter, initial_values_dict)
+        for job in self:
+            changes = tracking.get(job.id, (None, None))[0]
+            if not changes:
+                continue
+            initial = initial_values_dict[job.id]
+            closed = 'x_role_status' in changes and job.x_role_status == 'closed'                 and initial.get('x_role_status') != 'closed'
+            job._rn_notify('closed' if closed else 'updated',
+                           job._rn_format_changes(changes, initial))
+        return tracking
+
+    def unlink(self):
+        if len(self) == 1:
+            subject = _('Role deleted: %s', self.display_name)
+        else:
+            subject = _('%(count)s roles deleted: %(names)s',
+                        count=len(self), names=', '.join(self[:3].mapped('name')))
+        self._rn_send_deleted('recruitment_pipeline_report.mail_template_rp_role', subject)
+        return super().unlink()
