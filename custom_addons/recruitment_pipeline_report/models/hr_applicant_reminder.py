@@ -50,7 +50,7 @@ class HrApplicant(models.Model):
             'recruiter': app.user_id.name or '',
             'manager': app.job_id.user_id.name or '',
             'contact': ' | '.join(p for p in (app.email_from, app.partner_phone) if p),
-            'experience': f'{self._rn_number(app.x_total_experience)} yrs' if app.x_total_experience else '',
+            'experience': f'{app.x_total_experience:g} yrs' if app.x_total_experience else '',
             'notice': self._rn_format_value('x_notice_period', app.x_notice_period)
                       if app.x_notice_period else '',
             'next_activity': ' - '.join(p for p in (

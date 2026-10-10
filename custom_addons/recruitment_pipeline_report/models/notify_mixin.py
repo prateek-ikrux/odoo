@@ -75,12 +75,6 @@ class RecruitmentNotifyMixin(models.AbstractModel):
             return ''
         return self._rn_date(fields.Datetime.context_timestamp(self, value), pattern)
 
-    @api.model
-    def _rn_number(self, value):
-        """A number as entered: 1200000 stays 1200000 (:g would give
-        1.2e+06), and 12.50 drops its trailing zero to 12.5."""
-        return f'{value or 0:f}'.rstrip('0').rstrip('.')
-
     def _rn_changed_by(self):
         # Crons run as the superuser; naming OdooBot would only puzzle.
         return _('Automatic update') if self.env.user._is_superuser() else self.env.user.name
@@ -108,7 +102,7 @@ class RecruitmentNotifyMixin(models.AbstractModel):
         if field.type == 'boolean':
             return _('Yes') if value else _('No')
         if field.type in ('integer', 'float', 'monetary'):
-            return self._rn_number(value)
+            return f'{value or 0:g}'
         if value is None or value is False or value == '':
             return empty
         if field.type == 'selection':
