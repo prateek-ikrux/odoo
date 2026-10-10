@@ -151,6 +151,12 @@
         <field name="model">hr.job</field>
         <field name="inherit_id" ref="hr_recruitment.view_hr_job_kanban"/>
         <field name="arch" type="xml">
+            <!-- New opens the full role form as a page, not the quick popup:
+                 the popup only asks for a name and an email alias, while a
+                 role needs its client, recruiters and commercials set up. -->
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="on_create">hr.action_create_job_position</attribute>
+            </xpath>
             <xpath expr="//kanban" position="inside">
                 <field name="x_display_name"/>
                 <field name="x_role_status"/>
