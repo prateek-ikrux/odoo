@@ -74,11 +74,21 @@
 
                         <setting id="contracts_change_notify_setting"
                                  string="Change Notifications"
-                                 help="Email a summary whenever an MSA or SOW is created, or whenever a change to it is saved in its audit log.">
+                                 help="One email a day listing every MSA or SOW created, deleted or changed in its audit log since the last one - instead of an email per change.">
                             <field name="contracts_change_notify"/>
                             <div class="content-group mt16"
                                  invisible="not contracts_change_notify">
                                 <div class="row">
+                                    <label for="contracts_change_summary_time"
+                                           string="Send at"
+                                           class="col-lg-3 o_light_label"/>
+                                    <div class="col-lg-9">
+                                        <field name="contracts_change_summary_time"
+                                               widget="float_time" class="w-auto oe_inline"/>
+                                        <span class="text-muted"> every day, your time</span>
+                                    </div>
+                                </div>
+                                <div class="row mt8">
                                     <label for="contracts_change_recipient_ids"
                                            string="Send to"
                                            class="col-lg-3 o_light_label"/>

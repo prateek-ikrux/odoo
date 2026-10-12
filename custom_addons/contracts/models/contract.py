@@ -657,12 +657,14 @@ class Contract(models.Model):
         return res
 
     # ── Change notifications ──────────────────────────────────────
+    # Not mailed one by one: every change is queued, and one email at the end
+    # of the day lists them all (contracts.change.entry).
     def _message_track(self, fields_iter, initial_values_dict):
-        """Mail the change recipients whatever the audit log just recorded.
+        """Queue for the end-of-day email whatever the audit log just recorded.
 
         This is where mail.thread turns tracked-field changes into the
         chatter's log entry, once per record per transaction, so hooking in
-        here mails exactly what the log shows - from the form, an import, a
+        here reports exactly what the log shows - from the form, an import, a
         script or the nightly cron alike.
         """
         tracking = super()._message_track(fields_iter, initial_values_dict)
@@ -703,132 +705,58 @@ class Contract(models.Model):
         return str(value)
 
     @api.model
-    def _get_change_recipients(self):
-        """Partners to mail, or nothing while the notifications are off."""
-        params = self.env['ir.config_parameter'].sudo()
-        if not params.get_param('contracts.change_notify'):
-            return self.env['res.partner']
-        return self._recipient_partners(
-            self.env.company.sudo().contracts_change_recipient_ids)
-
-    @api.model
     def _recipient_partners(self, users):
         """The partners behind picked users who can actually be mailed."""
         return users.filtered(lambda u: u.active and u.email).partner_id
 
     def _send_change_notification(self, event, changes=None):
-        """Queue one email per contract: 'created', or 'updated' with the
-        list of changes. Goes through the mail queue inside the same
-        transaction, so a save that fails sends nothing."""
-        partners = self._get_change_recipients()
-        if not partners or not self:
+        """Queue a contract 'created', 'deleted', or 'updated' with its list
+        of changes, for the end-of-day email. Queued inside the same
+        transaction, so a save that fails leaves nothing behind."""
+        if not self or not self.env['ir.config_parameter'].sudo().get_param('contracts.change_notify'):
             return
-        template = self.env.ref(
-            'contracts.mail_template_contract_created' if event == 'created'
-            else 'contracts.mail_template_contract_updated',
-            raise_if_not_found=False,
-        )
-        if not template:
-            _logger.warning("Contract change notification: mail template is missing.")
-            return
-        template = template.sudo().with_context(
-            contracts_changes=changes or [],
-            # The nightly cron runs as the superuser; naming OdooBot would
-            # only puzzle the reader.
-            contracts_changed_by=_("Automatic update") if self.env.user._is_superuser()
-            else self.env.user.name,
-        )
-        for rec in self:
-            try:
-                with self.env.cr.savepoint():
-                    template.with_context(contracts_url=rec._get_form_url()).send_mail(
-                        rec.id,
-                        email_values={'recipient_ids': [(6, 0, partners.ids)]},
-                        force_send=False,
-                    )
-            except Exception:
-                # A notification must never block the change it reports on.
-                _logger.exception(
-                    "Contract change notification failed for contract %s (id %s).",
-                    rec.display_name, rec.id,
-                )
+        # The nightly cron runs as the superuser; naming OdooBot would only
+        # puzzle the reader.
+        changed_by = _("Automatic update") if self.env.user._is_superuser() else self.env.user.name
+        self.env['contracts.change.entry'].sudo().create([{
+            'event': event,
+            'res_id': rec.id,
+            'record_name': rec.display_name,
+            'kind': 'SOW' if rec.contract_type == 'sow' else 'MSA',
+            'url': '' if event == 'deleted' else rec._get_form_url(),
+            'changed_by': changed_by,
+            'changes': changes or [],
+            # What the contract is, for one created or deleted - a deleted one
+            # cannot be looked up by the time the email is written.
+            'details': [] if event == 'updated' else rec._get_summary_lines(),
+        } for rec in self])
 
     def unlink(self):
-        self._send_deletion_notification()
+        self._send_change_notification('deleted')
         return super().unlink()
 
-    def _send_deletion_notification(self):
-        """One email listing every contract about to be deleted.
-
-        Built before the delete, while the records can still be read, and not
-        linked to them: mail.thread removes every message tied to a record it
-        deletes, which would take a queued email with it. If the delete itself
-        fails - an MSA with SOWs under it - the transaction rolls the email
-        back too.
-        """
-        partners = self._get_change_recipients()
-        if not partners or not self:
-            return
-        template = self.env.ref('contracts.mail_template_contract_deleted',
-                                raise_if_not_found=False)
-        if not template:
-            _logger.warning("Contract deletion notification: mail template is missing.")
-            return
-        try:
-            with self.env.cr.savepoint():
-                lead = self[0]
-                if len(self) == 1:
-                    subject = _('%(kind)s deleted: %(name)s',
-                                kind='SOW' if lead.contract_type == 'sow' else 'MSA',
-                                name=lead.display_name)
-                else:
-                    names = ', '.join(self[:3].mapped('display_name'))
-                    subject = _('%(count)s contracts deleted: %(names)s%(more)s',
-                                count=len(self), names=names,
-                                more=_(' and more') if len(self) > 3 else '')
-                template = template.sudo().with_context(
-                    contracts_subject=subject,
-                    contracts_deleted=[rec._get_deletion_values() for rec in self],
-                    contracts_changed_by=self.env.user.name,
-                )
-                self.env['mail.mail'].sudo().create({
-                    'subject': template._render_field('subject', lead.ids)[lead.id],
-                    'body_html': template._render_field('body_html', lead.ids)[lead.id],
-                    'recipient_ids': [(6, 0, partners.ids)],
-                    'auto_delete': True,
-                })
-        except Exception:
-            # A notification must never block the deletion it reports on.
-            _logger.exception("Contract deletion notification failed for %s.", self.ids)
-
-    def _get_deletion_values(self):
-        """What is worth keeping about a contract once it is gone."""
+    def _get_summary_lines(self):
+        """The contract in a few label / value pairs, for the end-of-day email."""
         self.ensure_one()
 
         def short_date(value):
             return format_date(self.env, value, date_format='d MMM y') if value else ''
 
         is_sow = self.contract_type == 'sow'
-        return {
-            'kind': _('Statement of Work') if is_sow else _('Master Service Agreement'),
-            'is_sow': is_sow,
-            'name': self.display_name,
-            'client': self.client or '',
-            'contract_type': '' if is_sow else (self.type_id.name or _('Not set')),
-            'candidate': self.candidate or '',
-            'role': self.role or '',
-            'parent': self.parent_contract_id.display_name or '',
-            'poc': self.poc or '',
-            'period': _('%(start)s to %(end)s',
-                        start=short_date(self.start_date),
-                        end=short_date(self.effective_end_date) if self.effective_end_date
-                        else _('completion of service')),
-            'status': dict(self._fields['state']._description_selection(self.env)).get(self.state, ''),
-            'created_by': self.created_by_id.name or '',
-            'created_on': short_date(fields.Datetime.context_timestamp(
-                self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
-            'documents': len(self._get_documents()),
-        }
+        lines = [(_('Client'), self.client or '')]
+        if is_sow:
+            lines += [(_('Candidate'), self.candidate or ''), (_('Role'), self.role or ''),
+                      (_('Under MSA'), self.parent_contract_id.display_name or '')]
+        else:
+            lines.append((_('Contract Type'), self.type_id.name or _('Not set')))
+        lines += [
+            (_('Contract POC'), self.poc or ''),
+            (_('Period'), _('%(start)s to %(end)s', start=short_date(self.start_date),
+                            end=short_date(self.effective_end_date) if self.effective_end_date
+                            else _('completion of service'))),
+            (_('Status'), dict(self._fields['state']._description_selection(self.env)).get(self.state, '')),
+        ]
+        return [[label, value] for label, value in lines if value]
 
     def _get_form_url(self):
         """Link straight to the contract in its own section's screen."""

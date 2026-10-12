@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.14.0',
+    'version': '19.0.1.16.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -53,9 +53,10 @@ and the reminders all follow it, and extending re-arms the reminder sequence.
 A placed contract also carries the next annual appraisal date, taken from the
 start date, and free-text remarks.
 
-Every change recorded in a contract's audit log - and every new contract - can
-be emailed to a list of users picked under Contracts > Configuration >
-Settings, kept apart from the expiry reminder recipients.
+Every change recorded in a contract's audit log - and every new or deleted
+contract - can be emailed to a list of users picked under Contracts >
+Configuration > Settings, kept apart from the expiry reminder recipients: one
+summary at the end of the day listing them all, not an email per change.
 
 Access is granted per user from the user form, like any other app: Contracts
 User works with MSAs and SOWs, Contracts Administrator also deletes them and

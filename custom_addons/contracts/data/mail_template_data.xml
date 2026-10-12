@@ -4,7 +4,7 @@
          wording carries no user-owned state, so reworded copy should land on
          the next upgrade.
 
-         All three share one layout: a coloured header naming what happened,
+         The expiry reminder has this layout: a coloured header naming what happened,
          a short sentence saying what to do about it, the contract's details,
          a button straight into the record, and a footer saying why the reader
          got the email. Recipients are supplied per send, from the users picked
@@ -235,239 +235,69 @@
             </field>
         </record>
 
-        <!-- ── Contract created ──────────────────────────────────────── -->
-        <record id="mail_template_contract_created" model="mail.template">
-            <field name="name">Contracts: New Contract</field>
-            <field name="model_id" ref="model_contracts_contract"/>
-            <field name="subject">New {{ 'SOW' if object.contract_type == 'sow' else 'MSA' }}: {{ object.display_name }}</field>
+        <!-- ── Daily change summary ──────────────────────────────────── -->
+        <!-- One email at the end of the day listing every contract created,
+             changed or deleted, grouped by contract. Rendered on the
+             recipient's partner; everything arrives in ctx['contracts_daily'],
+             built by contracts.change.entry._get_daily_values, with times in
+             the reader's timezone. A deleted contract has no link and is
+             described from what was kept when it was deleted. -->
+        <record id="mail_template_contract_daily_changes" model="mail.template">
+            <field name="name">Contracts: Daily Change Summary</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">{{ (ctx.get('contracts_daily') or {}).get('subject', 'Contracts changed today') }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent to the change notification list when an MSA or SOW is created.</field>
+            <field name="description">Sent once at the end of the day to the change notification list, listing every MSA or SOW created, changed or deleted that day.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-    <t t-set="is_sow" t-value="object.contract_type == 'sow'"/>
-
-    <div style="border-left: 4px solid #1E8449; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
-        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #1E8449;">
-            New Contract
-        </div>
-        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="object.display_name or ''"/>
-        <div style="font-size: 13px; color: #888888;">
-            <t t-if="is_sow">Statement of Work</t><t t-else="">Master Service Agreement</t>
-        </div>
-    </div>
-
-    <p style="margin: 0 0 16px 0;">
-        <strong t-out="ctx.get('contracts_changed_by') or 'Someone'"/> added
-        <t t-if="is_sow">a new Statement of Work</t><t t-else="">a new Master Service Agreement</t>.
-    </p>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-size: 14px;">
-        <tr>
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%;">Client</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.client or ''"/>
-        </tr>
-        <tr t-if="is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Candidate</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.candidate or ''"/>
-        </tr>
-        <tr t-if="is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Role</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.role or ''"/>
-        </tr>
-        <tr t-if="is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Under MSA</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.parent_contract_id.display_name or ''"/>
-        </tr>
-        <tr t-if="not is_sow">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract Type</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.type_id.name or 'Not set'"/>
-        </tr>
-        <tr>
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Contract POC</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.poc or ''"/>
-        </tr>
-        <tr>
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Period</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;">
-                <t t-out="format_date(object.start_date) or ''"/> to
-                <t t-if="object.term == 'until_completion'">completion of service</t>
-                <t t-else="" t-out="format_date(object.end_date) or ''"/>
-            </td>
-        </tr>
-        <tr t-if="object.billing_poc">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888;">Billing POC</td>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE;" t-out="object.billing_poc"/>
-        </tr>
-    </table>
-
-    <p style="margin: 0 0 24px 0;">
-        <a t-att-href="ctx.get('contracts_url')"
-           style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
-            Open Contract
-        </a>
-    </p>
-
-    <p style="margin: 0; font-size: 12px; color: #999999;">
-        You are receiving this because you are on the change notification list
-        in Contracts settings.
-    </p>
-</div>
-            </field>
-        </record>
-
-        <!-- ── Contract updated ──────────────────────────────────────── -->
-        <record id="mail_template_contract_updated" model="mail.template">
-            <field name="name">Contracts: Contract Updated</field>
-            <field name="model_id" ref="model_contracts_contract"/>
-            <field name="subject">{{ 'SOW' if object.contract_type == 'sow' else 'MSA' }} updated: {{ object.display_name }} ({{ len(ctx.get('contracts_changes') or []) }} {{ 'change' if len(ctx.get('contracts_changes') or []) == 1 else 'changes' }})</field>
-            <field name="auto_delete" eval="True"/>
-            <field name="description">Sent to the change notification list whenever a change to an MSA or SOW is saved in its audit log.</field>
-            <field name="body_html" type="html">
-<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-    <t t-set="is_sow" t-value="object.contract_type == 'sow'"/>
-    <t t-set="changes" t-value="ctx.get('contracts_changes') or []"/>
+    <t t-set="d" t-value="ctx.get('contracts_daily') or {}"/>
+    <t t-set="th" t-value="'padding: 6px 16px 6px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
+    <t t-set="td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
 
     <div style="border-left: 4px solid #2471A3; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
-        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #2471A3;">
-            Contract Updated
-        </div>
-        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="object.display_name or ''"/>
-        <div style="font-size: 13px; color: #888888;">
-            <t t-if="is_sow">Statement of Work</t><t t-else="">Master Service Agreement</t>
-        </div>
-    </div>
-
-    <p style="margin: 0 0 16px 0;">
-        <strong t-out="ctx.get('contracts_changed_by') or 'Someone'"/> made
-        <t t-if="len(changes) == 1">a change</t>
-        <t t-else=""><t t-out="len(changes)"/> changes</t>
-        to this contract:
-    </p>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-size: 14px;">
-        <tr>
-            <th style="padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase; width: 34%;">Field</th>
-            <th style="padding: 7px 16px 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase; width: 33%;">Before</th>
-            <th style="padding: 7px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;">After</th>
-        </tr>
-        <tr t-foreach="changes" t-as="change">
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;" t-out="change['field']"/>
-            <td style="padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top; color: #999999;" t-out="change['old']"/>
-            <td style="padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;"><strong t-out="change['new']"/></td>
-        </tr>
-    </table>
-
-    <p style="margin: 0 0 24px 0;">
-        <a t-att-href="ctx.get('contracts_url')"
-           style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
-            Open Contract
-        </a>
-    </p>
-
-    <p style="margin: 0; font-size: 12px; color: #999999;">
-        You are receiving this because you are on the change notification list
-        in Contracts settings.
-    </p>
-</div>
-            </field>
-        </record>
-
-        <!-- ── Contract deleted ──────────────────────────────────────── -->
-        <!-- Rendered before the delete, from ctx['contracts_deleted'] (see
-             contracts.contract._get_deletion_values), since the records are
-             gone by the time anyone reads it. No Open Contract button for the
-             same reason. -->
-        <record id="mail_template_contract_deleted" model="mail.template">
-            <field name="name">Contracts: Contract Deleted</field>
-            <field name="model_id" ref="model_contracts_contract"/>
-            <field name="subject">{{ ctx.get('contracts_subject') or 'Contract deleted' }}</field>
-            <field name="auto_delete" eval="True"/>
-            <field name="description">Sent to the change notification list when MSAs or SOWs are deleted. Rendered before the delete and not linked to the deleted records.</field>
-            <field name="body_html" type="html">
-<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-    <t t-set="deleted" t-value="ctx.get('contracts_deleted') or []"/>
-    <t t-set="label_td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
-    <t t-set="value_td" t-value="'padding: 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
-
-    <div style="border-left: 4px solid #7B7D7D; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
-        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #7B7D7D;">
-            <t t-if="len(deleted) == 1">Contract Deleted</t>
-            <t t-else="">Contracts Deleted</t>
-        </div>
-        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;">
-            <t t-if="len(deleted) == 1" t-out="deleted[0]['name']"/>
-            <t t-else=""><t t-out="len(deleted)"/> contracts</t>
-        </div>
-        <div t-if="len(deleted) == 1" style="font-size: 13px; color: #888888;" t-out="deleted[0]['kind']"/>
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #2471A3;">Daily Contract Changes</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('date')"/>
     </div>
 
     <p style="margin: 0 0 20px 0;">
-        <strong t-out="ctx.get('contracts_changed_by') or 'Someone'"/> permanently deleted
-        <t t-if="len(deleted) == 1">this contract</t>
-        <t t-else="">these contracts</t>
-        from Contracts, along with <t t-if="len(deleted) == 1">its</t><t t-else="">their</t>
-        audit log. This is what <t t-if="len(deleted) == 1">it</t><t t-else="">they</t> held:
+        <strong><t t-out="d.get('count')"/> contract<t t-if="d.get('count') != 1">s</t></strong> changed today:
+        <t t-out="d.get('created')"/> created, <t t-out="d.get('updated')"/> updated, <t t-out="d.get('deleted')"/> deleted.
     </p>
 
-    <table t-foreach="deleted" t-as="c" width="100%" cellpadding="0" cellspacing="0"
-           style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
-        <tr t-if="len(deleted) &gt; 1">
-            <td colspan="2" style="padding: 0 0 6px 0; border-bottom: 2px solid #DDDDDD;">
-                <strong t-out="c['name']"/>
-                <span style="color: #888888; font-size: 13px;"> - <t t-out="c['kind']"/></span>
-            </td>
-        </tr>
-        <tr>
-            <td t-att-style="label_td">Client</td>
-            <td t-att-style="value_td" t-out="c['client']"/>
-        </tr>
-        <tr t-if="not c['is_sow']">
-            <td t-att-style="label_td">Contract Type</td>
-            <td t-att-style="value_td" t-out="c['contract_type']"/>
-        </tr>
-        <tr t-if="c['is_sow']">
-            <td t-att-style="label_td">Candidate</td>
-            <td t-att-style="value_td" t-out="c['candidate']"/>
-        </tr>
-        <tr t-if="c['is_sow']">
-            <td t-att-style="label_td">Role</td>
-            <td t-att-style="value_td" t-out="c['role']"/>
-        </tr>
-        <tr t-if="c['is_sow'] and c['parent']">
-            <td t-att-style="label_td">Under MSA</td>
-            <td t-att-style="value_td" t-out="c['parent']"/>
-        </tr>
-        <tr>
-            <td t-att-style="label_td">Contract POC</td>
-            <td t-att-style="value_td" t-out="c['poc']"/>
-        </tr>
-        <tr>
-            <td t-att-style="label_td">Period</td>
-            <td t-att-style="value_td" t-out="c['period']"/>
-        </tr>
-        <tr>
-            <td t-att-style="label_td">Status When Deleted</td>
-            <td t-att-style="value_td" t-out="c['status']"/>
-        </tr>
-        <tr t-if="c['created_by']">
-            <td t-att-style="label_td">Created</td>
-            <td t-att-style="value_td">
-                <t t-out="c['created_on']"/> by <t t-out="c['created_by']"/>
-            </td>
-        </tr>
-        <tr>
-            <td t-att-style="label_td">Documents</td>
-            <td t-att-style="value_td">
-                <t t-out="c['documents']"/> <t t-if="c['documents'] == 1">file</t><t t-else="">files</t> attached
-            </td>
-        </tr>
-    </table>
+    <t t-foreach="d.get('contracts') or []" t-as="c">
+        <div style="border: 1px solid #E5E5E5; border-radius: 6px; padding: 12px 16px; margin: 0 0 16px 0;">
+            <div style="margin: 0 0 8px 0;">
+                <span style="display: inline-block; font-size: 11px; font-weight: bold; color: #FFFFFF; background-color: #7B7D7D; border-radius: 3px; padding: 1px 6px; margin-right: 6px;" t-out="c['kind']"/>
+                <a t-if="c['url']" t-att-href="c['url']" style="font-size: 16px; font-weight: bold; color: #714B67; text-decoration: none;" t-out="c['name']"/>
+                <span t-else="" style="font-size: 16px; font-weight: bold;" t-out="c['name']"/>
+            </div>
+            <t t-foreach="c['events']" t-as="e">
+                <t t-set="accent" t-value="{'created': '#1E8449', 'deleted': '#922B21'}.get(e['event'], '#2471A3')"/>
+                <div style="font-size: 13px; margin: 8px 0 4px 0;">
+                    <strong t-attf-style="color: {{ accent }};" t-out="e['label']"/>
+                    <span style="color: #888888;"> at <t t-out="e['time']"/> by <t t-out="e['changed_by'] or 'Someone'"/></span>
+                </div>
+                <table t-if="e['changes']" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 6px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+                    <tr><th t-att-style="th + ' width: 34%;'">Field</th><th t-att-style="th + ' width: 33%;'">Before</th><th t-att-style="th">After</th></tr>
+                    <tr t-foreach="e['changes']" t-as="change">
+                        <td t-att-style="td" t-out="change['field']"/>
+                        <td t-att-style="td + ' color: #999999;'" t-out="change['old']"/>
+                        <td t-att-style="td"><strong t-out="change['new']"/></td>
+                    </tr>
+                </table>
+                <table t-if="e['details']" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 6px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+                    <tr t-foreach="e['details']" t-as="line">
+                        <td t-att-style="td + ' color: #888888; width: 34%;'" t-out="line[0]"/>
+                        <td t-att-style="td" t-out="line[1]"/>
+                    </tr>
+                </table>
+            </t>
+        </div>
+    </t>
 
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
-        A deleted contract cannot be restored from Contracts. If this was a mistake,
-        it has to be created again.
-        <br/>
         You are receiving this because you are on the change notification list in Contracts settings.
+        A deleted contract cannot be restored; if that was a mistake, it has to be created again.
     </div>
 </div>
             </field>
