@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.16.0',
+    'version': '19.0.1.18.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -24,8 +24,8 @@ Every contract moves through three states:
 * Terminated - closed midway; set manually.
 
 A contract records the client, the point of contact, who created it (read
-only), the start and end dates, the number of days left, and at least one
-mandatory document. An overarching contract also has a contract type, picked
+only), the start and end dates and the number of days left; its documents are
+attached from the chatter, and are optional. An overarching contract also has a contract type, picked
 from a master list kept under Contracts > Configuration > Contract Types. A
 placed contract has no type; it additionally names the candidate and the role,
 must reference the contract it sits under - one whose type allows Statements of

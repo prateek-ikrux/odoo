@@ -214,16 +214,6 @@
                     </group>
 
                     <notebook>
-                        <page string="Documents" name="documents">
-                            <field name="attachment_ids"
-                                   widget="many2many_binary"
-                                   nolabel="1"/>
-                            <div class="text-muted mt-2">
-                                <i class="fa fa-info-circle" title="Information"/>
-                                At least one document is required before the contract can be saved.
-                                Uploaded files also appear in the attachments box below.
-                            </div>
-                        </page>
                         <page string="Remarks" name="remarks">
                             <field name="remarks" nolabel="1"
                                    placeholder="Notes about this contract - extensions, appraisals, anything worth recording..."/>

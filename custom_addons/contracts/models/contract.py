@@ -150,11 +150,13 @@ class Contract(models.Model):
         STATE_SELECTION, string='Status', default='active',
         required=True, tracking=True, copy=False, index=True,
     )
+    # Files are attached from the chatter now; this keeps the ones uploaded
+    # through the old Documents tab, so they still count and still export.
     attachment_ids = fields.Many2many(
         'ir.attachment', 'contracts_contract_attachment_rel',
         'contract_id', 'attachment_id',
-        string='Attachments', required=True,
-        help="Signed contract documents. At least one attachment is mandatory.",
+        string='Attachments',
+        help="Signed contract documents uploaded before files moved to the chatter.",
     )
     attachment_count = fields.Integer(
         string='# Attachments', compute='_compute_attachment_count',
@@ -574,15 +576,6 @@ class Contract(models.Model):
                     _("Name the billing currency on contract '%s'.", rec.display_name)
                 )
 
-    @api.constrains('attachment_ids')
-    def _check_attachments(self):
-        for rec in self:
-            if not rec._get_documents():
-                raise ValidationError(
-                    _("At least one attachment is required on contract '%s'.",
-                      rec.display_name)
-                )
-
     # ── State synchronisation ─────────────────────────────────────
     def _sync_expired_state(self):
         """Keep 'expired' in step with the date the contract runs to.
@@ -622,9 +615,6 @@ class Contract(models.Model):
             self._normalize_extension_vals(vals)
         records = super().create(vals_list)
         records._link_attachments_to_record()
-        # @api.constrains only fires for fields present in the values, so a
-        # create that never mentions attachment_ids would slip through.
-        records._check_attachments()
         records._sync_expired_state()
         records._send_change_notification('created')
         return records
