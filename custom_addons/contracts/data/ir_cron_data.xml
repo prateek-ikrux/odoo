@@ -34,21 +34,5 @@
             <field name="active" eval="True"/>
         </record>
 
-        <!-- The day's contract changes in one email. 23:30 India time,
-             worked out in UTC here; change the time under Settings >
-             Technical > Scheduled Actions. -->
-        <record id="ir_cron_contract_daily_changes" model="ir.cron">
-            <field name="name">Contracts: Daily Change Summary</field>
-            <field name="model_id" ref="model_contracts_change_entry"/>
-            <field name="state">code</field>
-            <field name="code">model._cron_send_daily_changes()</field>
-            <field name="user_id" ref="base.user_root"/>
-            <field name="interval_number">1</field>
-            <field name="interval_type">days</field>
-            <field name="nextcall"
-                   eval="pytz.timezone('Asia/Kolkata').localize(DateTime.now(pytz.timezone('Asia/Kolkata')).replace(hour=23, minute=30, second=0, microsecond=0, tzinfo=None)).astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="active" eval="True"/>
-        </record>
-
     </data>
 </odoo>

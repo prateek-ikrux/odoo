@@ -7,4 +7,3 @@ access_contracts_type_user,contracts.type.user,model_contracts_type,group_contra
 access_contracts_type_manager,contracts.type.manager,model_contracts_type,group_contracts_manager,1,1,1,1
 access_contracts_reminder_milestone_user,contracts.reminder.milestone.user,model_contracts_reminder_milestone,group_contracts_user,1,0,0,0
 access_contracts_reminder_milestone_system,contracts.reminder.milestone.system,model_contracts_reminder_milestone,base.group_system,1,1,1,1
-access_contracts_change_entry_system,contracts.change.entry.system,model_contracts_change_entry,base.group_system,1,0,0,0

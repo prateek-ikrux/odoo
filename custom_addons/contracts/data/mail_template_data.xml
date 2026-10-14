@@ -235,69 +235,63 @@
             </field>
         </record>
 
-        <!-- ── Daily change summary ──────────────────────────────────── -->
-        <!-- One email at the end of the day listing every contract created,
-             changed or deleted, grouped by contract. Rendered on the
-             recipient's partner; everything arrives in ctx['contracts_daily'],
-             built by contracts.change.entry._get_daily_values, with times in
-             the reader's timezone. A deleted contract has no link and is
-             described from what was kept when it was deleted. -->
-        <record id="mail_template_contract_daily_changes" model="mail.template">
-            <field name="name">Contracts: Daily Change Summary</field>
-            <field name="model_id" ref="base.model_res_partner"/>
-            <field name="subject">{{ (ctx.get('contracts_daily') or {}).get('subject', 'Contracts changed today') }}</field>
+        <!-- ── Change notification ───────────────────────────────────── -->
+        <!-- One email per contract created, changed or deleted, sent as it
+             happens. Everything arrives in ctx['contracts_change'], built by
+             contracts.contract._send_change_notification; rendered before a
+             deletion goes through, so a deleted contract is described from
+             what it was and has no link to follow. -->
+        <record id="mail_template_contract_change" model="mail.template">
+            <field name="name">Contracts: Change Notification</field>
+            <field name="model_id" ref="model_contracts_contract"/>
+            <field name="subject">{{ (ctx.get('contracts_change') or {}).get('subject', 'Contract changed') }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent once at the end of the day to the change notification list, listing every MSA or SOW created, changed or deleted that day.</field>
+            <field name="description">Sent to the change notification list as soon as an MSA or SOW is created, changed in its audit log, or deleted.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-    <t t-set="d" t-value="ctx.get('contracts_daily') or {}"/>
+    <t t-set="c" t-value="ctx.get('contracts_change') or {}"/>
+    <t t-set="accent" t-value="{'created': '#1E8449', 'deleted': '#922B21'}.get(c.get('event'), '#2471A3')"/>
     <t t-set="th" t-value="'padding: 6px 16px 6px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
     <t t-set="td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
 
-    <div style="border-left: 4px solid #2471A3; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
-        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #2471A3;">Daily Contract Changes</div>
-        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('date')"/>
+    <!-- Header -->
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">
+            <t t-out="c.get('kind')"/> <t t-out="c.get('label')"/>
+        </div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="c.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">by <t t-out="c.get('changed_by') or 'Someone'"/></div>
     </div>
 
-    <p style="margin: 0 0 20px 0;">
-        <strong><t t-out="d.get('count')"/> contract<t t-if="d.get('count') != 1">s</t></strong> changed today:
-        <t t-out="d.get('created')"/> created, <t t-out="d.get('updated')"/> updated, <t t-out="d.get('deleted')"/> deleted.
-    </p>
+    <!-- What changed -->
+    <table t-if="c.get('changes')" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+        <tr><th t-att-style="th + ' width: 34%;'">Field</th><th t-att-style="th + ' width: 33%;'">Before</th><th t-att-style="th">After</th></tr>
+        <tr t-foreach="c['changes']" t-as="change">
+            <td t-att-style="td" t-out="change['field']"/>
+            <td t-att-style="td + ' color: #999999;'" t-out="change['old']"/>
+            <td t-att-style="td"><strong t-out="change['new']"/></td>
+        </tr>
+    </table>
 
-    <t t-foreach="d.get('contracts') or []" t-as="c">
-        <div style="border: 1px solid #E5E5E5; border-radius: 6px; padding: 12px 16px; margin: 0 0 16px 0;">
-            <div style="margin: 0 0 8px 0;">
-                <span style="display: inline-block; font-size: 11px; font-weight: bold; color: #FFFFFF; background-color: #7B7D7D; border-radius: 3px; padding: 1px 6px; margin-right: 6px;" t-out="c['kind']"/>
-                <a t-if="c['url']" t-att-href="c['url']" style="font-size: 16px; font-weight: bold; color: #714B67; text-decoration: none;" t-out="c['name']"/>
-                <span t-else="" style="font-size: 16px; font-weight: bold;" t-out="c['name']"/>
-            </div>
-            <t t-foreach="c['events']" t-as="e">
-                <t t-set="accent" t-value="{'created': '#1E8449', 'deleted': '#922B21'}.get(e['event'], '#2471A3')"/>
-                <div style="font-size: 13px; margin: 8px 0 4px 0;">
-                    <strong t-attf-style="color: {{ accent }};" t-out="e['label']"/>
-                    <span style="color: #888888;"> at <t t-out="e['time']"/> by <t t-out="e['changed_by'] or 'Someone'"/></span>
-                </div>
-                <table t-if="e['changes']" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 6px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
-                    <tr><th t-att-style="th + ' width: 34%;'">Field</th><th t-att-style="th + ' width: 33%;'">Before</th><th t-att-style="th">After</th></tr>
-                    <tr t-foreach="e['changes']" t-as="change">
-                        <td t-att-style="td" t-out="change['field']"/>
-                        <td t-att-style="td + ' color: #999999;'" t-out="change['old']"/>
-                        <td t-att-style="td"><strong t-out="change['new']"/></td>
-                    </tr>
-                </table>
-                <table t-if="e['details']" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 6px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
-                    <tr t-foreach="e['details']" t-as="line">
-                        <td t-att-style="td + ' color: #888888; width: 34%;'" t-out="line[0]"/>
-                        <td t-att-style="td" t-out="line[1]"/>
-                    </tr>
-                </table>
-            </t>
-        </div>
-    </t>
+    <!-- What the contract is, when created or deleted -->
+    <table t-if="c.get('details')" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+        <tr t-foreach="c['details']" t-as="line">
+            <td t-att-style="td + ' color: #888888; width: 34%;'" t-out="line[0]"/>
+            <td t-att-style="td" t-out="line[1]"/>
+        </tr>
+    </table>
+
+    <!-- Button -->
+    <div t-if="c.get('url')" style="margin: 0 0 24px 0;">
+        <a t-att-href="c['url']"
+           style="display: inline-block; padding: 10px 20px; background-color: #714B67; color: #FFFFFF; text-decoration: none; border-radius: 4px; font-weight: bold;">
+            Open <t t-out="c.get('kind')"/>
+        </a>
+    </div>
 
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
         You are receiving this because you are on the change notification list in Contracts settings.
-        A deleted contract cannot be restored; if that was a mistake, it has to be created again.
+        <t t-if="c.get('event') == 'deleted'">A deleted contract cannot be restored; if that was a mistake, it has to be created again.</t>
     </div>
 </div>
             </field>

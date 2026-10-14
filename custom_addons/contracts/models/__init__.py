@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from . import contract
-from . import contract_change_entry
 from . import contract_type
 from . import contract_reminder_milestone
 from . import contract_terminate_wizard

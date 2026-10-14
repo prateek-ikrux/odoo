@@ -647,20 +647,25 @@ class Contract(models.Model):
         return res
 
     # ── Change notifications ──────────────────────────────────────
-    # Not mailed one by one: every change is queued, and one email at the end
-    # of the day lists them all (contracts.change.entry).
+    # Mailed as they happen: one email per contract created, changed or
+    # deleted, sent within moments of the save.
     def _message_track(self, fields_iter, initial_values_dict):
-        """Queue for the end-of-day email whatever the audit log just recorded.
+        """Email whatever the audit log just recorded.
 
         This is where mail.thread turns tracked-field changes into the
         chatter's log entry, once per record per transaction, so hooking in
         here reports exactly what the log shows - from the form, an import, a
-        script or the nightly cron alike.
+        script or the nightly cron alike. One save is one email, however many
+        fields it touched.
         """
         tracking = super()._message_track(fields_iter, initial_values_dict)
+        # A contract created in this same transaction has already had its
+        # 'created' email, describing it as it was saved; what create() itself
+        # adjusted afterwards (expired on arrival, say) is not a second change.
+        created = self.env.cr.precommit.data.get('contracts.created_ids', set())
         for rec in self:
             changes = tracking.get(rec.id, (None, None))[0]
-            if changes:
+            if changes and rec.id not in created:
                 rec._send_change_notification(
                     'updated', rec._format_changes(changes, initial_values_dict[rec.id]))
         return tracking
@@ -700,33 +705,71 @@ class Contract(models.Model):
         return users.filtered(lambda u: u.active and u.email).partner_id
 
     def _send_change_notification(self, event, changes=None):
-        """Queue a contract 'created', 'deleted', or 'updated' with its list
-        of changes, for the end-of-day email. Queued inside the same
-        transaction, so a save that fails leaves nothing behind."""
+        """Email a contract 'created', 'deleted', or 'updated' with its list
+        of changes to the change notification list, one email per contract.
+
+        Queued inside the same transaction, so a save that fails sends
+        nothing, and the mail queue is woken to send it as soon as the save
+        commits rather than on its next hourly run. Never raises: an email
+        that cannot be built is logged and dropped, and the change it
+        reports on goes through regardless.
+        """
         if not self or not self.env['ir.config_parameter'].sudo().get_param('contracts.change_notify'):
+            return
+        if event == 'created':
+            self.env.cr.precommit.data.setdefault('contracts.created_ids', set()).update(self.ids)
+        partners = self._recipient_partners(self.env.company.sudo().contracts_change_recipient_ids)
+        template = self.env.ref('contracts.mail_template_contract_change', raise_if_not_found=False)
+        if not partners or not template:
+            if not template:
+                _logger.warning("Contract change notification: mail template is missing.")
             return
         # The nightly cron runs as the superuser; naming OdooBot would only
         # puzzle the reader.
         changed_by = _("Automatic update") if self.env.user._is_superuser() else self.env.user.name
-        self.env['contracts.change.entry'].sudo().create([{
-            'event': event,
-            'res_id': rec.id,
-            'record_name': rec.display_name,
-            'kind': 'SOW' if rec.contract_type == 'sow' else 'MSA',
-            'url': '' if event == 'deleted' else rec._get_form_url(),
-            'changed_by': changed_by,
-            'changes': changes or [],
-            # What the contract is, for one created or deleted - a deleted one
-            # cannot be looked up by the time the email is written.
-            'details': [] if event == 'updated' else rec._get_summary_lines(),
-        } for rec in self])
+        labels = {'created': _('Created'), 'updated': _('Updated'), 'deleted': _('Deleted')}
+        queued = False
+        for rec in self:
+            try:
+                with self.env.cr.savepoint():
+                    kind = 'SOW' if rec.contract_type == 'sow' else 'MSA'
+                    values = {
+                        'event': event,
+                        'label': labels[event],
+                        'kind': kind,
+                        'name': rec.display_name,
+                        # A deleted contract has nothing left to open.
+                        'url': '' if event == 'deleted' else rec._get_form_url(),
+                        'changed_by': changed_by,
+                        'changes': changes or [],
+                        # What the contract is, for one created or deleted.
+                        'details': [] if event == 'updated' else rec._get_summary_lines(),
+                        'subject': _('%(kind)s %(event)s: %(name)s', kind=kind,
+                                     event=labels[event].lower(), name=rec.display_name),
+                    }
+                    # Rendered here and sent unlinked from the contract:
+                    # mail.thread deletes every message tied to a record it
+                    # deletes, which would take a queued email with it.
+                    rendered = template.sudo().with_context(contracts_change=values)
+                    self.env['mail.mail'].sudo().create({
+                        'subject': rendered._render_field('subject', rec.ids)[rec.id],
+                        'body_html': rendered._render_field('body_html', rec.ids)[rec.id],
+                        'recipient_ids': [(6, 0, partners.ids)],
+                        'auto_delete': True,
+                    })
+                    queued = True
+            except Exception:
+                _logger.exception("Contract change notification '%s' failed for contract %s.",
+                                  event, rec.id)
+        if queued:
+            self.env.ref('mail.ir_cron_mail_scheduler_action')._trigger()
 
     def unlink(self):
         self._send_change_notification('deleted')
         return super().unlink()
 
     def _get_summary_lines(self):
-        """The contract in a few label / value pairs, for the end-of-day email."""
+        """The contract in a few label / value pairs, for the change email."""
         self.ensure_one()
 
         def short_date(value):

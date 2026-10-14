@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.18.0',
+    'version': '19.0.1.19.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -55,8 +55,8 @@ start date, and free-text remarks.
 
 Every change recorded in a contract's audit log - and every new or deleted
 contract - can be emailed to a list of users picked under Contracts >
-Configuration > Settings, kept apart from the expiry reminder recipients: one
-summary at the end of the day listing them all, not an email per change.
+Configuration > Settings, kept apart from the expiry reminder recipients. Each
+one is emailed as it happens, one email per contract per save.
 
 Access is granted per user from the user form, like any other app: Contracts
 User works with MSAs and SOWs, Contracts Administrator also deletes them and
