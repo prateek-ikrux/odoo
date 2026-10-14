@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.21.0',
+    'version': '19.0.1.22.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -66,6 +66,7 @@ may see or do what is whatever the Sales privilege already says.
         'views/res_config_settings_views.xml',
         'views/crm_classification_views.xml',
         'views/res_partner_views.xml',
+        'wizard/crm_poc_export_wizard_views.xml',
     ],
     # ordinal_date, the "21st July 2024" date widget. Neither strftime nor
     # Luxon can express an ordinal suffix, so the string is built in the

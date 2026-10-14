@@ -150,6 +150,22 @@ computation behind the scenes, which is why it is hidden rather than deleted.
 - The **Contacts** section is now **POCs**, and every POC captures phone,
   designation and location.
 
+### Exporting POCs
+
+**CRM > Reporting > Export POCs** (19.0.1.22.0) downloads an Excel sheet with
+one row per POC: Client Name, POC Name, Designation, Mobile Number, Email,
+Location and LinkedIn. POCs 1 to 5 are all included; an empty POC block is
+skipped.
+
+Every filter is optional: clients, Client Type, Industry / Domain, Client
+Status, Engagement Type, stage, BDA and an Initial Outreach date range. Lost
+opportunities are left out unless **Include Lost Opportunities** is ticked,
+and **Primary POC Only** limits the sheet to POC 1. Selecting opportunities in
+the list and choosing **Actions > Export POCs** starts with just those clients.
+
+The export follows CRM's own access rules, so a salesperson exports only the
+clients they can already see in the pipeline.
+
 ## Changing things without a developer
 
 ### Stages
