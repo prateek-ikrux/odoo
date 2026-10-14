@@ -18,7 +18,8 @@
                     <!-- Both kinds of email side by side, each with its own
                          switch and its own people. Their details sit inside
                          the switch, so a feature that is off shows nothing
-                         to fill in. -->
+                         to fill in. Nobody is on a list until picked;
+                         Select everyone and Clear fill or empty it at once. -->
                     <block title="Email Notifications" name="contracts_notifications">
                         <setting id="contracts_reminders_setting"
                                  string="Expiry Reminders"
@@ -59,6 +60,17 @@
                                            options="{'no_create': True}"/>
                                 </div>
                                 <div class="row">
+                                    <div class="offset-lg-3 col-lg-9 small mt-1">
+                                        <button name="action_contracts_recipients_select_all" type="object"
+                                                string="Select everyone" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_reminder_recipient_ids'}"/>
+                                        <span class="text-muted mx-1">·</span>
+                                        <button name="action_contracts_recipients_clear" type="object"
+                                                string="Clear" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_reminder_recipient_ids'}"/>
+                                    </div>
+                                </div>
+                                <div class="row">
                                     <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
                                         Only people with an email address on their user receive these.
                                     </div>
@@ -87,6 +99,17 @@
                                            widget="many2many_tags_avatar"
                                            placeholder="Pick who should be notified..."
                                            options="{'no_create': True}"/>
+                                </div>
+                                <div class="row">
+                                    <div class="offset-lg-3 col-lg-9 small mt-1">
+                                        <button name="action_contracts_recipients_select_all" type="object"
+                                                string="Select everyone" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_change_recipient_ids'}"/>
+                                        <span class="text-muted mx-1">·</span>
+                                        <button name="action_contracts_recipients_clear" type="object"
+                                                string="Clear" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_change_recipient_ids'}"/>
+                                    </div>
                                 </div>
                                 <div class="row">
                                     <div class="offset-lg-3 col-lg-9 text-muted small mt-1">

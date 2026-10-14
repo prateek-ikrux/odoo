@@ -2,8 +2,11 @@
 <odoo>
 
     <!-- Same layout as Contracts settings: a switch per kind of email, and
-         its details only while it is on. Every kind also goes to the
-         opportunity's own BDAs, so "Send to" is for anyone on top of them. -->
+         its details only while it is on. Nobody receives anything by
+         default: each kind goes to the people picked under "Send to" and,
+         only where ticked, to the opportunity's BDAs (and for activities,
+         the assignee). Select everyone and Clear fill or empty a list in one
+         click. -->
     <record id="res_config_settings_view_form_consulting" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.crm.consulting</field>
         <field name="model">res.config.settings</field>
@@ -18,17 +21,34 @@
                         <field name="crm_change_notify"/>
                         <div class="content-group mt16" invisible="not crm_change_notify">
                             <div class="row">
-                                <label for="crm_change_recipient_ids" string="Also send to"
+                                <label for="crm_change_recipient_ids" string="Send to"
                                        class="col-lg-3 o_light_label"/>
                                 <field name="crm_change_recipient_ids" class="col-lg-9"
                                        widget="many2many_tags_avatar"
-                                       placeholder="Pick anyone else to notify..."
+                                       placeholder="Pick who should be notified..."
                                        options="{'no_create': True}"/>
                             </div>
                             <div class="row">
-                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
-                                    The opportunity's BDAs always receive these.
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_crm_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_change_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_crm_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_change_recipient_ids'}"/>
                                 </div>
+                            </div>
+                            <div class="row mt8">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_change_notify_bda" class="w-auto"/>
+                                    <label for="crm_change_notify_bda" class="o_light_label"/>
+                                </div>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="crm_change_recipient_ids or crm_change_notify_bda">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Nobody is picked yet, so no notifications will go out.</span>
                             </div>
                         </div>
                     </setting>
@@ -52,23 +72,44 @@
                                 </div>
                             </div>
                             <div class="row mt8">
-                                <label for="crm_stage_reminder_recipient_ids" string="Also send to"
+                                <label for="crm_stage_reminder_recipient_ids" string="Send to"
                                        class="col-lg-3 o_light_label"/>
                                 <field name="crm_stage_reminder_recipient_ids" class="col-lg-9"
                                        widget="many2many_tags_avatar"
-                                       placeholder="Pick anyone else to remind..."
+                                       placeholder="Pick who should be reminded..."
                                        options="{'no_create': True}"/>
                             </div>
                             <div class="row">
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_crm_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_stage_reminder_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_crm_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_stage_reminder_recipient_ids'}"/>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_stage_reminders_bda" class="w-auto"/>
+                                    <label for="crm_stage_reminders_bda" class="o_light_label"/>
+                                </div>
+                            </div>
+                            <div class="row">
                                 <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
-                                    The opportunity's BDAs always receive these. Choose which
-                                    stages send them under CRM > Configuration > Stages.
+                                    Choose which stages send these under CRM > Configuration > Stages.
                                 </div>
                             </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
                                  role="alert" invisible="crm_stage_reminder_day_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
                                 <span>No days picked, so no reminders will go out.</span>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="crm_stage_reminder_recipient_ids or crm_stage_reminders_bda">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Nobody is picked yet, so no reminders will go out.</span>
                             </div>
                         </div>
                     </setting>
@@ -100,17 +141,34 @@
                                        options="{'no_create': True}"/>
                             </div>
                             <div class="row mt8">
-                                <label for="crm_activity_reminder_recipient_ids" string="Also send to"
+                                <label for="crm_activity_reminder_recipient_ids" string="Send to"
                                        class="col-lg-3 o_light_label"/>
                                 <field name="crm_activity_reminder_recipient_ids" class="col-lg-9"
                                        widget="many2many_tags_avatar"
-                                       placeholder="Pick anyone else to remind..."
+                                       placeholder="Pick who should be reminded..."
                                        options="{'no_create': True}"/>
                             </div>
                             <div class="row">
-                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
-                                    The person the activity is assigned to and the opportunity's
-                                    BDAs always receive these.
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_crm_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_activity_reminder_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_crm_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_activity_reminder_recipient_ids'}"/>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_activity_reminders_assignee" class="w-auto"/>
+                                    <label for="crm_activity_reminders_assignee" class="o_light_label"/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_activity_reminders_bda" class="w-auto"/>
+                                    <label for="crm_activity_reminders_bda" class="o_light_label"/>
                                 </div>
                             </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
@@ -118,6 +176,12 @@
                                  invisible="crm_activity_reminder_day_ids and crm_activity_reminder_type_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
                                 <span>Pick at least one day and one activity type, or no reminders will go out.</span>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert"
+                                 invisible="crm_activity_reminder_recipient_ids or crm_activity_reminders_assignee or crm_activity_reminders_bda">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Nobody is picked yet, so no reminders will go out.</span>
                             </div>
                         </div>
                     </setting>

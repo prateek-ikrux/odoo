@@ -7,8 +7,8 @@ class ResCompany(models.Model):
 
     # Users rather than typed addresses, so someone who leaves is simply
     # archived. Held here because a settings field cannot keep a many2many in
-    # a system parameter. The opportunity's own BDAs are added on every send
-    # and need not be picked.
+    # a system parameter. Every list starts empty: nobody is emailed until
+    # picked here, or until the settings tick that adds the BDAs is on.
     crm_change_recipient_ids = fields.Many2many(
         'res.users', 'crm_change_recipient_rel', 'company_id', 'user_id',
         string='CRM Change Notification Recipients',

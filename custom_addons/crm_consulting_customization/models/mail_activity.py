@@ -36,6 +36,7 @@ class MailActivity(models.Model):
         types = company.crm_activity_reminder_type_ids
         if not days or not types:
             return True
+        notify_assignee = Lead._notify_enabled('crm_consulting.activity_reminders_assignee')
         today = fields.Date.context_today(self)
         activities = self.search([
             ('res_model', '=', 'crm.lead'),
@@ -64,7 +65,8 @@ class MailActivity(models.Model):
                 'crm_consulting_customization.mail_template_crm_activity_due',
                 Lead._mail_partners(
                     company.crm_activity_reminder_recipient_ids
-                    | lead._get_bda_users() | activity.user_id),
+                    | lead._get_notify_bda_users('crm_consulting.activity_reminders_bda')
+                    | (activity.user_id if notify_assignee else activity.user_id.browse())),
                 {'crm_activity': {
                     'type': activity.activity_type_id.name or '',
                     'icon': activity.activity_type_id.icon or '',

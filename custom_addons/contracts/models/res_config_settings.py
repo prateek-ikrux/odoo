@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+# The recipient lists the Select everyone and Clear buttons may fill, each a
+# field of the company. The button names the list in its context.
+RECIPIENT_FIELDS = ('contracts_reminder_recipient_ids', 'contracts_change_recipient_ids')
 
 
 class ResConfigSettings(models.TransientModel):
@@ -69,3 +74,21 @@ class ResConfigSettings(models.TransientModel):
         cron = self._get_reminder_cron()
         if cron and cron.active != self.contracts_reminders_enabled:
             cron.active = self.contracts_reminders_enabled
+
+    # ── Select everyone / Clear ───────────────────────────────────
+    def action_contracts_recipients_select_all(self):
+        """Put every internal user who can be emailed on the list."""
+        self._contracts_set_recipients(self.env['res.users'].search([
+            ('share', '=', False), ('email', '!=', False)]))
+
+    def action_contracts_recipients_clear(self):
+        """Take everyone off the list."""
+        self._contracts_set_recipients(self.env['res.users'])
+
+    def _contracts_set_recipients(self, users):
+        fname = self.env.context.get('recipient_field')
+        if fname not in RECIPIENT_FIELDS:
+            raise UserError(_('Unknown recipient list: %s', fname))
+        # Straight onto the company: the settings form saves before running
+        # a button and reloads after, so the list shows the change at once.
+        self.company_id[fname] = users

@@ -561,10 +561,12 @@ class CrmLead(models.Model):
     # -------------------------------------------------------------------
     # Email notifications
     # -------------------------------------------------------------------
-    # Every email goes to the users picked for its kind in CRM settings plus
-    # the opportunity's own BDAs. Only opportunities: leads raised by the mail
-    # alias or the website form would otherwise mail everyone about records
-    # nobody has looked at yet.
+    # Every email goes only to the people picked for its kind in CRM
+    # settings. Nobody is on a list until someone puts them there: the
+    # opportunity's own BDAs, and for activity reminders the activity's
+    # assignee, are each a tick in the settings that starts off. Only
+    # opportunities: leads raised by the mail alias or the website form would
+    # otherwise mail everyone about records nobody has looked at yet.
 
     @api.model
     def _get_reminder_days(self, param):
@@ -596,6 +598,13 @@ class CrmLead(models.Model):
     def _get_bda_users(self):
         # Archived BDAs are still on the record; read them, the mailer drops them.
         return self.sudo().with_context(active_test=False).bda_ids
+
+    def _get_notify_bda_users(self, param):
+        """The opportunity's BDAs when the settings tick for this kind of
+        email says so, otherwise nobody."""
+        if not self._notify_enabled(param):
+            return self.env['res.users']
+        return self._get_bda_users()
 
     def _get_form_url(self):
         """Straight into the opportunity, from the Pipeline."""
@@ -688,11 +697,11 @@ class CrmLead(models.Model):
 
     # ── Change notifications ──────────────────────────────────────
     def _get_change_partners(self):
-        """Settings list plus this opportunity's BDAs, or nobody while the
-        change notifications are off."""
+        """Settings list, plus this opportunity's BDAs if ticked there, or
+        nobody while the change notifications are off."""
         if not self._notify_enabled('crm_consulting.change_notify'):
             return self.env['res.partner']
-        users = self.env.company.sudo().crm_change_recipient_ids | self._get_bda_users()
+        users = self.env.company.sudo().crm_change_recipient_ids             | self._get_notify_bda_users('crm_consulting.change_notify_bda')
         return self._mail_partners(users)
 
     def _send_change_notification(self, event, changes=None):
@@ -769,7 +778,8 @@ class CrmLead(models.Model):
         if not leads or not self._notify_enabled('crm_consulting.change_notify'):
             return
         partners = self._mail_partners(
-            self.env.company.sudo().crm_change_recipient_ids | leads._get_bda_users())
+            self.env.company.sudo().crm_change_recipient_ids
+            | leads._get_notify_bda_users('crm_consulting.change_notify_bda'))
         template = self.env.ref('crm_consulting_customization.mail_template_crm_lead_deleted',
                                 raise_if_not_found=False)
         if not partners or not template:
@@ -837,7 +847,8 @@ class CrmLead(models.Model):
             next_mark = min(later) if later else 0
             sent = lead._send_lead_mail(
                 'crm_consulting_customization.mail_template_crm_lead_stuck',
-                self._mail_partners(settings_users | lead._get_bda_users()),
+                self._mail_partners(
+                    settings_users | lead._get_notify_bda_users('crm_consulting.stage_reminders_bda')),
                 {'crm_stuck': {
                     'days': in_stage,
                     'accent': '#C0392B' if in_stage >= 15 else '#D68910',

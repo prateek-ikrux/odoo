@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.22.0',
+    'version': '19.0.1.23.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -37,8 +37,9 @@ and each further one is asked for, so the form starts at one contact and
 walks out to five.
 
 Opportunities can email people as they move. Each kind is switched on and
-configured under CRM > Configuration > Settings, and every one goes to the
-opportunity's own BDAs plus anyone picked there:
+configured under CRM > Configuration > Settings, and every one goes only to
+the people picked there - nobody by default. Select everyone and Clear fill or
+empty a list in one click, and a tick per kind adds the opportunity's own BDAs:
 
 * Change notifications - when an opportunity is created, deleted, or a change
   to it is recorded in its audit log.
@@ -46,8 +47,8 @@ opportunity's own BDAs plus anyone picked there:
   stage past the day marks picked (6, 12, 18 and 30 by default). Each stage
   says whether it sends them; the won stage starts switched off.
 * Activity reminders - a set number of days before a scheduled activity of
-  the picked types falls due (3 and 1 days, Call and Meeting by default),
-  also to the person it is assigned to.
+  the picked types falls due (3 and 1 days, Call and Meeting by default).
+  A further tick adds the person the activity is assigned to.
 
 Access is CRM's own: this module adds no roles and no record rules, and who
 may see or do what is whatever the Sales privilege already says.

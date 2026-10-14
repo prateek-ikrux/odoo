@@ -1,37 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Starting values only; noupdate keeps the Admin's later choices from
-         being reverted by an upgrade. Every kind of email itself starts
-         switched off: nothing is sent until it is turned on in the settings.
-         Once it is, the creator and the assigned people receive it unless
-         unticked there. -->
+         being reverted by an upgrade. Every kind of email starts switched
+         off, and nobody receives one even once it is on: the creator and the
+         assigned people are ticks in the settings that start unticked, and
+         the recipient lists start empty. -->
     <data noupdate="1">
-
-        <record id="param_client_notify_creator" model="ir.config_parameter">
-            <field name="key">recruitment_pipeline.client_notify_creator</field>
-            <field name="value">True</field>
-        </record>
-        <record id="param_client_notify_assigned" model="ir.config_parameter">
-            <field name="key">recruitment_pipeline.client_notify_assigned</field>
-            <field name="value">True</field>
-        </record>
-        <record id="param_role_notify_creator" model="ir.config_parameter">
-            <field name="key">recruitment_pipeline.role_notify_creator</field>
-            <field name="value">True</field>
-        </record>
-        <record id="param_role_notify_assigned" model="ir.config_parameter">
-            <field name="key">recruitment_pipeline.role_notify_assigned</field>
-            <field name="value">True</field>
-        </record>
-        <record id="param_stuck_notify_creator" model="ir.config_parameter">
-            <field name="key">recruitment_pipeline.stuck_notify_creator</field>
-            <field name="value">True</field>
-        </record>
-        <record id="param_stuck_notify_assigned" model="ir.config_parameter">
-            <field name="key">recruitment_pipeline.stuck_notify_assigned</field>
-            <field name="value">True</field>
-        </record>
-
         <!-- The day chips offered out of the box; any other number can be
              typed into the picker and is added on the fly. -->
         <record id="reminder_day_1" model="recruitment.reminder.day"><field name="days">1</field></record>

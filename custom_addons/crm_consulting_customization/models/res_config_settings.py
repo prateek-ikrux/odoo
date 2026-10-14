@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 from .crm_lead import ACTIVITY_REMINDER_DAYS_PARAM, STAGE_REMINDER_DAYS_PARAM
 
@@ -16,6 +17,10 @@ class ResConfigSettings(models.TransientModel):
     )
     crm_change_recipient_ids = fields.Many2many(
         related='company_id.crm_change_recipient_ids', readonly=False,
+    )
+    crm_change_notify_bda = fields.Boolean(
+        string="Also send to the opportunity's BDAs",
+        config_parameter='crm_consulting.change_notify_bda',
     )
 
     # ── Stuck-in-stage reminders ──────────────────────────────────
@@ -34,6 +39,10 @@ class ResConfigSettings(models.TransientModel):
     crm_stage_reminder_recipient_ids = fields.Many2many(
         related='company_id.crm_stage_reminder_recipient_ids', readonly=False,
     )
+    crm_stage_reminders_bda = fields.Boolean(
+        string="Also send to the opportunity's BDAs",
+        config_parameter='crm_consulting.stage_reminders_bda',
+    )
 
     # ── Activity reminders ────────────────────────────────────────
     crm_activity_reminders = fields.Boolean(
@@ -50,6 +59,22 @@ class ResConfigSettings(models.TransientModel):
     )
     crm_activity_reminder_recipient_ids = fields.Many2many(
         related='company_id.crm_activity_reminder_recipient_ids', readonly=False,
+    )
+    crm_activity_reminders_bda = fields.Boolean(
+        string="Also send to the opportunity's BDAs",
+        config_parameter='crm_consulting.activity_reminders_bda',
+    )
+    crm_activity_reminders_assignee = fields.Boolean(
+        string='Also send to the person the activity is assigned to',
+        config_parameter='crm_consulting.activity_reminders_assignee',
+    )
+
+    # The recipient lists the Select everyone and Clear buttons may fill, each
+    # a field of the company. The button names the list in its context.
+    _CRM_RECIPIENT_FIELDS = (
+        'crm_change_recipient_ids',
+        'crm_stage_reminder_recipient_ids',
+        'crm_activity_reminder_recipient_ids',
     )
 
     _CRM_DAY_FIELDS = {
@@ -77,3 +102,21 @@ class ResConfigSettings(models.TransientModel):
         for fname, param in self._CRM_DAY_FIELDS.items():
             days = sorted(set(self[fname].mapped('days')), reverse=True)
             params.set_param(param, ','.join(map(str, days)))
+
+    # ── Select everyone / Clear ───────────────────────────────────
+    def action_crm_recipients_select_all(self):
+        """Put every internal user who can be emailed on the list."""
+        self._crm_set_recipients(self.env['res.users'].search([
+            ('share', '=', False), ('email', '!=', False)]))
+
+    def action_crm_recipients_clear(self):
+        """Take everyone off the list."""
+        self._crm_set_recipients(self.env['res.users'])
+
+    def _crm_set_recipients(self, users):
+        fname = self.env.context.get('recipient_field')
+        if fname not in self._CRM_RECIPIENT_FIELDS:
+            raise UserError(_('Unknown recipient list: %s', fname))
+        # Straight onto the company: the settings form saves before running
+        # a button and reloads after, so the list shows the change at once.
+        self.company_id[fname] = users

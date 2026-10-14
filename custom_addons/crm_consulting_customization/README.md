@@ -166,6 +166,15 @@ the list and choosing **Actions > Export POCs** starts with just those clients.
 The export follows CRM's own access rules, so a salesperson exports only the
 clients they can already see in the pipeline.
 
+### Who receives emails
+
+Nobody, until they are picked. Each kind of email under **CRM > Configuration
+> Settings** has its own **Send to** list, which starts empty; **Select
+everyone** puts every internal user with an email address on it and **Clear**
+empties it. The opportunity's own BDAs are added only where **Also send to the
+opportunity's BDAs** is ticked, and an activity's assignee only where **Also
+send to the person the activity is assigned to** is ticked (19.0.1.23.0).
+
 ## Changing things without a developer
 
 ### Stages

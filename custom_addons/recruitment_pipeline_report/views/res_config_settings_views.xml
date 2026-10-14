@@ -3,7 +3,9 @@
 
     <!-- Same layout as the Contracts and CRM settings: a switch per kind of
          email, and its details only while it is on. Each kind says whether
-         the creator and the assigned people get it, and who else does. -->
+         the creator and the assigned people get it - both start unticked -
+         and who else does. Nobody receives anything until picked; Select
+         everyone and Clear fill or empty a list in one click. -->
     <record id="res_config_settings_view_form_inherit_pipeline" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.recruitment.pipeline</field>
         <field name="model">res.config.settings</field>
@@ -33,6 +35,22 @@
                                        placeholder="Pick anyone else to notify..."
                                        options="{'no_create': True}"/>
                             </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_rp_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'x_rp_client_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_rp_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'x_rp_client_recipient_ids'}"/>
+                                </div>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="x_rp_client_recipient_ids or x_rp_client_notify_creator or x_rp_client_notify_assigned">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Nobody is picked yet, so no notifications will go out.</span>
+                            </div>
                         </div>
                     </setting>
 
@@ -56,6 +74,22 @@
                                        widget="many2many_tags_avatar"
                                        placeholder="Pick anyone else to notify..."
                                        options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_rp_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'x_rp_role_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_rp_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'x_rp_role_recipient_ids'}"/>
+                                </div>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="x_rp_role_recipient_ids or x_rp_role_notify_creator or x_rp_role_notify_assigned">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Nobody is picked yet, so no notifications will go out.</span>
                             </div>
                         </div>
                     </setting>
@@ -94,6 +128,17 @@
                                        placeholder="Pick anyone else to remind..."
                                        options="{'no_create': True}"/>
                             </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_rp_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'x_rp_stuck_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_rp_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'x_rp_stuck_recipient_ids'}"/>
+                                </div>
+                            </div>
                             <div class="text-muted small mt-2">
                                 Choose which stages send these under Recruitment &gt; Configuration &gt; Stages.
                             </div>
@@ -101,6 +146,11 @@
                                  role="alert" invisible="x_rp_stuck_day_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
                                 <span>No days picked, so no reminders will go out.</span>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="x_rp_stuck_recipient_ids or x_rp_stuck_notify_creator or x_rp_stuck_notify_assigned">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>Nobody is picked yet, so no reminders will go out.</span>
                             </div>
                         </div>
                     </setting>

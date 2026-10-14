@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
-from .notify_mixin import STUCK_REMINDER_DAYS_PARAM
+from .notify_mixin import RECIPIENT_FIELDS, STUCK_REMINDER_DAYS_PARAM
 
 
 class ResConfigSettings(models.TransientModel):
@@ -64,3 +65,21 @@ class ResConfigSettings(models.TransientModel):
         days = sorted(set(self.x_rp_stuck_day_ids.mapped('days')), reverse=True)
         self.env['ir.config_parameter'].sudo().set_param(
             STUCK_REMINDER_DAYS_PARAM, ','.join(map(str, days)))
+
+    # ── Select everyone / Clear ───────────────────────────────────
+    def action_rp_recipients_select_all(self):
+        """Put every internal user who can be emailed on the list."""
+        self._rp_set_recipients(self.env['res.users'].search([
+            ('share', '=', False), ('email', '!=', False)]))
+
+    def action_rp_recipients_clear(self):
+        """Take everyone off the list."""
+        self._rp_set_recipients(self.env['res.users'])
+
+    def _rp_set_recipients(self, users):
+        fname = self.env.context.get('recipient_field')
+        if fname not in RECIPIENT_FIELDS.values():
+            raise UserError(_('Unknown recipient list: %s', fname))
+        # Straight onto the company: the settings form saves before running
+        # a button and reloads after, so the list shows the change at once.
+        self.company_id[fname] = users
