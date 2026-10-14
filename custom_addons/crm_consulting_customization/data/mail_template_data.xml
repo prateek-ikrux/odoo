@@ -166,70 +166,64 @@
             </field>
         </record>
 
-        <!-- ── Stuck in stage ────────────────────────────────────────── -->
-        <record id="mail_template_crm_lead_stuck" model="mail.template">
-            <field name="name">CRM: Stuck in Stage</field>
-            <field name="model_id" ref="crm.model_crm_lead"/>
-            <field name="subject">Stuck {{ (ctx.get('crm_stuck') or {}).get('days', '') }} days in {{ object.stage_id.name }}: {{ object.name }}</field>
+        <!-- ── Stuck-in-stage report ─────────────────────────────────── -->
+        <!-- One email a week with the full list attached as a spreadsheet.
+             Rendered on the company; everything arrives in
+             ctx['crm_stage_report'], built by crm.lead._send_stage_report. -->
+        <record id="mail_template_crm_stage_report" model="mail.template">
+            <field name="name">CRM: Stuck-in-Stage Report</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="subject">{{ (ctx.get('crm_stage_report') or {}).get('subject', 'Stuck-in-stage report') }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent by the nightly scheduled action when an active client's opportunity stays in the same stage past one of the reminder marks.</field>
+            <field name="description">Sent weekly at midnight on the day picked in CRM settings, with an Excel list of every active client whose opportunity has not moved stage for the set number of days.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-    <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
-    <t t-set="s" t-value="ctx.get('crm_stuck') or {}"/>
-    <t t-set="accent" t-value="s.get('accent') or '#D68910'"/>
-    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
-    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+    <t t-set="r" t-value="ctx.get('crm_stage_report') or {}"/>
+    <t t-set="accent" t-value="'#D68910' if r.get('count') else '#1E8449'"/>
+    <t t-set="th" t-value="'padding: 6px 16px 6px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
+    <t t-set="td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
 
     <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
-        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Stuck in Stage</div>
-        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
-        <div style="font-size: 13px; color: #888888;">Active client - BDAs: <t t-out="d.get('bdas')"/></div>
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Stuck-in-Stage Report</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="r.get('as_of')"/>
     </div>
 
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: separate; border: 1px solid #E5E5E5; border-radius: 6px; margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; color: #333333;">
-        <tr>
-            <td width="110" align="center" valign="middle" t-attf-style="background-color: {{ accent }}; color: #FFFFFF; border-radius: 5px 0 0 5px; padding: 14px 8px;">
-                <div style="font-size: 36px; font-weight: bold; line-height: 1.1;" t-out="s.get('days')"/>
-                <div style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">days in stage</div>
-            </td>
-            <td valign="middle" style="padding: 12px 18px;">
-                <div style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">Still in</div>
-                <div style="font-size: 17px; font-weight: bold;" t-out="d.get('stage')"/>
-                <div style="font-size: 13px; color: #888888; margin-top: 4px;">since <t t-out="s.get('entered_on')"/></div>
-            </td>
-        </tr>
-    </table>
+    <t t-if="r.get('count')">
+        <p style="margin: 0 0 20px 0;">
+            <strong><t t-out="r['count']"/> active client<t t-if="r['count'] != 1">s</t></strong>
+            <t t-if="r['count'] == 1">has</t><t t-else="">have</t> not moved stage in
+            <strong><t t-out="r.get('min_days')"/> days or more</strong>.
+            The full list, with BDAs, POCs and next activities, is attached.
+        </p>
 
-    <p style="margin: 0 0 16px 0;">
-        This opportunity has not moved stage in <strong><t t-out="s.get('days')"/> days</strong>.
-        <t t-if="d.get('next_activity')">Its next planned step is below.</t>
-        <t t-else=""><strong t-attf-style="color: {{ accent }};">Nothing is scheduled on it</strong> - plan the next step or move it on.</t>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+            <tr><th t-att-style="th">Stage</th><th t-att-style="th + ' text-align: right; width: 25%;'">Clients</th></tr>
+            <tr t-foreach="r.get('by_stage') or []" t-as="stage">
+                <td t-att-style="td" t-out="stage[0]"/>
+                <td t-att-style="td + ' text-align: right;'"><strong t-out="stage[1]"/></td>
+            </tr>
+        </table>
+
+        <div style="font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #888888; margin: 0 0 6px 0;">Longest in stage</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+            <tr>
+                <th t-att-style="th">Client</th>
+                <th t-att-style="th">Stage</th>
+                <th t-att-style="th + ' text-align: right;'">Days</th>
+            </tr>
+            <tr t-foreach="r.get('longest') or []" t-as="row">
+                <td t-att-style="td"><a t-att-href="row['url']" style="color: #714B67; text-decoration: none; font-weight: bold;" t-out="row['client']"/></td>
+                <td t-att-style="td" t-out="row['stage']"/>
+                <td t-att-style="td + ' text-align: right;'"><strong t-out="row['days']"/></td>
+            </tr>
+        </table>
+    </t>
+    <p t-else="" style="margin: 0 0 24px 0;">
+        No active client has been in the same stage for <t t-out="r.get('min_days')"/> days or more. Nothing is stuck this week.
     </p>
 
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
-        <tr><td t-att-style="label_td">Next Activity</td><td t-att-style="value_td">
-            <t t-if="d.get('next_activity')" t-out="d['next_activity']"/>
-            <span t-else="" t-attf-style="color: {{ accent }};">None scheduled</span>
-        </td></tr>
-        <tr t-if="d.get('client_type')"><td t-att-style="label_td">Client Type</td><td t-att-style="value_td" t-out="d['client_type']"/></tr>
-        <tr><td t-att-style="label_td">Engagement Type</td><td t-att-style="value_td" t-out="d.get('engagement_type')"/></tr>
-        <tr t-if="d.get('commercial')"><td t-att-style="label_td">Commercial Agreement</td><td t-att-style="value_td" t-out="d['commercial']"/></tr>
-        <tr t-if="d.get('poc')"><td t-att-style="label_td">POC</td><td t-att-style="value_td">
-            <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
-        </td></tr>
-        <tr t-if="d.get('expected_closure')"><td t-att-style="label_td">Expected Closure</td><td t-att-style="value_td" t-out="d['expected_closure']"/></tr>
-    </table>
-
-    <p style="margin: 0 0 24px 0;">
-        <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
-    </p>
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
-        <t t-if="s.get('next_mark')">
-            Next reminder after <t t-out="s['next_mark']"/> days in this stage, on <t t-out="s['next_on']"/> - unless it moves first.
-        </t>
-        <t t-else="">This is the last reminder for this stage.</t>
-        <br/>You are receiving this as a BDA on this opportunity or because you are on the stuck-in-stage reminder list in CRM settings.
+        You are receiving this because you are on the stuck-in-stage report list in CRM settings.
     </div>
 </div>
             </field>

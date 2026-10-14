@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
+import base64
 import logging
+from collections import Counter
+from datetime import datetime, time, timedelta
+
+import pytz
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.misc import format_date
+
+from .crm_stage_report_xlsx import build_stage_report_xlsx
 
 _logger = logging.getLogger(__name__)
 
@@ -11,12 +18,21 @@ _logger = logging.getLogger(__name__)
 # separated, and the fallback when a parameter has never been set. An empty
 # parameter is not the same as a missing one: it means the Admin cleared
 # every chip, and nothing is sent.
-STAGE_REMINDER_DAYS_PARAM = 'crm_consulting.stage_reminder_days'
 ACTIVITY_REMINDER_DAYS_PARAM = 'crm_consulting.activity_reminder_days'
 DEFAULT_REMINDER_DAYS = {
-    STAGE_REMINDER_DAYS_PARAM: '6,12,18,30',
     ACTIVITY_REMINDER_DAYS_PARAM: '3,1',
 }
+
+# The weekly stuck-in-stage report: whether it is on, the weekday it goes out
+# on at midnight (0 is Monday, as in Python), the days in one stage that make
+# a client stuck, and the timezone that midnight is in - the one of whoever
+# last saved the settings, so it is their weekday and their midnight.
+STAGE_REPORT_PARAM = 'crm_consulting.stage_reminders'
+STAGE_REPORT_WEEKDAY_PARAM = 'crm_consulting.stage_report_weekday'
+STAGE_REPORT_MIN_DAYS_PARAM = 'crm_consulting.stage_report_min_days'
+STAGE_REPORT_TZ_PARAM = 'crm_consulting.stage_report_tz'
+DEFAULT_STAGE_REPORT_WEEKDAY = 0
+DEFAULT_STAGE_REPORT_MIN_DAYS = 6
 
 # The milestone flags, paired with the field that records when each was
 # raised. Kept in one place so write() and the cycle-time computation stay in
@@ -235,18 +251,6 @@ class CrmLead(models.Model):
         'Agreement Signed', default=False, tracking=True)
     milestone_agreement_signed_date = fields.Date(
         'Agreement Signed On', readonly=True)
-
-    # -------------------------------------------------------------------
-    # Stuck-in-stage reminders
-    # -------------------------------------------------------------------
-    # The days-in-stage mark of the last reminder sent. Zero means none yet;
-    # a change of stage resets it, so each stage starts its own sequence.
-    # How long the opportunity has been in its stage is CRM's own
-    # date_last_stage_update, which CRM resets on every stage change.
-    stage_reminder_sent_days = fields.Integer(
-        'Stuck Reminder Sent At', readonly=True, copy=False,
-        help='Days-in-stage mark of the last stuck-in-stage reminder sent for '
-             'this opportunity. Reset whenever the stage changes.')
 
     # -------------------------------------------------------------------
     # POC contacts
@@ -502,9 +506,6 @@ class CrmLead(models.Model):
         return leads
 
     def write(self, vals):
-        if 'stage_id' in vals and any(lead.stage_id.id != vals['stage_id'] for lead in self):
-            # The condition CRM itself restarts date_last_stage_update on.
-            vals.setdefault('stage_reminder_sent_days', 0)
         res = super().write(vals)
         self._check_required_numbers(vals)
         # The BDA list is what people edit, so it wins when both are written.
@@ -701,7 +702,8 @@ class CrmLead(models.Model):
         nobody while the change notifications are off."""
         if not self._notify_enabled('crm_consulting.change_notify'):
             return self.env['res.partner']
-        users = self.env.company.sudo().crm_change_recipient_ids             | self._get_notify_bda_users('crm_consulting.change_notify_bda')
+        users = self.env.company.sudo().crm_change_recipient_ids \
+            | self._get_notify_bda_users('crm_consulting.change_notify_bda')
         return self._mail_partners(users)
 
     def _send_change_notification(self, event, changes=None):
@@ -809,56 +811,129 @@ class CrmLead(models.Model):
             # A notification must never block the deletion it reports on.
             _logger.exception("CRM deletion notification failed for %s.", leads.ids)
 
-    # ── Stuck-in-stage reminders ──────────────────────────────────
-    @api.model
-    def _cron_send_stage_reminders(self):
-        """Remind about active clients' opportunities stuck in one stage.
+    # ── Stuck-in-stage report ─────────────────────────────────────
+    # One email a week, at midnight on the weekday picked in CRM settings,
+    # carrying an Excel list of every active client whose opportunity has sat
+    # in one stage for at least the days picked there. How long it has sat is
+    # CRM's own date_last_stage_update, which CRM resets on every stage change.
 
-        A mark is reached once the opportunity has been in its stage that
-        many days or more. The one sent is the furthest mark reached, and only
-        if it is further than what already went out - so a repeated run is a
-        no-op, and after downtime one reminder catches up rather than a
-        backlog of them.
+    @api.model
+    def _stage_report_settings(self):
+        """(weekday, min_days, tz) as set in CRM settings."""
+        params = self.env['ir.config_parameter'].sudo()
+        weekday = params.get_param(STAGE_REPORT_WEEKDAY_PARAM) or ''
+        min_days = params.get_param(STAGE_REPORT_MIN_DAYS_PARAM) or ''
+        try:
+            tz = pytz.timezone(params.get_param(STAGE_REPORT_TZ_PARAM) or 'UTC')
+        except pytz.UnknownTimeZoneError:
+            tz = pytz.utc
+        weekday = int(weekday) if weekday.isdigit() and int(weekday) < 7 \
+            else DEFAULT_STAGE_REPORT_WEEKDAY
+        min_days = int(min_days) if min_days.isdigit() and int(min_days) > 0 \
+            else DEFAULT_STAGE_REPORT_MIN_DAYS
+        return weekday, min_days, tz
+
+    @api.model
+    def _cron_send_stage_report(self):
+        """The weekly run. Sends nothing while the report is switched off."""
+        if not self._notify_enabled(STAGE_REPORT_PARAM):
+            return True
+        self._send_stage_report()
+        return True
+
+    @api.model
+    def _get_stage_report_rows(self, report_date, min_days, tz):
+        """Active clients' opportunities in a stage that is in the report,
+        in that stage for min_days or more as of report_date - longest first.
+
+        Days are counted between calendar days in the report's timezone, so
+        an opportunity that moved last Monday is 7 days in stage on the
+        following Monday, whatever the hour either happened at.
         """
-        if not self._notify_enabled('crm_consulting.stage_reminders'):
-            return True
-        days = self._get_reminder_days(STAGE_REMINDER_DAYS_PARAM)
-        if not days:
-            return True
-        today = fields.Date.context_today(self)
-        leads = self.search([
+        # In stage since report_date - min_days or earlier: moved before the
+        # local midnight that starts the day after that.
+        cutoff = tz.localize(datetime.combine(
+            report_date - timedelta(days=min_days - 1), time.min,
+        )).astimezone(pytz.utc).replace(tzinfo=None)
+        leads = self.sudo().search([
             ('type', '=', 'opportunity'),
             ('client_status', '=', 'active'),
             ('stage_id.stage_reminders', '=', True),
-            ('date_last_stage_update', '<=', fields.Datetime.subtract(
-                fields.Datetime.now(), days=min(days))),
+            '|', ('date_last_stage_update', '<', cutoff),
+                 '&', ('date_last_stage_update', '=', False), ('create_date', '<', cutoff),
         ])
-        settings_users = self.env.company.sudo().crm_stage_reminder_recipient_ids
+        rows = []
         for lead in leads:
-            entered = lead.date_last_stage_update.date()
-            in_stage = (today - entered).days
-            reached = [d for d in days if in_stage >= d]
-            if not reached:
-                continue
-            mark = max(reached)
-            if mark <= lead.stage_reminder_sent_days:
-                continue
-            later = [d for d in days if d > in_stage]
-            next_mark = min(later) if later else 0
-            sent = lead._send_lead_mail(
-                'crm_consulting_customization.mail_template_crm_lead_stuck',
-                self._mail_partners(
-                    settings_users | lead._get_notify_bda_users('crm_consulting.stage_reminders_bda')),
-                {'crm_stuck': {
-                    'days': in_stage,
-                    'accent': '#C0392B' if in_stage >= 15 else '#D68910',
-                    'entered_on': self._long_date(self.env, entered),
-                    'next_mark': next_mark,
-                    'next_on': self._short_date(
-                        self.env, fields.Date.add(entered, days=next_mark)) if next_mark else '',
-                }},
+            moved = lead.date_last_stage_update or lead.create_date
+            entered = pytz.utc.localize(moved).astimezone(tz).date()
+            days = (report_date - entered).days
+            details = lead._get_mail_details()
+            rows.append({
+                'client': lead.name or '',
+                'stage': lead.stage_id.name or '',
+                'since': self._short_date(self.env, entered),
+                'days': days,
+                'bdas': details['bdas'],
+                'client_type': details['client_type'],
+                'industry': details['industry'],
+                'engagement_type': details['engagement_type'],
+                'poc': lead.contact_name or '',
+                'poc_phone': lead.phone or '',
+                'poc_email': lead.email_from or '',
+                'next_activity': details['next_activity'],
+                'expected_closure': details['expected_closure'],
+                'url': lead._get_form_url(),
+            })
+        rows.sort(key=lambda r: (-r['days'], r['client'].lower()))
+        return rows
+
+    @api.model
+    def _send_stage_report(self, report_date=None):
+        """Build the report as of report_date - today in the report's
+        timezone by default - and email it to the people picked in CRM
+        settings. Returns how many people it went to.
+
+        Sent even when nobody is stuck, so a quiet week still arrives and
+        says so, rather than leaving the list wondering whether it ran.
+        """
+        _weekday, min_days, tz = self._stage_report_settings()
+        partners = self._mail_partners(self.env.company.sudo().crm_stage_reminder_recipient_ids)
+        template = self.env.ref('crm_consulting_customization.mail_template_crm_stage_report',
+                                raise_if_not_found=False)
+        if not partners or not template:
+            if not template:
+                _logger.warning("CRM stuck-in-stage report: mail template is missing.")
+            return 0
+        report_date = report_date or pytz.utc.localize(fields.Datetime.now()).astimezone(tz).date()
+        rows = self._get_stage_report_rows(report_date, min_days, tz)
+        as_of = self._long_date(self.env, report_date)
+        plural = '' if len(rows) == 1 else 's'
+        values = {
+            'count': len(rows),
+            'min_days': min_days,
+            'as_of': as_of,
+            'by_stage': sorted(Counter(r['stage'] for r in rows).items(), key=lambda kv: -kv[1]),
+            'longest': rows[:5],
+            'subject': _('Stuck-in-stage report: %(count)s client%(s)s, %(date)s',
+                         count=len(rows), s=plural,
+                         date=self._short_date(self.env, report_date)),
+        }
+        email_values = {'recipient_ids': [(6, 0, partners.ids)]}
+        if rows:
+            xlsx = build_stage_report_xlsx(
+                rows,
+                _('Stuck-in-Stage Report'),
+                _('Active clients in the same stage for %(days)s days or more, as of '
+                  '%(date)s - %(count)s client%(s)s',
+                  days=min_days, date=as_of, count=len(rows), s=plural),
+                min_days,
             )
-            if sent:
-                # Not tracked, so this write sends no change email of its own.
-                lead.stage_reminder_sent_days = mark
-        return True
+            email_values['attachments'] = [(
+                'Stuck_Clients_%s.xlsx' % report_date.strftime('%Y-%m-%d'),
+                base64.b64encode(xlsx),
+            )]
+        template.sudo().with_context(crm_stage_report=values).send_mail(
+            self.env.company.id, email_values=email_values, force_send=False)
+        # Out now, not on the mail queue's next hourly run.
+        self.env.ref('mail.ir_cron_mail_scheduler_action')._trigger()
+        return len(partners)

@@ -39,13 +39,16 @@ walks out to five.
 Opportunities can email people as they move. Each kind is switched on and
 configured under CRM > Configuration > Settings, and every one goes only to
 the people picked there - nobody by default. Select everyone and Clear fill or
-empty a list in one click, and a tick per kind adds the opportunity's own BDAs:
+empty a list in one click, and a tick on the per-opportunity emails adds the
+opportunity's own BDAs:
 
 * Change notifications - when an opportunity is created, deleted, or a change
   to it is recorded in its audit log.
-* Stuck-in-stage reminders - when an active client's opportunity stays in one
-  stage past the day marks picked (6, 12, 18 and 30 by default). Each stage
-  says whether it sends them; the won stage starts switched off.
+* Stuck-in-stage report - one email a week, at midnight on the weekday
+  picked (Monday by default), with an Excel list of every active client whose
+  opportunity has sat in one stage for the days picked or more (6 by
+  default). Each stage says whether it is included; the won stage starts
+  left out.
 * Activity reminders - a set number of days before a scheduled activity of
   the picked types falls due (3 and 1 days, Call and Meeting by default).
   A further tick adds the person the activity is assigned to.

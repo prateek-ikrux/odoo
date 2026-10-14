@@ -1,8 +1,20 @@
 # -*- coding: utf-8 -*-
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from datetime import datetime, time, timedelta
 
-from .crm_lead import ACTIVITY_REMINDER_DAYS_PARAM, STAGE_REMINDER_DAYS_PARAM
+import pytz
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
+
+from .crm_lead import (
+    ACTIVITY_REMINDER_DAYS_PARAM, DEFAULT_STAGE_REPORT_MIN_DAYS, STAGE_REPORT_MIN_DAYS_PARAM,
+    STAGE_REPORT_PARAM, STAGE_REPORT_TZ_PARAM, STAGE_REPORT_WEEKDAY_PARAM,
+)
+
+WEEKDAY_SELECTION = [
+    ('0', 'Monday'), ('1', 'Tuesday'), ('2', 'Wednesday'), ('3', 'Thursday'),
+    ('4', 'Friday'), ('5', 'Saturday'), ('6', 'Sunday'),
+]
 
 
 class ResConfigSettings(models.TransientModel):
@@ -23,25 +35,28 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='crm_consulting.change_notify_bda',
     )
 
-    # ── Stuck-in-stage reminders ──────────────────────────────────
+    # ── Stuck-in-stage report ─────────────────────────────────────
     crm_stage_reminders = fields.Boolean(
-        string='Stuck-in-Stage Reminders',
-        config_parameter='crm_consulting.stage_reminders',
-        help="Email when an active client's opportunity stays in the same "
-             "stage for the days picked below.",
+        string='Stuck-in-Stage Report',
+        config_parameter=STAGE_REPORT_PARAM,
+        help="Once a week, email an Excel list of every active client whose "
+             "opportunity has not moved stage for the days set below.",
     )
-    # Shown as chips, but saved to a system parameter the cron reads;
-    # get_values and set_values translate.
-    crm_stage_reminder_day_ids = fields.Many2many(
-        'crm.reminder.day', 'crm_settings_stage_reminder_day_rel',
-        string='Send after',
+    crm_stage_report_weekday = fields.Selection(
+        WEEKDAY_SELECTION, string='Send every', default='0',
+        config_parameter=STAGE_REPORT_WEEKDAY_PARAM,
+        help="The report goes out at midnight at the start of this day, in "
+             "your own timezone.",
+    )
+    crm_stage_report_min_days = fields.Integer(
+        string='Stuck after', default=DEFAULT_STAGE_REPORT_MIN_DAYS,
+        config_parameter=STAGE_REPORT_MIN_DAYS_PARAM,
+        help="A client is listed once its opportunity has been in the same "
+             "stage for this many days or more, counted to the day the report "
+             "goes out.",
     )
     crm_stage_reminder_recipient_ids = fields.Many2many(
         related='company_id.crm_stage_reminder_recipient_ids', readonly=False,
-    )
-    crm_stage_reminders_bda = fields.Boolean(
-        string="Also send to the opportunity's BDAs",
-        config_parameter='crm_consulting.stage_reminders_bda',
     )
 
     # ── Activity reminders ────────────────────────────────────────
@@ -78,7 +93,6 @@ class ResConfigSettings(models.TransientModel):
     )
 
     _CRM_DAY_FIELDS = {
-        'crm_stage_reminder_day_ids': STAGE_REMINDER_DAYS_PARAM,
         'crm_activity_reminder_day_ids': ACTIVITY_REMINDER_DAYS_PARAM,
     }
 
@@ -97,11 +111,67 @@ class ResConfigSettings(models.TransientModel):
         return values
 
     def set_values(self):
+        if self.crm_stage_reminders and self.crm_stage_report_min_days < 1:
+            raise ValidationError(_("'Stuck after' has to be at least 1 day."))
         super().set_values()
         params = self.env['ir.config_parameter'].sudo()
         for fname, param in self._CRM_DAY_FIELDS.items():
             days = sorted(set(self[fname].mapped('days')), reverse=True)
             params.set_param(param, ','.join(map(str, days)))
+        self._crm_schedule_stage_report()
+
+    # ── Stuck-in-stage report schedule ────────────────────────────
+    @api.model
+    def _crm_get_stage_report_cron(self):
+        return self.sudo().with_context(active_test=False).env.ref(
+            'crm_consulting_customization.ir_cron_crm_stage_reminders',
+            raise_if_not_found=False)
+
+    def _crm_schedule_stage_report(self):
+        """Point the weekly job at the next midnight that starts the picked
+        weekday, in the timezone of whoever is saving - and remember that
+        timezone, so the report counts days in it too.
+
+        Left alone when it already points there, so saving other settings
+        never shifts it.
+        """
+        cron = self._crm_get_stage_report_cron()
+        if not cron:
+            return
+        tz_name = self.env.user.tz or 'UTC'
+        self.env['ir.config_parameter'].sudo().set_param(STAGE_REPORT_TZ_PARAM, tz_name)
+        nextcall = self._crm_next_report_call(int(self.crm_stage_report_weekday or 0), tz_name,
+                                              self.env.cr.now())
+        if cron.nextcall != nextcall or cron.interval_type != 'weeks' or cron.interval_number != 1:
+            cron.write({'nextcall': nextcall, 'interval_number': 1, 'interval_type': 'weeks'})
+
+    @api.model
+    def _crm_next_report_call(self, weekday, tz_name, now_utc):
+        """The next 00:00 on weekday in tz_name after now_utc, as naive UTC."""
+        tz = pytz.timezone(tz_name)
+        local_now = pytz.utc.localize(now_utc).astimezone(tz)
+        day = local_now.date() + timedelta(days=(weekday - local_now.weekday()) % 7)
+        target = tz.localize(datetime.combine(day, time.min))
+        if target <= local_now:
+            target = tz.localize(datetime.combine(day + timedelta(days=7), time.min))
+        return target.astimezone(pytz.utc).replace(tzinfo=None)
+
+    def action_crm_stage_report_send_now(self):
+        """Send this week's report straight away, as of today - to check
+        what it looks like, or to catch someone up."""
+        sent_to = self.env['crm.lead']._send_stage_report()
+        if not sent_to:
+            raise UserError(_("Pick at least one person with an email address under "
+                              "'Send to' first."))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'success',
+                'message': _('Stuck-in-stage report sent to %(count)s %(who)s.', count=sent_to,
+                             who=_('person') if sent_to == 1 else _('people')),
+            },
+        }
 
     # ── Select everyone / Clear ───────────────────────────────────
     def action_crm_recipients_select_all(self):

@@ -175,6 +175,24 @@ empties it. The opportunity's own BDAs are added only where **Also send to the
 opportunity's BDAs** is ticked, and an activity's assignee only where **Also
 send to the person the activity is assigned to** is ticked (19.0.1.23.0).
 
+### Stuck-in-stage report
+
+One email a week replaces the per-opportunity stuck reminders (19.0.1.23.0).
+Under **CRM > Configuration > Settings > Stuck-in-Stage Report**:
+
+- **Send every** - the weekday it goes out on, at midnight at the start of
+  that day, in the timezone of whoever last saved the settings.
+- **Stuck after** - the days in one stage that put a client on the list,
+  counted to the day the report goes out. An opportunity that last moved on a
+  Monday has been 7 days in stage on the following Monday.
+- **Send to** - who gets it. **Send now** sends it immediately, as of today.
+
+The attached sheet lists every active client's opportunity in a stage that is
+included (**CRM > Configuration > Stages > Include in Stuck-in-Stage Report**;
+the won stage starts left out), longest in stage first, with BDAs, POC,
+next activity and a link to each. A week with nobody stuck still sends a short
+email saying so, with nothing attached.
+
 ## Changing things without a developer
 
 ### Stages

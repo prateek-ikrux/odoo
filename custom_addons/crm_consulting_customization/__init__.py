@@ -29,8 +29,8 @@ def post_init_hook(env):
 def setup_notification_defaults(env):
     """Starting values for the email notifications, set once.
 
-    The won stage is where a deal is meant to rest, so it sends no
-    stuck-in-stage reminders until someone ticks it. Activity reminders start
+    The won stage is where a deal is meant to rest, so it is left out of the
+    stuck-in-stage report until someone ticks it. Activity reminders start
     out covering calls and meetings. Both are the Admin's to change after.
     """
     env['crm.stage'].search([('is_won', '=', True)]).write({'stage_reminders': False})
