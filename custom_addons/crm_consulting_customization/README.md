@@ -66,7 +66,7 @@ actually lost — and a lost reason is now mandatory.
 | Agreement Signed | `milestone_agreement_signed` (+ `_date`) | Boolean | No |
 | Client Type | `client_type` | Many2one to the Client Types list | Yes |
 | Industry / Domain | `industry_domain` | Many2one to the Industries / Domains list | No |
-| POC 2–5 | `poc2_name` … `poc5_linkedin` | 4 × (Name, Designation, Phone Number, Email, Location, LinkedIn) | Name, Designation and Location, once that POC is added |
+| Additional POCs | `poc_ids` | List of `crm.lead.poc` (Name, Designation, Phone Number, Email, Location, LinkedIn), no limit (19.0.1.23.0) | Name, Designation and Location on each row |
 
 Existing fields are relabelled rather than duplicated wherever one already
 said the same thing:
@@ -99,8 +99,8 @@ company's.
 
 Mandatory on the opportunity form (19.0.1.16.0): **Client Name**, **Client
 Type**, **BDA**, **Client Status**, **Engagement Type**, and POC 1's **Name**,
-**Designation** and **Location**. POC 2-5 ask for the same three
-once that POC is added. LinkedIn became optional on every POC in 19.0.1.17.0.
+**Designation** and **Location**. Each additional POC asks for the same
+three. LinkedIn became optional on every POC in 19.0.1.17.0.
 Everything else is optional, and a Lost Reason is asked
 for only when an opportunity is marked lost from the form, so a bulk import of
 lost deals is not blocked by it.
@@ -154,8 +154,8 @@ computation behind the scenes, which is why it is hidden rather than deleted.
 
 **CRM > Reporting > Export POCs** (19.0.1.22.0) downloads an Excel sheet with
 one row per POC: Client Name, POC Name, Designation, Mobile Number, Email,
-Location and LinkedIn. POCs 1 to 5 are all included; an empty POC block is
-skipped.
+Location and LinkedIn. POC 1 and every additional POC are included; an empty
+one is skipped.
 
 Every filter is optional: clients, Client Type, Industry / Domain, Client
 Status, Engagement Type, stage, BDA and an Initial Outreach date range. Lost
@@ -192,6 +192,24 @@ included (**CRM > Configuration > Stages > Include in Stuck-in-Stage Report**;
 the won stage starts left out), longest in stage first, with BDAs, POC,
 next activity and a link to each. A week with nobody stuck still sends a short
 email saying so, with nothing attached.
+
+### POCs: no limit (19.0.1.23.0)
+
+An opportunity takes as many POCs as it needs. POC 1 stays where it was - the
+opportunity's own contact fields, which drive Send Email and Send SMS - and
+every POC after it is a row in the **Additional POCs** list below it, added
+with **Add a POC** and dragged into order by the handle. This replaces the
+fixed POC 2 to 5 blocks; the upgrade moves whatever was in them into the list,
+in order. The **POC** search in the pipeline looks through all of them.
+
+**Bulk upload.** The `poc2_*` to `poc5_*` columns are gone. POC 1 keeps its
+columns (`contact_name`, `function`, `phone`, `email_from`, `poc1_location`,
+`poc1_linkedin`). Further POCs use Odoo's standard format for a list: columns
+`poc_ids/name`, `poc_ids/designation`, `poc_ids/phone`, `poc_ids/email`,
+`poc_ids/location` and `poc_ids/linkedin`, with one row per POC - the first on
+the opportunity's own row, each further one on a row of its own below it with
+every opportunity column left blank. `crm_bulk_upload_template_v3.xlsx` in
+the project folder is laid out this way.
 
 ## Changing things without a developer
 

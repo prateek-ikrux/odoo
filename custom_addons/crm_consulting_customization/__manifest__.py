@@ -32,9 +32,9 @@ opportunity keeps the stage it died in and the reason is reportable on its own.
 Several people work one account, so an opportunity names one owner and any
 number of BDAs, and the form asks for the BDAs rather than a salesperson.
 
-Up to five POCs are recorded on the opportunity itself. The first is shown
-and each further one is asked for, so the form starts at one contact and
-walks out to five.
+POCs are recorded on the opportunity itself, with no limit on how many. POC 1
+is the primary contact; any number more go in an Additional POCs list under
+it, added a row at a time and dragged into order.
 
 Opportunities can email people as they move. Each kind is switched on and
 configured under CRM > Configuration > Settings, and every one goes only to
@@ -59,6 +59,7 @@ may see or do what is whatever the Sales privilege already says.
     'depends': ['crm', 'contacts', 'sales_team', 'mail'],
     'data': [
         'security/ir.model.access.csv',
+        'security/crm_lead_poc_security.xml',
         'data/crm_stage_data.xml',
         'data/crm_classification_data.xml',
         'data/crm_lost_reason_data.xml',

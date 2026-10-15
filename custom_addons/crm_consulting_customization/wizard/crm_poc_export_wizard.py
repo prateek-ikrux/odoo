@@ -6,15 +6,16 @@ import re
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-# One POC block as (name, designation, phone, email, location, linkedin).
-# POC 1 is CRM's own contact fields relabelled (see crm_lead.py), POC 2-5 the
-# poc<n>_* blocks, so the export reads every block through this one map.
-POC_BLOCKS = [
-    ('contact_name', 'function', 'phone', 'email_from', 'poc1_location', 'poc1_linkedin'),
-] + [
-    tuple('poc%d_%s' % (n, suffix) for suffix in
-          ('name', 'designation', 'phone', 'email', 'location', 'linkedin'))
-    for n in (2, 3, 4, 5)
+# The six details of a POC, in the sheet's order, as
+# (key, field on the opportunity for POC 1, field on crm.lead.poc for the
+# rest). POC 1 is CRM's own contact fields relabelled (see crm_lead.py).
+POC_FIELDS = [
+    ('name', 'contact_name', 'name'),
+    ('designation', 'function', 'designation'),
+    ('phone', 'phone', 'phone'),
+    ('email', 'email_from', 'email'),
+    ('location', 'poc1_location', 'location'),
+    ('linkedin', 'poc1_linkedin', 'linkedin'),
 ]
 
 # (column label, row key, width). The order is the sheet's.
@@ -59,7 +60,7 @@ class CrmPocExportWizard(models.TransientModel):
              'this is ticked.')
     primary_only = fields.Boolean(
         'Primary POC Only',
-        help='Export only POC 1 of each client, not POCs 2 to 5.')
+        help='Export only POC 1 of each client, not the additional POCs.')
 
     file_data = fields.Binary('File', readonly=True, attachment=False)
     file_name = fields.Char('File Name', readonly=True)
@@ -104,30 +105,24 @@ class CrmPocExportWizard(models.TransientModel):
         return domain
 
     def _get_rows(self):
-        """One row per POC block that holds anything, client by client.
+        """One row per POC that holds anything, client by client: POC 1,
+        then every additional POC in the order set on the form.
 
         Searched as the user, so CRM's record rules decide whose clients a
         salesperson can export, the same as in the pipeline.
         """
         self.ensure_one()
         leads = self.env['crm.lead'].search(self._get_domain(), order='name, id')
-        blocks = POC_BLOCKS[:1] if self.primary_only else POC_BLOCKS
         rows = []
         for lead in leads:
-            for block in blocks:
-                values = [(lead[fname] or '').strip() for fname in block]
-                if not any(values):
-                    continue
-                name, designation, phone, email, location, linkedin = values
-                rows.append({
-                    'client': lead.name or '',
-                    'name': name,
-                    'designation': designation,
-                    'phone': phone,
-                    'email': email,
-                    'location': location,
-                    'linkedin': linkedin,
-                })
+            pocs = [{key: lead[lead_field] for key, lead_field, _poc_field in POC_FIELDS}]
+            if not self.primary_only:
+                pocs += [{key: poc[poc_field] for key, _lead_field, poc_field in POC_FIELDS}
+                         for poc in lead.poc_ids]
+            for poc in pocs:
+                values = {key: (value or '').strip() for key, value in poc.items()}
+                if any(values.values()):
+                    rows.append(dict(values, client=lead.name or ''))
         return rows
 
     @staticmethod

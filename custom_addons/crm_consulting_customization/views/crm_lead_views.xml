@@ -239,18 +239,14 @@
                     longer filled in from the client company or written back
                     to it - the two are different parties.
 
-                    Only this one is shown. Each block below ends with the
-                    toggle that asks for the next, so the form walks out from
-                    one POC to five and stops - there is no sixth block for a
-                    toggle to open.
+                    POC 1 is shown first and is the only one required. Every
+                    POC after it goes in the Additional POCs list below - as
+                    many as the opportunity needs, dragged into order by the
+                    handle.
 
                     Every field of POC 1 is mandatory except the phone number,
-                    email and LinkedIn, which a POC may not have shared yet. The same
-                    goes for a further block, whose other fields are
-                    mandatory only once it is open, keyed off its own toggle
-                    rather than left to the group's invisible: the web client
-                    reads required per field, not per group, so a hidden
-                    block would otherwise still demand to be filled in.
+                    email and LinkedIn, which a POC may not have shared yet. A
+                    further POC asks for the same three, per row of the list.
                 -->
                 <group name="poc" col="2">
                     <group string="POC 1" name="poc_primary">
@@ -261,48 +257,24 @@
                         <field name="poc1_location" string="Location" required="1"/>
                         <field name="poc1_linkedin" string="LinkedIn" widget="url"
                                placeholder="e.g. https://www.linkedin.com/in/..."/>
-                        <field name="show_poc2" string="Add another POC" widget="boolean_toggle"/>
-                    </group>
-                    <group string="POC 2" invisible="not show_poc2">
-                        <field name="poc2_name" string="Name" required="show_poc2"/>
-                        <field name="poc2_designation" string="Designation" required="show_poc2"/>
-                        <field name="poc2_phone" string="Phone Number" widget="phone"/>
-                        <field name="poc2_email" string="Email" widget="email"/>
-                        <field name="poc2_location" string="Location" required="show_poc2"/>
-                        <field name="poc2_linkedin" string="LinkedIn" widget="url"
-                               placeholder="e.g. https://www.linkedin.com/in/..."/>
-                        <field name="show_poc3" string="Add another POC" widget="boolean_toggle"/>
-                    </group>
-                    <group string="POC 3" invisible="not show_poc3">
-                        <field name="poc3_name" string="Name" required="show_poc3"/>
-                        <field name="poc3_designation" string="Designation" required="show_poc3"/>
-                        <field name="poc3_phone" string="Phone Number" widget="phone"/>
-                        <field name="poc3_email" string="Email" widget="email"/>
-                        <field name="poc3_location" string="Location" required="show_poc3"/>
-                        <field name="poc3_linkedin" string="LinkedIn" widget="url"
-                               placeholder="e.g. https://www.linkedin.com/in/..."/>
-                        <field name="show_poc4" string="Add another POC" widget="boolean_toggle"/>
-                    </group>
-                    <group string="POC 4" invisible="not show_poc4">
-                        <field name="poc4_name" string="Name" required="show_poc4"/>
-                        <field name="poc4_designation" string="Designation" required="show_poc4"/>
-                        <field name="poc4_phone" string="Phone Number" widget="phone"/>
-                        <field name="poc4_email" string="Email" widget="email"/>
-                        <field name="poc4_location" string="Location" required="show_poc4"/>
-                        <field name="poc4_linkedin" string="LinkedIn" widget="url"
-                               placeholder="e.g. https://www.linkedin.com/in/..."/>
-                        <field name="show_poc5" string="Add another POC" widget="boolean_toggle"/>
-                    </group>
-                    <group string="POC 5" invisible="not show_poc5">
-                        <field name="poc5_name" string="Name" required="show_poc5"/>
-                        <field name="poc5_designation" string="Designation" required="show_poc5"/>
-                        <field name="poc5_phone" string="Phone Number" widget="phone"/>
-                        <field name="poc5_email" string="Email" widget="email"/>
-                        <field name="poc5_location" string="Location" required="show_poc5"/>
-                        <field name="poc5_linkedin" string="LinkedIn" widget="url"
-                               placeholder="e.g. https://www.linkedin.com/in/..."/>
                     </group>
                 </group>
+                <separator string="Additional POCs" name="poc_additional"/>
+                <field name="poc_ids" nolabel="1">
+                    <list editable="bottom">
+                        <control>
+                            <create string="Add a POC"/>
+                        </control>
+                        <field name="sequence" widget="handle"/>
+                        <field name="name" string="Name" required="1"/>
+                        <field name="designation" required="1"/>
+                        <field name="phone" widget="phone"/>
+                        <field name="email" widget="email"/>
+                        <field name="location" required="1"/>
+                        <field name="linkedin" widget="url"
+                               placeholder="https://www.linkedin.com/in/..."/>
+                    </list>
+                </field>
             </xpath>
 
             <!--
@@ -518,6 +490,11 @@
             <!-- Searching the title is searching by client. -->
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="string">Client Name</attribute>
+            </xpath>
+            <!-- One search across every POC: the primary and all the rest. -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="poc_ids" string="POC"
+                       filter_domain="['|', ('contact_name', 'ilike', self), ('poc_ids.name', 'ilike', self)]"/>
             </xpath>
 
             <!-- Tags are off the form, so they come out of the search too. -->

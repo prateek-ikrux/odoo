@@ -43,10 +43,6 @@ MILESTONE_DATE_FIELDS = {
     'milestone_agreement_signed': 'milestone_agreement_signed_date',
 }
 
-# The fields a POC block 2-5 is made of. Named once so _compute_show_poc
-# cannot fall behind the field definitions below.
-POC_SUFFIXES = ('name', 'designation', 'phone', 'email', 'location', 'linkedin')
-
 # The numbers the opportunity form requires, with the label the form shows
 # and the condition under which it shows them. The web client never enforces
 # required on a number - 0 always passes as filled in - so _check_required_numbers
@@ -255,11 +251,10 @@ class CrmLead(models.Model):
     # -------------------------------------------------------------------
     # POC contacts
     # -------------------------------------------------------------------
-    # Five fixed blocks rather than a linked list: a POC belongs to the
-    # opportunity that found them and is not meant to be reused across
-    # opportunities. POC 1 is the primary contact and every field of it is
-    # mandatory on the form; 2 to 5 are optional, but once a block is opened
-    # the form asks for every field in it.
+    # POC 1 is the primary contact, and its name, designation and location
+    # are mandatory on the form. Any number of further POCs follow it as a
+    # list (crm.lead.poc), each belonging to the opportunity that found them
+    # rather than shared across opportunities.
     #
     # POC 1 is not a new set of fields. An opportunity already carries the
     # name, job position, email and phone of the person being dealt with, and
@@ -279,54 +274,11 @@ class CrmLead(models.Model):
     poc1_location = fields.Char('POC Location')
     poc1_linkedin = fields.Char('POC LinkedIn')
 
-    poc2_name = fields.Char('POC 2 Name')
-    poc2_designation = fields.Char('POC 2 Designation')
-    poc2_phone = fields.Char('POC 2 Phone Number')
-    poc2_email = fields.Char('POC 2 Email')
-    poc2_location = fields.Char('POC 2 Location')
-    poc2_linkedin = fields.Char('POC 2 LinkedIn')
-
-    poc3_name = fields.Char('POC 3 Name')
-    poc3_designation = fields.Char('POC 3 Designation')
-    poc3_phone = fields.Char('POC 3 Phone Number')
-    poc3_email = fields.Char('POC 3 Email')
-    poc3_location = fields.Char('POC 3 Location')
-    poc3_linkedin = fields.Char('POC 3 LinkedIn')
-
-    poc4_name = fields.Char('POC 4 Name')
-    poc4_designation = fields.Char('POC 4 Designation')
-    poc4_phone = fields.Char('POC 4 Phone Number')
-    poc4_email = fields.Char('POC 4 Email')
-    poc4_location = fields.Char('POC 4 Location')
-    poc4_linkedin = fields.Char('POC 4 LinkedIn')
-
-    poc5_name = fields.Char('POC 5 Name')
-    poc5_designation = fields.Char('POC 5 Designation')
-    poc5_phone = fields.Char('POC 5 Phone Number')
-    poc5_email = fields.Char('POC 5 Email')
-    poc5_location = fields.Char('POC 5 Location')
-    poc5_linkedin = fields.Char('POC 5 LinkedIn')
-
-    # One POC is shown; each further one is asked for. Each flag reveals its
-    # own block and, with it, the toggle that asks for the next - so the form
-    # opens on POC 1 and walks out to five, never further. Odoo 19 has no
-    # collapsible group in a form view, so the reveal is a field the group's
-    # invisible condition reads.
-    #
-    # Computed and unstored on purpose: they add no columns, toggling one
-    # writes nothing, and an opportunity that already has a POC 4 opens with
-    # 2, 3 and 4 showing rather than hiding data behind a closed group.
-    # One label each. The form calls all four "Add another POC", because that
-    # is what the toggle under a block does; the fields themselves are named
-    # apart so they stay distinguishable in an export, a filter or a log.
-    show_poc2 = fields.Boolean(
-        'Show POC 2', compute='_compute_show_poc', readonly=False, store=False)
-    show_poc3 = fields.Boolean(
-        'Show POC 3', compute='_compute_show_poc', readonly=False, store=False)
-    show_poc4 = fields.Boolean(
-        'Show POC 4', compute='_compute_show_poc', readonly=False, store=False)
-    show_poc5 = fields.Boolean(
-        'Show POC 5', compute='_compute_show_poc', readonly=False, store=False)
+    # Every POC after the first, as many as the opportunity needs, in the
+    # order dragged on the form. Copied with the opportunity, as the fixed
+    # POC 2 to 5 blocks this replaced were (19.0.1.23.0).
+    poc_ids = fields.One2many(
+        'crm.lead.poc', 'lead_id', string='Additional POCs', copy=True)
 
     # -------------------------------------------------------------------
     # Client and POC kept apart
@@ -399,32 +351,6 @@ class CrmLead(models.Model):
                 # Blended: the deal could have been struck either way, so keep
                 # whatever was chosen and only fall back when nothing was.
                 lead.commercial_basis = lead.commercial_basis or 'percentage'
-
-    @api.depends(*[
-        'poc%d_%s' % (n, suffix)
-        for n in (2, 3, 4, 5)
-        for suffix in POC_SUFFIXES
-    ])
-    def _compute_show_poc(self):
-        """Open every block up to the last one that holds anything.
-
-        A block is revealed when it has something in it or when any block
-        after it does, so an opportunity whose only extra POC is the fourth
-        opens 2, 3 and 4 - there is no way to reach block 4 with 2 and 3
-        closed.
-
-        Every field in a block counts, not just the name. A block holding
-        only a phone number is still a block with data in it, and hiding it
-        would leave that number saved and invisible.
-        """
-        for lead in self:
-            filled = [
-                any(lead['poc%d_%s' % (n, suffix)] for suffix in POC_SUFFIXES)
-                for n in (2, 3, 4, 5)
-            ]
-            # Index 0 is POC 2: reveal it if it, or anything past it, is filled.
-            for index, n in enumerate((2, 3, 4, 5)):
-                lead['show_poc%d' % n] = any(filled[index:])
 
     # -------------------------------------------------------------------
     # Constraints
