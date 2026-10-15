@@ -34,6 +34,12 @@ class ResConfigSettings(models.TransientModel):
         string="Also send to the opportunity's BDAs",
         config_parameter='crm_consulting.change_notify_bda',
     )
+    crm_change_notify_bda_leader = fields.Boolean(
+        string="Also send to the BDAs' sales team leaders",
+        config_parameter='crm_consulting.change_notify_bda_leader',
+        help="The Team Leader of each sales team the opportunity's BDAs "
+             "belong to.",
+    )
 
     # ── Stuck-in-stage report ─────────────────────────────────────
     crm_stage_reminders = fields.Boolean(
@@ -78,6 +84,12 @@ class ResConfigSettings(models.TransientModel):
     crm_activity_reminders_bda = fields.Boolean(
         string="Also send to the opportunity's BDAs",
         config_parameter='crm_consulting.activity_reminders_bda',
+    )
+    crm_activity_reminders_bda_leader = fields.Boolean(
+        string="Also send to the BDAs' sales team leaders",
+        config_parameter='crm_consulting.activity_reminders_bda_leader',
+        help="The Team Leader of each sales team the opportunity's BDAs "
+             "belong to.",
     )
     crm_activity_reminders_assignee = fields.Boolean(
         string='Also send to the person the activity is assigned to',

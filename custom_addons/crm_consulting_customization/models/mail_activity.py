@@ -66,6 +66,7 @@ class MailActivity(models.Model):
                 Lead._mail_partners(
                     company.crm_activity_reminder_recipient_ids
                     | lead._get_notify_bda_users('crm_consulting.activity_reminders_bda')
+                    | lead._get_notify_bda_leader_users('crm_consulting.activity_reminders_bda_leader')
                     | (activity.user_id if notify_assignee else activity.user_id.browse())),
                 {'crm_activity': {
                     'type': activity.activity_type_id.name or '',

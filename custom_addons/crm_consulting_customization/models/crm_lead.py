@@ -535,6 +535,22 @@ class CrmLead(models.Model):
             return self.env['res.users']
         return self._get_bda_users()
 
+    def _get_bda_team_leaders(self):
+        """Team Leaders of the sales teams the opportunity's BDAs are in now.
+
+        Read with archived records showing, as the BDAs are, so a past
+        membership or an archived team is dropped here rather than mailed.
+        """
+        teams = self._get_bda_users().crm_team_member_ids.filtered('active').crm_team_id
+        return teams.filtered('active').user_id
+
+    def _get_notify_bda_leader_users(self, param):
+        """The BDAs' sales team leaders when the settings tick for this kind
+        of email says so, otherwise nobody."""
+        if not self._notify_enabled(param):
+            return self.env['res.users']
+        return self._get_bda_team_leaders()
+
     def _get_form_url(self):
         """Straight into the opportunity, from the Pipeline."""
         self.ensure_one()
@@ -626,12 +642,14 @@ class CrmLead(models.Model):
 
     # ── Change notifications ──────────────────────────────────────
     def _get_change_partners(self):
-        """Settings list, plus this opportunity's BDAs if ticked there, or
-        nobody while the change notifications are off."""
+        """Settings list, plus this opportunity's BDAs and their sales team
+        leaders where ticked there, or nobody while the change notifications
+        are off."""
         if not self._notify_enabled('crm_consulting.change_notify'):
             return self.env['res.partner']
         users = self.env.company.sudo().crm_change_recipient_ids \
-            | self._get_notify_bda_users('crm_consulting.change_notify_bda')
+            | self._get_notify_bda_users('crm_consulting.change_notify_bda') \
+            | self._get_notify_bda_leader_users('crm_consulting.change_notify_bda_leader')
         return self._mail_partners(users)
 
     def _send_change_notification(self, event, changes=None):
@@ -709,7 +727,8 @@ class CrmLead(models.Model):
             return
         partners = self._mail_partners(
             self.env.company.sudo().crm_change_recipient_ids
-            | leads._get_notify_bda_users('crm_consulting.change_notify_bda'))
+            | leads._get_notify_bda_users('crm_consulting.change_notify_bda')
+            | leads._get_notify_bda_leader_users('crm_consulting.change_notify_bda_leader'))
         template = self.env.ref('crm_consulting_customization.mail_template_crm_lead_deleted',
                                 raise_if_not_found=False)
         if not partners or not template:

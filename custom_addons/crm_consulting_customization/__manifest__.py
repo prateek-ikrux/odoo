@@ -39,8 +39,8 @@ it, added a row at a time and dragged into order.
 Opportunities can email people as they move. Each kind is switched on and
 configured under CRM > Configuration > Settings, and every one goes only to
 the people picked there - nobody by default. Select everyone and Clear fill or
-empty a list in one click, and a tick on the per-opportunity emails adds the
-opportunity's own BDAs:
+empty a list in one click, and ticks on the per-opportunity emails add the
+opportunity's own BDAs and the Team Leaders of the sales teams they are in:
 
 * Change notifications - when an opportunity is created, deleted, or a change
   to it is recorded in its audit log.

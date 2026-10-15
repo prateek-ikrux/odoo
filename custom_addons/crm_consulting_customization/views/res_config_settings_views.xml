@@ -4,8 +4,8 @@
     <!-- Same layout as Contracts settings: a switch per kind of email, and
          its details only while it is on. Nobody receives anything by
          default: each kind goes to the people picked under "Send to" and,
-         only where ticked, to the opportunity's BDAs (and for activities,
-         the assignee). The stuck-in-stage report is one weekly email with a
+         only where ticked, to the opportunity's BDAs, their sales team leaders
+         (and for activities, the assignee). The stuck-in-stage report is one weekly email with a
          spreadsheet, so it goes to its list alone. Select everyone and Clear fill or empty a list in one
          click. -->
     <record id="res_config_settings_view_form_consulting" model="ir.ui.view">
@@ -46,8 +46,14 @@
                                     <label for="crm_change_notify_bda" class="o_light_label"/>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_change_notify_bda_leader" class="w-auto"/>
+                                    <label for="crm_change_notify_bda_leader" class="o_light_label"/>
+                                </div>
+                            </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
-                                 role="alert" invisible="crm_change_recipient_ids or crm_change_notify_bda">
+                                 role="alert" invisible="crm_change_recipient_ids or crm_change_notify_bda or crm_change_notify_bda_leader">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
                                 <span>Nobody is picked yet, so no notifications will go out.</span>
                             </div>
@@ -174,6 +180,12 @@
                                     <label for="crm_activity_reminders_bda" class="o_light_label"/>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_activity_reminders_bda_leader" class="w-auto"/>
+                                    <label for="crm_activity_reminders_bda_leader" class="o_light_label"/>
+                                </div>
+                            </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
                                  role="alert"
                                  invisible="crm_activity_reminder_day_ids and crm_activity_reminder_type_ids">
@@ -182,7 +194,7 @@
                             </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
                                  role="alert"
-                                 invisible="crm_activity_reminder_recipient_ids or crm_activity_reminders_assignee or crm_activity_reminders_bda">
+                                 invisible="crm_activity_reminder_recipient_ids or crm_activity_reminders_assignee or crm_activity_reminders_bda or crm_activity_reminders_bda_leader">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
                                 <span>Nobody is picked yet, so no reminders will go out.</span>
                             </div>
