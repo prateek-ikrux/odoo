@@ -43,7 +43,9 @@ empty a list in one click, and ticks on the per-opportunity emails add the
 opportunity's own BDAs and the Team Leaders of the sales teams they are in:
 
 * Change notifications - when an opportunity is created, deleted, or a change
-  to it is recorded in its audit log.
+  to it is recorded in its audit log. They can be kept to the people ranked
+  above whoever made the change: leadership (the people picked) above sales
+  team leaders, above BDAs - never peers, nor the person themselves.
 * Stuck-in-stage report - one email a week, at midnight on the weekday
   picked (Monday by default), with an Excel list of every active client whose
   opportunity has sat in one stage for the days picked or more (6 by
@@ -56,12 +58,15 @@ opportunity's own BDAs and the Team Leaders of the sales teams they are in:
   emailed, even if they handle notifications in Odoo, and the message stays
   in their Inbox too.
 
-Access is CRM's own: this module adds no roles and no record rules, and who
-may see or do what is whatever the Sales privilege already says.
+Access is CRM's own Sales privilege, with one widening: a salesperson on
+"Own documents only" sees every opportunity they are a BDA on, not only those
+they are the Primary BDA of. This module adds no roles, and only Sales users
+can be picked as BDAs.
 """,
     'depends': ['crm', 'contacts', 'sales_team', 'mail'],
     'data': [
         'security/ir.model.access.csv',
+        'security/crm_lead_security.xml',
         'security/crm_lead_poc_security.xml',
         'data/crm_stage_data.xml',
         'data/crm_classification_data.xml',

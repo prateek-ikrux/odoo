@@ -40,6 +40,15 @@ class ResConfigSettings(models.TransientModel):
         help="The Team Leader of each sales team the opportunity's BDAs "
              "belong to.",
     )
+    crm_change_notify_upward = fields.Boolean(
+        string='Only send to people above whoever made the change',
+        config_parameter='crm_consulting.change_notify_upward',
+        help="Leadership (the people under Send to) ranks above managers "
+             "(sales team leaders), who rank above everyone else. A change "
+             "goes only to those ranked higher than the person who made it - "
+             "not to their peers, and not to themselves. Changes made by a "
+             "scheduled job go to everyone.",
+    )
 
     # ── Stuck-in-stage report ─────────────────────────────────────
     crm_stage_reminders = fields.Boolean(

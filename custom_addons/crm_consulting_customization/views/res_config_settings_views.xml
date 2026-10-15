@@ -52,6 +52,16 @@
                                     <label for="crm_change_notify_bda_leader" class="o_light_label"/>
                                 </div>
                             </div>
+                            <div class="row mt8">
+                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
+                                    <field name="crm_change_notify_upward" class="w-auto"/>
+                                    <label for="crm_change_notify_upward" class="o_light_label"/>
+                                </div>
+                                <div class="offset-lg-3 col-lg-9 text-muted small">
+                                    Leadership (Send to) above sales team leaders, above BDAs.
+                                    Not to peers or the person who made the change.
+                                </div>
+                            </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
                                  role="alert" invisible="crm_change_recipient_ids or crm_change_notify_bda or crm_change_notify_bda_leader">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>

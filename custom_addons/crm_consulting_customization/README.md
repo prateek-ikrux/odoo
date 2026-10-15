@@ -2,7 +2,8 @@
 
 Reshapes Odoo CRM around a recruitment and consulting business: a four-stage
 pipeline, engagement commercials in rupees, and POCs held on the
-opportunity. Access is left to CRM's own Sales privilege.
+opportunity. Access is CRM's own Sales privilege, widened so that every BDA
+on an opportunity sees it.
 
 Built and tested against **Odoo 19.0 Community**.
 

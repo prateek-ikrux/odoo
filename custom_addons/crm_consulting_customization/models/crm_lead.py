@@ -75,7 +75,7 @@ class CrmLead(models.Model):
         required=True,
         tracking=True,
         default=lambda self: self.env.user,
-        domain="[('share', '=', False)]",
+        domain=lambda self: self._bda_domain(),
         help='Everyone working this opportunity. A BDA sees an opportunity if '
              'they appear here.',
     )
@@ -338,6 +338,20 @@ class CrmLead(models.Model):
     @api.depends('phone', 'partner_id')
     def _compute_partner_phone_update(self):
         self.partner_phone_update = False
+
+    @api.model
+    def _bda_domain(self):
+        """Who can be picked as a BDA: internal users with Sales access.
+
+        Anyone else could be put on an opportunity they cannot open, and be
+        mailed links to it. Only the picker is limited, not the field: someone
+        whose Sales access is later taken away stays on the opportunities they
+        worked, rather than every later save of those being refused.
+        """
+        return [
+            ('share', '=', False),
+            ('all_group_ids', 'in', self.env.ref('sales_team.group_sale_salesman').ids),
+        ]
 
     # -------------------------------------------------------------------
     # Computes
@@ -642,7 +656,7 @@ class CrmLead(models.Model):
 
     # ── Change notifications ──────────────────────────────────────
     def _get_change_partners(self):
-        """Settings list, plus this opportunity's BDAs and their sales team
+        """Settings list, plus these opportunities' BDAs and their sales team
         leaders where ticked there, or nobody while the change notifications
         are off."""
         if not self._notify_enabled('crm_consulting.change_notify'):
@@ -650,7 +664,30 @@ class CrmLead(models.Model):
         users = self.env.company.sudo().crm_change_recipient_ids \
             | self._get_notify_bda_users('crm_consulting.change_notify_bda') \
             | self._get_notify_bda_leader_users('crm_consulting.change_notify_bda_leader')
-        return self._mail_partners(users)
+        return self._mail_partners(self._keep_ranked_above_actor(users))
+
+    def _keep_ranked_above_actor(self, users):
+        """Only the people ranked above whoever made the change, when the
+        settings ask for it.
+
+        Three ranks, read from the settings rather than stored anywhere:
+        leadership is the Send to list, managers are the leaders of active
+        sales teams, and everyone else - the BDAs - ranks below both. Someone
+        in two of them counts at the higher. Peers are left out along with
+        everyone below, and so is the person who made the change. A change
+        made by a scheduled job has nobody to rank, so it goes to everyone.
+        """
+        actor = self.env.user
+        if not self._notify_enabled('crm_consulting.change_notify_upward') or actor._is_superuser():
+            return users
+        leadership = self.env.company.sudo().crm_change_recipient_ids
+        managers = self.env['crm.team'].sudo().search([]).user_id
+
+        def rank(user):
+            return 2 if user in leadership else 1 if user in managers else 0
+
+        actor_rank = rank(actor)
+        return users.filtered(lambda u: u != actor and rank(u) > actor_rank)
 
     def _send_change_notification(self, event, changes=None):
         for lead in self.filtered(lambda l: l.type == 'opportunity'):
@@ -723,12 +760,9 @@ class CrmLead(models.Model):
         fails, the transaction rolls the email back too.
         """
         leads = self.filtered(lambda l: l.type == 'opportunity')
-        if not leads or not self._notify_enabled('crm_consulting.change_notify'):
+        if not leads:
             return
-        partners = self._mail_partners(
-            self.env.company.sudo().crm_change_recipient_ids
-            | leads._get_notify_bda_users('crm_consulting.change_notify_bda')
-            | leads._get_notify_bda_leader_users('crm_consulting.change_notify_bda_leader'))
+        partners = leads._get_change_partners()
         template = self.env.ref('crm_consulting_customization.mail_template_crm_lead_deleted',
                                 raise_if_not_found=False)
         if not partners or not template:
