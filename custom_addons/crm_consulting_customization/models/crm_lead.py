@@ -57,6 +57,17 @@ MILESTONE_DATE_FIELDS = {
 #     'project_duration': ('Project Duration', lambda lead: lead.engagement_type != 'fte'),
 REQUIRED_NUMBERS = {}
 
+# The opportunity's own contact fields, each paired with the detail of the
+# primary POC - the first in the POC list - that it holds a copy of.
+PRIMARY_POC_FIELDS = {
+    'contact_name': 'name',
+    'function': 'designation',
+    'phone': 'phone',
+    'email_from': 'email',
+    'poc1_location': 'location',
+    'poc1_linkedin': 'linkedin',
+}
+
 
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
@@ -253,81 +264,106 @@ class CrmLead(models.Model):
     # -------------------------------------------------------------------
     # POC contacts
     # -------------------------------------------------------------------
-    # POC 1 is the primary contact, and its name, designation and location
-    # are mandatory on the form. Any number of further POCs follow it as a
-    # list (crm.lead.poc), each belonging to the opportunity that found them
-    # rather than shared across opportunities.
+    # Every POC is a row in one list (crm.lead.poc), as many as the
+    # opportunity needs, in the order dragged on the form. The first is the
+    # primary contact. Each belongs to the opportunity that found them rather
+    # than being shared across opportunities.
     #
-    # POC 1 is not a new set of fields. An opportunity already carries the
-    # name, job position, email and phone of the person being dealt with, and
-    # that person is the primary POC - so POC 1 is those fields, relabelled,
-    # with only the location and the LinkedIn profile genuinely new. Keeping
-    # them means the POC still drives Send Email and Send SMS, and still shows
-    # in CRM's own lists and reports.
+    # The opportunity's own contact fields - CRM's name, job position, email
+    # and phone, plus a location and a LinkedIn profile - hold a copy of the
+    # primary POC. They are off the form, but Send Email and Send SMS, the
+    # pipeline card, the lists and the emails this module sends all read
+    # them, so they follow the first row of the list wherever it changes.
     #
     # What is not kept is CRM's syncing of them with the customer. Here the
     # Client Name is the client company and the POC a person at it, two
-    # different parties, so neither is filled in from the other - see the
-    # "Client and POC kept apart" overrides below.
-    contact_name = fields.Char(string='POC Name')
-    function = fields.Char(string='Designation')
-    phone = fields.Char(string='Phone Number')
-
-    poc1_location = fields.Char('POC Location')
-    poc1_linkedin = fields.Char('POC LinkedIn')
-
-    # Every POC after the first, as many as the opportunity needs, in the
-    # order dragged on the form. Copied with the opportunity, as the fixed
-    # POC 2 to 5 blocks this replaced were (19.0.1.23.0).
-    poc_ids = fields.One2many(
-        'crm.lead.poc', 'lead_id', string='Additional POCs', copy=True)
-
-    # -------------------------------------------------------------------
-    # Client and POC kept apart
-    # -------------------------------------------------------------------
-    # CRM treats the customer and the person dealt with as one party: picking
-    # a customer copies its name, designation, email and phone into the
-    # contact fields, and editing the contact's email or phone writes them
-    # back onto the customer. Here the customer is the client company and
-    # the contact fields are POC 1, so that copying put the company's details
-    # in the POC and, the other way, overwrote the company's email and phone
-    # with the POC's own.
+    # different parties, so neither is filled in from the other.
     #
-    # Each compute below keeps whatever the field already holds - typed in,
-    # imported, or empty - which is the same thing CRM's own computes do
-    # whenever the customer has nothing to copy, made unconditional.
+    # None of them is copied with the opportunity: the POC list is, and a
+    # duplicate takes its copy from that, rather than having the copied
+    # fields read as a new POC to add.
+    contact_name = fields.Char(string='POC Name', copy=False)
+    function = fields.Char(string='Designation', copy=False)
+    phone = fields.Char(string='Phone Number', copy=False)
+    email_from = fields.Char(copy=False)
 
-    @api.depends('partner_id')
+    poc1_location = fields.Char(
+        'POC Location', compute='_compute_primary_poc_extras', readonly=False, store=True,
+        copy=False)
+    poc1_linkedin = fields.Char(
+        'POC LinkedIn', compute='_compute_primary_poc_extras', readonly=False, store=True,
+        copy=False)
+
+    # Copied with the opportunity.
+    poc_ids = fields.One2many(
+        'crm.lead.poc', 'lead_id', string='POCs', copy=True)
+
+    def _get_primary_poc(self):
+        """The first POC in the list. Sorted by the position alone, as the
+        sort is stable and an unsaved row has no id to break a tie with."""
+        self.ensure_one()
+        return self.poc_ids.sorted('sequence')[:1]
+
+    def _copy_primary_poc(self, fnames):
+        for lead in self:
+            primary = lead._get_primary_poc()
+            for fname in fnames:
+                lead[fname] = primary[PRIMARY_POC_FIELDS[fname]]
+
+    # CRM's own computes for these fill them in from the customer; each is
+    # replaced by a copy of the primary POC.
+
+    @api.depends('poc_ids.sequence', 'poc_ids.name')
     def _compute_contact_name(self):
-        """POC Name is the person's, typed in; never the client's name."""
-        for lead in self:
-            lead.contact_name = lead.contact_name
+        self._copy_primary_poc(['contact_name'])
 
-    @api.depends('partner_id')
+    @api.depends('poc_ids.sequence', 'poc_ids.designation')
     def _compute_function(self):
-        """Designation is the POC's, never taken from the client record."""
-        for lead in self:
-            lead.function = lead.function
+        self._copy_primary_poc(['function'])
 
-    @api.depends('partner_id.email')
+    @api.depends('poc_ids.sequence', 'poc_ids.email')
     def _compute_email_from(self):
-        """POC Email is the person's, never the client company's."""
-        for lead in self:
-            lead.email_from = lead.email_from
+        self._copy_primary_poc(['email_from'])
 
-    @api.depends('partner_id.phone')
+    @api.depends('poc_ids.sequence', 'poc_ids.phone')
     def _compute_phone(self):
-        """POC Phone is the person's, never the client company's."""
-        for lead in self:
-            lead.phone = lead.phone
+        self._copy_primary_poc(['phone'])
+
+    @api.depends('poc_ids.sequence', 'poc_ids.location', 'poc_ids.linkedin')
+    def _compute_primary_poc_extras(self):
+        self._copy_primary_poc(['poc1_location', 'poc1_linkedin'])
 
     def _inverse_email_from(self):
-        """The POC's email stays on the opportunity; the client company keeps
-        its own."""
+        """The POC's email stays with the POC; the client company keeps its
+        own."""
 
     def _inverse_phone(self):
-        """The POC's phone stays on the opportunity; the client company keeps
-        its own."""
+        """The POC's phone stays with the POC; the client company keeps its
+        own."""
+
+    @staticmethod
+    def _primary_poc_values(vals):
+        """The POC details in vals written straight onto the opportunity, as
+        POC values."""
+        return {poc_f: vals[lead_f] for lead_f, poc_f in PRIMARY_POC_FIELDS.items()
+                if lead_f in vals}
+
+    def _put_primary_poc_in_list(self, values, replace):
+        """Contact details written straight onto the opportunity - an import's
+        POC columns, a lead raised from an incoming email - go into the POC
+        list, so they show on the form.
+
+        A new opportunity gets them as a new first row, ahead of any other
+        POC it came with. An edit to an existing one changes its first row,
+        or adds one if the list is empty.
+        """
+        for lead in self:
+            primary = lead._get_primary_poc() if replace else lead.poc_ids.browse()
+            if primary:
+                primary.write(values)
+            elif any(values.values()):
+                first = min(lead.poc_ids.mapped('sequence') or [11])
+                self.env['crm.lead.poc'].create(dict(values, lead_id=lead.id, sequence=first - 1))
 
     @api.depends('email_from', 'partner_id')
     def _compute_partner_email_update(self):
@@ -436,6 +472,8 @@ class CrmLead(models.Model):
         leads = super().create(vals_list)
         for lead, vals in zip(leads, vals_list):
             lead._check_required_numbers(vals)
+            if values := self._primary_poc_values(vals):
+                lead._put_primary_poc_in_list(values, replace=False)
         leads._sync_owner_from_bda()
         raised = {
             flag: True
@@ -450,6 +488,8 @@ class CrmLead(models.Model):
     def write(self, vals):
         res = super().write(vals)
         self._check_required_numbers(vals)
+        if values := self._primary_poc_values(vals):
+            self._put_primary_poc_in_list(values, replace=True)
         # The BDA list is what people edit, so it wins when both are written.
         if 'bda_ids' in vals:
             self._sync_owner_from_bda()

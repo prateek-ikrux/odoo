@@ -69,7 +69,7 @@
             </xpath>
 
             <!--
-                Email and phone move out of here and into POC 1,
+                Email and phone move out of here and into the POC list,
                 where they belong - they are the primary POC's email and
                 phone, and showing them twice was the duplication.
             -->
@@ -233,34 +233,21 @@
                 </group>
 
                 <!--
-                    POC 1 is the opportunity's own contact fields, not a second
-                    copy of them: the person being dealt with is the primary
-                    POC. They still drive Send Email and Send SMS, but are no
-                    longer filled in from the client company or written back
-                    to it - the two are different parties.
-
-                    POC 1 is shown first and is the only one required. Every
-                    POC after it goes in the Additional POCs list below - as
-                    many as the opportunity needs, dragged into order by the
-                    handle.
-
-                    Every field of POC 1 is mandatory except the phone number,
-                    email and LinkedIn, which a POC may not have shared yet. A
-                    further POC asks for the same three, per row of the list.
+                    Every POC in one list, as many as the opportunity needs,
+                    dragged into order by the handle. The first is the primary
+                    contact: the opportunity keeps a copy of their details,
+                    which is what Send Email, Send SMS, the pipeline card and
+                    the lists show.
+                    At least one POC is required. Name, Designation and
+                    Location are asked for on every row; the phone number,
+                    email and LinkedIn are not, as a POC may not have shared
+                    them yet.
                 -->
-                <group name="poc" col="2">
-                    <group string="POC 1" name="poc_primary">
-                        <field name="contact_name" string="Name" required="1"/>
-                        <field name="function" string="Designation" required="1"/>
-                        <field name="phone" string="Phone Number" widget="phone"/>
-                        <field name="email_from" string="Email" widget="email"/>
-                        <field name="poc1_location" string="Location" required="1"/>
-                        <field name="poc1_linkedin" string="LinkedIn" widget="url"
-                               placeholder="e.g. https://www.linkedin.com/in/..."/>
-                    </group>
-                </group>
-                <separator string="Additional POCs" name="poc_additional"/>
-                <field name="poc_ids" nolabel="1">
+                <separator string="POCs" name="poc_list"/>
+                <div class="text-muted small mb-2">
+                    The first POC is the primary contact - drag a row to the top to change it.
+                </div>
+                <field name="poc_ids" nolabel="1" required="1">
                     <list editable="bottom">
                         <control>
                             <create string="Add a POC"/>
@@ -342,7 +329,7 @@
             <!-- Tags are off the form, so they come out of the list too. -->
             <xpath expr="//field[@name='tag_ids']" position="replace"/>
             <!--
-                POC 1 is the primary point of contact, so it is the POC that
+                The primary POC, first in the POC list, is the one that
                 surfaces in list views and reports. contact_name is already in
                 this list, relabelled POC Name.
             -->

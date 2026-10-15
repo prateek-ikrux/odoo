@@ -4,7 +4,7 @@
     <!--
         Export POCs.
 
-        One row per POC per client - POC 1 and every additional POC - in an Excel sheet. Every
+        One row per POC per client - the primary POC first - in an Excel sheet. Every
         filter is optional; left empty, the export covers every client the
         user can see in the pipeline. Opened from the Actions menu with
         opportunities selected, it starts with just those clients.

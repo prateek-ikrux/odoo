@@ -3,12 +3,12 @@ from odoo import fields, models
 
 
 class CrmLeadPoc(models.Model):
-    """A POC after the first on an opportunity - as many as it needs.
+    """A POC on an opportunity - as many as it needs, the first of them the
+    primary contact, whose details the opportunity keeps a copy of.
 
-    The same six details as POC 1. Name, Designation and Location are asked
-    for by the form rather than required here, as they were on the fixed POC
-    blocks this replaced, so an import or an older record holding only a
-    phone number still loads.
+    Name, Designation and Location are asked for by the form rather than
+    required here, so an import or an older record holding only a phone
+    number still loads.
     """
     _name = 'crm.lead.poc'
     _description = 'Opportunity POC'

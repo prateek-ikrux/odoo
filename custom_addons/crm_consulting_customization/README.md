@@ -67,7 +67,7 @@ actually lost — and a lost reason is now mandatory.
 | Agreement Signed | `milestone_agreement_signed` (+ `_date`) | Boolean | No |
 | Client Type | `client_type` | Many2one to the Client Types list | Yes |
 | Industry / Domain | `industry_domain` | Many2one to the Industries / Domains list | No |
-| Additional POCs | `poc_ids` | List of `crm.lead.poc` (Name, Designation, Phone Number, Email, Location, LinkedIn), no limit (19.0.1.23.0) | Name, Designation and Location on each row |
+| POCs | `poc_ids` | List of `crm.lead.poc` (Name, Designation, Phone Number, Email, Location, LinkedIn), no limit; the first is the primary (19.0.1.26.0) | At least one; Name, Designation and Location on each row |
 
 Existing fields are relabelled rather than duplicated wherever one already
 said the same thing:
@@ -77,12 +77,15 @@ said the same thing:
 | Client Name | `name` | The opportunity's own title is the client's name (19.0.1.15.0) |
 | Expected Closure Date | `date_deadline` | Native forecasting already reads it |
 | **BDA** | `bda_ids`, replacing Salesperson on the form | Salesperson and BDA are one idea, so one field |
-| POC 1 → Name | `contact_name` | The person being dealt with **is** the primary POC |
-| POC 1 → Designation | `function` | |
-| POC 1 → Phone Number | `phone` | Keeps Send SMS working on the POC |
-| POC 1 → Email | `email_from` | Keeps Send Email working on the POC |
+| POC Name | `contact_name` | The person being dealt with **is** the primary POC |
+| Designation | `function` | |
+| Phone Number | `phone` | Keeps Send SMS working on the primary POC |
+| Email | `email_from` | Keeps Send Email working on the primary POC |
 
-Only **Location** and **LinkedIn** are genuinely new on POC 1.
+These four, with `poc1_location` and `poc1_linkedin`, are off the form since
+19.0.1.26.0: they hold a copy of the primary POC - the first in the POC list -
+and follow it whenever the list changes, so CRM's lists, the pipeline card,
+Send Email and Send SMS keep showing the primary contact.
 
 **Client Name is the opportunity's title.** Since 19.0.1.15.0 the client's
 name is typed into the title at the top of the form, relabelled Client Name in
@@ -90,8 +93,8 @@ the form, list, search and import. CRM's customer link (`partner_id`, now
 labelled Client Company) is off every view and no longer required; it is kept,
 hidden, so opportunities that already point at a company keep that link.
 
-**The customer link and POC 1 are kept apart.** The customer link only offers
-companies; POC 1 is a person at it. CRM normally treats them as
+**The customer link and the POCs are kept apart.** The customer link only
+offers companies; a POC is a person at it. CRM normally treats them as
 one party - picking a customer copies its name, email and phone into the
 contact fields, and editing the contact's email or phone writes them back onto
 the customer. Both directions are switched off (19.0.1.12.0), so choosing a
@@ -99,9 +102,8 @@ client never fills in the POC and a POC's details never overwrite the
 company's.
 
 Mandatory on the opportunity form (19.0.1.16.0): **Client Name**, **Client
-Type**, **BDA**, **Client Status**, **Engagement Type**, and POC 1's **Name**,
-**Designation** and **Location**. Each additional POC asks for the same
-three. LinkedIn became optional on every POC in 19.0.1.17.0.
+Type**, **BDA**, **Client Status**, **Engagement Type**, and at least one POC,
+each asking for **Name**, **Designation** and **Location**. LinkedIn became optional on every POC in 19.0.1.17.0.
 Everything else is optional, and a Lost Reason is asked
 for only when an opportunity is marked lost from the form, so a bulk import of
 lost deals is not blocked by it.
@@ -155,13 +157,13 @@ computation behind the scenes, which is why it is hidden rather than deleted.
 
 **CRM > Reporting > Export POCs** (19.0.1.22.0) downloads an Excel sheet with
 one row per POC: Client Name, POC Name, Designation, Mobile Number, Email,
-Location and LinkedIn. POC 1 and every additional POC are included; an empty
+Location and LinkedIn. Every POC is included, the primary first; an empty
 one is skipped.
 
 Every filter is optional: clients, Client Type, Industry / Domain, Client
 Status, Engagement Type, stage, BDA and an Initial Outreach date range. Lost
 opportunities are left out unless **Include Lost Opportunities** is ticked,
-and **Primary POC Only** limits the sheet to POC 1. Selecting opportunities in
+and **Primary POC Only** limits the sheet to each client's first POC. Selecting opportunities in
 the list and choosing **Actions > Export POCs** starts with just those clients.
 
 The export follows CRM's own access rules, so a salesperson exports only the
@@ -218,23 +220,30 @@ the won stage starts left out), longest in stage first, with BDAs, POC,
 next activity and a link to each. A week with nobody stuck still sends a short
 email saying so, with nothing attached.
 
-### POCs: no limit (19.0.1.23.0)
+### POCs: one list, no limit (19.0.1.23.0, 19.0.1.26.0)
 
-An opportunity takes as many POCs as it needs. POC 1 stays where it was - the
-opportunity's own contact fields, which drive Send Email and Send SMS - and
-every POC after it is a row in the **Additional POCs** list below it, added
-with **Add a POC** and dragged into order by the handle. This replaces the
-fixed POC 2 to 5 blocks; the upgrade moves whatever was in them into the list,
-in order. The **POC** search in the pipeline looks through all of them.
+An opportunity takes as many POCs as it needs, every one of them a row in the
+**POCs** list, added with **Add a POC** and dragged into order by the handle.
+The first row is the primary contact; drag another to the top to make them
+primary. The **POC** search in the pipeline looks through all of them.
 
-**Bulk upload.** The `poc2_*` to `poc5_*` columns are gone. POC 1 keeps its
-columns (`contact_name`, `function`, `phone`, `email_from`, `poc1_location`,
-`poc1_linkedin`). Further POCs use Odoo's standard format for a list: columns
+19.0.1.23.0 replaced the fixed POC 2 to 5 blocks with a list, moving whatever
+was in them into it in order. 19.0.1.26.0 took POC 1 off the form too: the
+upgrade makes each opportunity's POC 1 the first row of its list, ahead of
+the rest. The opportunity's contact fields stay as a copy of the primary POC
+(see the table of relabelled fields above).
+
+**Bulk upload.** Use Odoo's standard format for a list: columns
 `poc_ids/name`, `poc_ids/designation`, `poc_ids/phone`, `poc_ids/email`,
-`poc_ids/location` and `poc_ids/linkedin`, with one row per POC - the first on
-the opportunity's own row, each further one on a row of its own below it with
-every opportunity column left blank. `crm_bulk_upload_template_v3.xlsx` in
-the project folder is laid out this way.
+`poc_ids/location` and `poc_ids/linkedin`, with one row per POC - the first
+(the primary) on the opportunity's own row, each further one on a row of its
+own below it with every opportunity column left blank.
+
+The older POC 1 columns (`contact_name`, `function`, `phone`, `email_from`,
+`poc1_location`, `poc1_linkedin`) still load: on a new opportunity they become
+the first POC, ahead of any `poc_ids` rows, and on an existing one they update
+its primary POC. So `crm_bulk_upload_template_v3.xlsx`, which uses both, keeps
+working.
 
 ## Changing things without a developer
 
@@ -341,8 +350,7 @@ both columns by entry name, exactly as they did before.
   had an owner is left empty, and the form asks for a BDA the next time it is
   saved.
 
-- **Client Type and the POC 1 fields (bar phone and email) are mandatory on the form,
-  not on the field.** `crm.lead` also backs leads raised by the incoming-mail
+- **Client Type and the POCs are mandatory on the form, not on the field.** `crm.lead` also backs leads raised by the incoming-mail
   alias and the website form, and neither of those can answer all of them.
   A requirement on the field would reject them outright, so the rule is written
   on the opportunity form, which is the only way a person creates one.

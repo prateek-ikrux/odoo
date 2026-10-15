@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.25.0',
+    'version': '19.0.1.26.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -32,9 +32,10 @@ opportunity keeps the stage it died in and the reason is reportable on its own.
 Several people work one account, so an opportunity names one owner and any
 number of BDAs, and the form asks for the BDAs rather than a salesperson.
 
-POCs are recorded on the opportunity itself, with no limit on how many. POC 1
-is the primary contact; any number more go in an Additional POCs list under
-it, added a row at a time and dragged into order.
+POCs are recorded on the opportunity itself, in one list with no limit on
+how many, added a row at a time and dragged into order. The first is the
+primary contact, whose details the opportunity keeps a copy of for Send
+Email, Send SMS, the pipeline card and the lists.
 
 Opportunities can email people as they move. Each kind is switched on and
 configured under CRM > Configuration > Settings. Change notifications and

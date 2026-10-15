@@ -6,17 +6,9 @@ import re
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-# The six details of a POC, in the sheet's order, as
-# (key, field on the opportunity for POC 1, field on crm.lead.poc for the
-# rest). POC 1 is CRM's own contact fields relabelled (see crm_lead.py).
-POC_FIELDS = [
-    ('name', 'contact_name', 'name'),
-    ('designation', 'function', 'designation'),
-    ('phone', 'phone', 'phone'),
-    ('email', 'email_from', 'email'),
-    ('location', 'poc1_location', 'location'),
-    ('linkedin', 'poc1_linkedin', 'linkedin'),
-]
+# The six details of a POC on crm.lead.poc, each the row key it is
+# exported under.
+POC_FIELDS = ['name', 'designation', 'phone', 'email', 'location', 'linkedin']
 
 # (column label, row key, width). The order is the sheet's.
 EXPORT_COLUMNS = [
@@ -60,7 +52,8 @@ class CrmPocExportWizard(models.TransientModel):
              'this is ticked.')
     primary_only = fields.Boolean(
         'Primary POC Only',
-        help='Export only POC 1 of each client, not the additional POCs.')
+        help='Export only the primary POC of each client - the first in its '
+             'POC list.')
 
     file_data = fields.Binary('File', readonly=True, attachment=False)
     file_name = fields.Char('File Name', readonly=True)
@@ -105,8 +98,8 @@ class CrmPocExportWizard(models.TransientModel):
         return domain
 
     def _get_rows(self):
-        """One row per POC that holds anything, client by client: POC 1,
-        then every additional POC in the order set on the form.
+        """One row per POC that holds anything, client by client, in the
+        order set on the form - the primary POC first.
 
         Searched as the user, so CRM's record rules decide whose clients a
         salesperson can export, the same as in the pipeline.
@@ -115,12 +108,11 @@ class CrmPocExportWizard(models.TransientModel):
         leads = self.env['crm.lead'].search(self._get_domain(), order='name, id')
         rows = []
         for lead in leads:
-            pocs = [{key: lead[lead_field] for key, lead_field, _poc_field in POC_FIELDS}]
-            if not self.primary_only:
-                pocs += [{key: poc[poc_field] for key, _lead_field, poc_field in POC_FIELDS}
-                         for poc in lead.poc_ids]
+            pocs = lead.poc_ids.sorted('sequence')
+            if self.primary_only:
+                pocs = pocs[:1]
             for poc in pocs:
-                values = {key: (value or '').strip() for key, value in poc.items()}
+                values = {key: (poc[key] or '').strip() for key in POC_FIELDS}
                 if any(values.values()):
                     rows.append(dict(values, client=lead.name or ''))
         return rows
