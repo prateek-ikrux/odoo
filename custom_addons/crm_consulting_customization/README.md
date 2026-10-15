@@ -169,12 +169,36 @@ clients they can already see in the pipeline.
 
 ### Who receives emails
 
-Nobody, until they are picked. Each kind of email under **CRM > Configuration
-> Settings** has its own **Send to** list, which starts empty; **Select
-everyone** puts every internal user with an email address on it and **Clear**
-empties it. The opportunity's own BDAs are added only where **Also send to the
-opportunity's BDAs** is ticked, and an activity's assignee only where **Also
-send to the person the activity is assigned to** is ticked (19.0.1.23.0).
+Change notifications and activity reminders follow one hierarchy
+(19.0.1.25.0), set up under **CRM > Configuration > Settings > Notification
+Hierarchy**:
+
+| Level | Who | Set in |
+|---|---|---|
+| Leadership | The people picked under **Leadership** | CRM settings |
+| Managers | The **Team Leader** of each sales team | CRM > Configuration > Sales Teams |
+| BDAs | The members of each sales team | CRM > Configuration > Sales Teams |
+
+Someone on two levels counts at the higher. Email only goes up:
+
+- **Change notifications** go to everyone above whoever made the change - a
+  BDA's to their team leader and leadership, a manager's to leadership,
+  leadership's to nobody. Never to the person who made it, nor their peers.
+  A change made by a scheduled job has nobody behind it, so it goes to the
+  opportunity's BDAs, their team leaders and leadership.
+- **Activity reminders** go to the person the activity is assigned to, and
+  above them to their team leader and leadership - each a tick, both on to
+  start. An activity assigned to nobody is the opportunity's BDAs' to do.
+
+A BDA in no sales team has no manager, so their changes reach leadership
+only. The upgrade to 19.0.1.25.0 makes whoever was on the change
+notification **Send to** list Leadership, and drops the activity reminder
+list and the BDA, team leader, assignee and upward-only ticks.
+
+The stuck-in-stage report is a weekly summary, not news of one person's
+work, so it keeps its own **Send to** list, which starts empty; **Select
+everyone** puts every internal user with an email address on it and
+**Clear** empties it.
 
 ### Stuck-in-stage report
 

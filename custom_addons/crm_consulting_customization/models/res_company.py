@@ -7,21 +7,19 @@ class ResCompany(models.Model):
 
     # Users rather than typed addresses, so someone who leaves is simply
     # archived. Held here because a settings field cannot keep a many2many in
-    # a system parameter. Every list starts empty: nobody is emailed until
-    # picked here, or until the settings tick that adds the BDAs is on.
-    crm_change_recipient_ids = fields.Many2many(
-        'res.users', 'crm_change_recipient_rel', 'company_id', 'user_id',
-        string='CRM Change Notification Recipients',
+    # a system parameter. Both lists start empty.
+    #
+    # Leadership is the top of the hierarchy change notifications and
+    # activity reminders follow (see crm_lead.py); managers and BDAs below it
+    # come from the sales teams, so they are not listed here.
+    crm_leadership_ids = fields.Many2many(
+        'res.users', 'crm_leadership_rel', 'company_id', 'user_id',
+        string='CRM Leadership',
         domain="[('share', '=', False)]",
     )
     crm_stage_reminder_recipient_ids = fields.Many2many(
         'res.users', 'crm_stage_reminder_recipient_rel', 'company_id', 'user_id',
         string='CRM Stuck-in-Stage Reminder Recipients',
-        domain="[('share', '=', False)]",
-    )
-    crm_activity_reminder_recipient_ids = fields.Many2many(
-        'res.users', 'crm_activity_reminder_recipient_rel', 'company_id', 'user_id',
-        string='CRM Activity Reminder Recipients',
         domain="[('share', '=', False)]",
     )
     crm_activity_reminder_type_ids = fields.Many2many(

@@ -36,7 +36,8 @@ class MailActivity(models.Model):
         types = company.crm_activity_reminder_type_ids
         if not days or not types:
             return True
-        notify_assignee = Lead._notify_enabled('crm_consulting.activity_reminders_assignee')
+        remind_team_leader = Lead._notify_enabled('crm_consulting.activity_reminders_team_leader')
+        remind_leadership = Lead._notify_enabled('crm_consulting.activity_reminders_leadership')
         today = fields.Date.context_today(self)
         activities = self.search([
             ('res_model', '=', 'crm.lead'),
@@ -63,11 +64,8 @@ class MailActivity(models.Model):
                 continue
             sent = lead._send_lead_mail(
                 'crm_consulting_customization.mail_template_crm_activity_due',
-                Lead._mail_partners(
-                    company.crm_activity_reminder_recipient_ids
-                    | lead._get_notify_bda_users('crm_consulting.activity_reminders_bda')
-                    | lead._get_notify_bda_leader_users('crm_consulting.activity_reminders_bda_leader')
-                    | (activity.user_id if notify_assignee else activity.user_id.browse())),
+                Lead._mail_partners(activity._get_crm_reminder_users(
+                    lead, remind_team_leader, remind_leadership)),
                 {'crm_activity': {
                     'type': activity.activity_type_id.name or '',
                     'icon': activity.activity_type_id.icon or '',
@@ -83,3 +81,18 @@ class MailActivity(models.Model):
             if sent:
                 activity.crm_reminder_sent_days = mark
         return True
+
+    def _get_crm_reminder_users(self, lead, team_leader, leadership):
+        """The assignee, and above them their sales team leader and
+        leadership as the two settings ticks say.
+
+        An activity assigned to nobody is the opportunity's BDAs' to do, so
+        they stand in for the assignee.
+        """
+        self.ensure_one()
+        Lead = self.env['crm.lead']
+        assignees = self.user_id or lead._get_bda_users()
+        users = assignees
+        for assignee in assignees:
+            users |= Lead._get_users_above(assignee, team_leader=team_leader, leadership=leadership)
+        return users

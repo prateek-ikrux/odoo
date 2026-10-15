@@ -504,12 +504,18 @@ class CrmLead(models.Model):
     # -------------------------------------------------------------------
     # Email notifications
     # -------------------------------------------------------------------
-    # Every email goes only to the people picked for its kind in CRM
-    # settings. Nobody is on a list until someone puts them there: the
-    # opportunity's own BDAs, and for activity reminders the activity's
-    # assignee, are each a tick in the settings that starts off. Only
-    # opportunities: leads raised by the mail alias or the website form would
-    # otherwise mail everyone about records nobody has looked at yet.
+    # Change notifications and activity reminders follow one hierarchy of
+    # three levels, read from what is already set up rather than stored:
+    #
+    #   Leadership  - the people picked under Leadership in CRM settings
+    #   Managers    - the leaders of active sales teams
+    #   BDAs        - everyone else, filed under the leader of their team
+    #
+    # Someone on two levels counts at the higher. The stuck-in-stage report is
+    # a weekly summary rather than news about one person's work, and keeps a
+    # list of its own. Only opportunities: leads raised by the mail alias or
+    # the website form would otherwise mail people about records nobody has
+    # looked at yet.
 
     @api.model
     def _get_reminder_days(self, param):
@@ -542,28 +548,43 @@ class CrmLead(models.Model):
         # Archived BDAs are still on the record; read them, the mailer drops them.
         return self.sudo().with_context(active_test=False).bda_ids
 
-    def _get_notify_bda_users(self, param):
-        """The opportunity's BDAs when the settings tick for this kind of
-        email says so, otherwise nobody."""
-        if not self._notify_enabled(param):
-            return self.env['res.users']
-        return self._get_bda_users()
+    @api.model
+    def _get_leadership(self):
+        return self.env.company.sudo().crm_leadership_ids
 
-    def _get_bda_team_leaders(self):
-        """Team Leaders of the sales teams the opportunity's BDAs are in now.
+    @api.model
+    def _get_team_leaders(self, users):
+        """The leaders of the sales teams these users are members of now.
 
-        Read with archived records showing, as the BDAs are, so a past
-        membership or an archived team is dropped here rather than mailed.
+        Read with archived records showing, as BDAs are, so a past membership
+        or an archived team is dropped here rather than mailed.
         """
-        teams = self._get_bda_users().crm_team_member_ids.filtered('active').crm_team_id
-        return teams.filtered('active').user_id
+        members = users.sudo().with_context(active_test=False).crm_team_member_ids
+        return members.filtered('active').crm_team_id.filtered('active').user_id
 
-    def _get_notify_bda_leader_users(self, param):
-        """The BDAs' sales team leaders when the settings tick for this kind
-        of email says so, otherwise nobody."""
-        if not self._notify_enabled(param):
-            return self.env['res.users']
-        return self._get_bda_team_leaders()
+    @api.model
+    def _get_hierarchy_level(self, user, leadership):
+        """2 for leadership, 1 for a sales team leader, 0 for everyone else."""
+        if user in leadership:
+            return 2
+        if self.env['crm.team'].sudo().search_count([('user_id', '=', user.id)], limit=1):
+            return 1
+        return 0
+
+    @api.model
+    def _get_users_above(self, user, team_leader=True, leadership=True):
+        """Everyone above user in the hierarchy - the leader of their sales
+        team and leadership, either of which can be left out - and never user
+        themselves. Only a level higher than user's own counts, so a manager
+        has leadership above them and leadership has nobody."""
+        all_leadership = self._get_leadership()
+        level = self._get_hierarchy_level(user, all_leadership)
+        above = self.env['res.users']
+        if team_leader and level < 1:
+            above |= self._get_team_leaders(user)
+        if leadership and level < 2:
+            above |= all_leadership
+        return above - user
 
     def _get_form_url(self):
         """Straight into the opportunity, from the Pipeline."""
@@ -656,38 +677,22 @@ class CrmLead(models.Model):
 
     # ── Change notifications ──────────────────────────────────────
     def _get_change_partners(self):
-        """Settings list, plus these opportunities' BDAs and their sales team
-        leaders where ticked there, or nobody while the change notifications
-        are off."""
+        """Everyone above whoever made the change, or nobody while change
+        notifications are off.
+
+        A change made by a scheduled job has nobody behind it to rank, so it
+        goes to the whole of these opportunities' hierarchy instead: their
+        BDAs, the BDAs' team leaders, and leadership.
+        """
         if not self._notify_enabled('crm_consulting.change_notify'):
             return self.env['res.partner']
-        users = self.env.company.sudo().crm_change_recipient_ids \
-            | self._get_notify_bda_users('crm_consulting.change_notify_bda') \
-            | self._get_notify_bda_leader_users('crm_consulting.change_notify_bda_leader')
-        return self._mail_partners(self._keep_ranked_above_actor(users))
-
-    def _keep_ranked_above_actor(self, users):
-        """Only the people ranked above whoever made the change, when the
-        settings ask for it.
-
-        Three ranks, read from the settings rather than stored anywhere:
-        leadership is the Send to list, managers are the leaders of active
-        sales teams, and everyone else - the BDAs - ranks below both. Someone
-        in two of them counts at the higher. Peers are left out along with
-        everyone below, and so is the person who made the change. A change
-        made by a scheduled job has nobody to rank, so it goes to everyone.
-        """
         actor = self.env.user
-        if not self._notify_enabled('crm_consulting.change_notify_upward') or actor._is_superuser():
-            return users
-        leadership = self.env.company.sudo().crm_change_recipient_ids
-        managers = self.env['crm.team'].sudo().search([]).user_id
-
-        def rank(user):
-            return 2 if user in leadership else 1 if user in managers else 0
-
-        actor_rank = rank(actor)
-        return users.filtered(lambda u: u != actor and rank(u) > actor_rank)
+        if actor._is_superuser():
+            bdas = self._get_bda_users()
+            users = bdas | self._get_team_leaders(bdas) | self._get_leadership()
+        else:
+            users = self._get_users_above(actor)
+        return self._mail_partners(users)
 
     def _send_change_notification(self, event, changes=None):
         for lead in self.filtered(lambda l: l.type == 'opportunity'):

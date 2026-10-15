@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.24.0',
+    'version': '19.0.1.25.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -37,23 +37,26 @@ is the primary contact; any number more go in an Additional POCs list under
 it, added a row at a time and dragged into order.
 
 Opportunities can email people as they move. Each kind is switched on and
-configured under CRM > Configuration > Settings, and every one goes only to
-the people picked there - nobody by default. Select everyone and Clear fill or
-empty a list in one click, and ticks on the per-opportunity emails add the
-opportunity's own BDAs and the Team Leaders of the sales teams they are in:
+configured under CRM > Configuration > Settings. Change notifications and
+activity reminders follow one three-level hierarchy: Leadership, picked in
+the settings; managers, who are the Team Leaders of sales teams; and BDAs,
+the members of their teams. Email only ever goes up it.
 
 * Change notifications - when an opportunity is created, deleted, or a change
-  to it is recorded in its audit log. They can be kept to the people ranked
-  above whoever made the change: leadership (the people picked) above sales
-  team leaders, above BDAs - never peers, nor the person themselves.
+  to it is recorded in its audit log, to everyone above whoever made the
+  change: a BDA's change to their team leader and leadership, a manager's to
+  leadership, and leadership's to nobody. Never to the person themselves or
+  their peers. Automatic changes go to the opportunity's whole hierarchy.
 * Stuck-in-stage report - one email a week, at midnight on the weekday
   picked (Monday by default), with an Excel list of every active client whose
   opportunity has sat in one stage for the days picked or more (6 by
   default). Each stage says whether it is included; the won stage starts
-  left out.
+  left out. It goes to its own list, nobody by default, which Select
+  everyone and Clear fill or empty in one click.
 * Activity reminders - a set number of days before a scheduled activity of
-  the picked types falls due (3 and 1 days, Call and Meeting by default).
-  A further tick adds the person the activity is assigned to.
+  the picked types falls due (3 and 1 days, Call and Meeting by default), to
+  the person it is assigned to and, each behind a tick that starts on, their
+  sales team leader and leadership above them.
 * Tagged colleagues - anyone tagged with @ in an opportunity's chatter is
   emailed, even if they handle notifications in Odoo, and the message stays
   in their Inbox too.

@@ -18,7 +18,7 @@
             <field name="model_id" ref="crm.model_crm_lead"/>
             <field name="subject">New opportunity: {{ object.name }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent to the change notification list and the BDAs when an opportunity is created.</field>
+            <field name="description">Sent up the CRM hierarchy from whoever created the opportunity.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
     <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
@@ -52,7 +52,7 @@
         <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
     </p>
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
-        You are receiving this as a BDA on this opportunity or because you are on the change notification list in CRM settings.
+        You are receiving this through the CRM notification hierarchy, which sends each change to the people above whoever made it.
     </div>
 </div>
             </field>
@@ -64,7 +64,7 @@
             <field name="model_id" ref="crm.model_crm_lead"/>
             <field name="subject">Opportunity updated: {{ object.name }} ({{ len(ctx.get('crm_changes') or []) }} {{ 'change' if len(ctx.get('crm_changes') or []) == 1 else 'changes' }})</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent to the change notification list and the BDAs whenever a change to an opportunity is saved in its audit log.</field>
+            <field name="description">Sent up the CRM hierarchy from whoever made the change, whenever a change to an opportunity is saved in its audit log.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
     <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
@@ -103,7 +103,7 @@
         <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
     </p>
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
-        You are receiving this as a BDA on this opportunity or because you are on the change notification list in CRM settings.
+        You are receiving this through the CRM notification hierarchy, which sends each change to the people above whoever made it.
     </div>
 </div>
             </field>
@@ -117,7 +117,7 @@
             <field name="model_id" ref="crm.model_crm_lead"/>
             <field name="subject">{{ ctx.get('crm_subject') or 'Opportunity deleted' }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent to the change notification list and the BDAs when opportunities are deleted.</field>
+            <field name="description">Sent up the CRM hierarchy from whoever deleted the opportunities.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
     <t t-set="deleted" t-value="ctx.get('crm_deleted') or []"/>
@@ -160,7 +160,7 @@
 
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
         A deleted opportunity cannot be restored from CRM. If this was a mistake, it has to be created again.
-        <br/>You are receiving this as a BDA on it or because you are on the change notification list in CRM settings.
+        <br/>You are receiving this through the CRM notification hierarchy, which sends each change to the people above whoever made it.
     </div>
 </div>
             </field>
@@ -288,7 +288,7 @@
         <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity</a>
     </p>
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
-        You are receiving this as the person assigned, a BDA on this opportunity, or because you are on the activity reminder list in CRM settings.
+        You are receiving this as the person the activity is assigned to, or as their sales team leader or leadership.
     </div>
 </div>
             </field>

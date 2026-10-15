@@ -2,12 +2,12 @@
 <odoo>
 
     <!-- Same layout as Contracts settings: a switch per kind of email, and
-         its details only while it is on. Nobody receives anything by
-         default: each kind goes to the people picked under "Send to" and,
-         only where ticked, to the opportunity's BDAs, their sales team leaders
-         (and for activities, the assignee). The stuck-in-stage report is one weekly email with a
-         spreadsheet, so it goes to its list alone. Select everyone and Clear fill or empty a list in one
-         click. -->
+         its details only while it is on. Change notifications and activity
+         reminders follow one hierarchy - leadership picked here, sales team
+         leaders as managers, their team members as BDAs - and only ever go
+         up it. The stuck-in-stage report is one weekly email with a
+         spreadsheet, so it goes to its own list; Select everyone and Clear
+         fill or empty that list in one click. -->
     <record id="res_config_settings_view_form_consulting" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.crm.consulting</field>
         <field name="model">res.config.settings</field>
@@ -16,56 +16,48 @@
             <xpath expr="//app[@name='crm']" position="inside">
                 <block title="Email Notifications" name="crm_consulting_notifications">
 
+                    <setting id="crm_hierarchy_setting"
+                             string="Notification Hierarchy"
+                             help="Change notifications and activity reminders go up this hierarchy, never down.">
+                        <div class="content-group">
+                            <div class="row">
+                                <label for="crm_leadership_ids" string="Leadership"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="crm_leadership_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick leadership..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                    Managers are the Team Leaders of sales teams, and BDAs the
+                                    members of their team.
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9">
+                                    <button name="%(sales_team.crm_team_action_config)d" type="action"
+                                            string="Sales Teams" icon="oi-arrow-right"
+                                            class="btn-link p-0"/>
+                                </div>
+                            </div>
+                        </div>
+                    </setting>
+
                     <setting id="crm_change_notify_setting"
                              string="Change Notifications"
                              help="Email whenever an opportunity is created, deleted, or a change to it is saved in its audit log.">
                         <field name="crm_change_notify"/>
                         <div class="content-group mt16" invisible="not crm_change_notify">
-                            <div class="row">
-                                <label for="crm_change_recipient_ids" string="Send to"
-                                       class="col-lg-3 o_light_label"/>
-                                <field name="crm_change_recipient_ids" class="col-lg-9"
-                                       widget="many2many_tags_avatar"
-                                       placeholder="Pick who should be notified..."
-                                       options="{'no_create': True}"/>
-                            </div>
-                            <div class="row">
-                                <div class="offset-lg-3 col-lg-9 small mt-1">
-                                    <button name="action_crm_recipients_select_all" type="object"
-                                            string="Select everyone" class="btn-link p-0 align-baseline"
-                                            context="{'recipient_field': 'crm_change_recipient_ids'}"/>
-                                    <span class="text-muted mx-1">·</span>
-                                    <button name="action_crm_recipients_clear" type="object"
-                                            string="Clear" class="btn-link p-0 align-baseline"
-                                            context="{'recipient_field': 'crm_change_recipient_ids'}"/>
-                                </div>
-                            </div>
-                            <div class="row mt8">
-                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
-                                    <field name="crm_change_notify_bda" class="w-auto"/>
-                                    <label for="crm_change_notify_bda" class="o_light_label"/>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
-                                    <field name="crm_change_notify_bda_leader" class="w-auto"/>
-                                    <label for="crm_change_notify_bda_leader" class="o_light_label"/>
-                                </div>
-                            </div>
-                            <div class="row mt8">
-                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
-                                    <field name="crm_change_notify_upward" class="w-auto"/>
-                                    <label for="crm_change_notify_upward" class="o_light_label"/>
-                                </div>
-                                <div class="offset-lg-3 col-lg-9 text-muted small">
-                                    Leadership (Send to) above sales team leaders, above BDAs.
-                                    Not to peers or the person who made the change.
-                                </div>
+                            <div class="text-muted">
+                                To everyone above whoever made the change - never to them,
+                                their peers or anyone below. Automatic changes go to the
+                                opportunity's whole hierarchy.
                             </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
-                                 role="alert" invisible="crm_change_recipient_ids or crm_change_notify_bda or crm_change_notify_bda_leader">
+                                 role="alert" invisible="crm_leadership_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
-                                <span>Nobody is picked yet, so no notifications will go out.</span>
+                                <span>No leadership is picked, so changes made by managers will reach nobody.</span>
                             </div>
                         </div>
                     </setting>
@@ -160,40 +152,20 @@
                                        options="{'no_create': True}"/>
                             </div>
                             <div class="row mt8">
-                                <label for="crm_activity_reminder_recipient_ids" string="Send to"
-                                       class="col-lg-3 o_light_label"/>
-                                <field name="crm_activity_reminder_recipient_ids" class="col-lg-9"
-                                       widget="many2many_tags_avatar"
-                                       placeholder="Pick who should be reminded..."
-                                       options="{'no_create': True}"/>
-                            </div>
-                            <div class="row">
-                                <div class="offset-lg-3 col-lg-9 small mt-1">
-                                    <button name="action_crm_recipients_select_all" type="object"
-                                            string="Select everyone" class="btn-link p-0 align-baseline"
-                                            context="{'recipient_field': 'crm_activity_reminder_recipient_ids'}"/>
-                                    <span class="text-muted mx-1">·</span>
-                                    <button name="action_crm_recipients_clear" type="object"
-                                            string="Clear" class="btn-link p-0 align-baseline"
-                                            context="{'recipient_field': 'crm_activity_reminder_recipient_ids'}"/>
-                                </div>
-                            </div>
-                            <div class="row mt8">
-                                <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
-                                    <field name="crm_activity_reminders_assignee" class="w-auto"/>
-                                    <label for="crm_activity_reminders_assignee" class="o_light_label"/>
+                                <div class="offset-lg-3 col-lg-9 text-muted">
+                                    To the person the activity is assigned to, and above them:
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
-                                    <field name="crm_activity_reminders_bda" class="w-auto"/>
-                                    <label for="crm_activity_reminders_bda" class="o_light_label"/>
+                                    <field name="crm_activity_reminders_team_leader" class="w-auto"/>
+                                    <label for="crm_activity_reminders_team_leader" class="o_light_label"/>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="offset-lg-3 col-lg-9 d-flex align-items-center gap-2">
-                                    <field name="crm_activity_reminders_bda_leader" class="w-auto"/>
-                                    <label for="crm_activity_reminders_bda_leader" class="o_light_label"/>
+                                    <field name="crm_activity_reminders_leadership" class="w-auto"/>
+                                    <label for="crm_activity_reminders_leadership" class="o_light_label"/>
                                 </div>
                             </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
@@ -201,12 +173,6 @@
                                  invisible="crm_activity_reminder_day_ids and crm_activity_reminder_type_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
                                 <span>Pick at least one day and one activity type, or no reminders will go out.</span>
-                            </div>
-                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
-                                 role="alert"
-                                 invisible="crm_activity_reminder_recipient_ids or crm_activity_reminders_assignee or crm_activity_reminders_bda or crm_activity_reminders_bda_leader">
-                                <i class="fa fa-exclamation-triangle" title="Warning"/>
-                                <span>Nobody is picked yet, so no reminders will go out.</span>
                             </div>
                         </div>
                     </setting>

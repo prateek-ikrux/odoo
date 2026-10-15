@@ -31,7 +31,9 @@ def setup_notification_defaults(env):
 
     The won stage is where a deal is meant to rest, so it is left out of the
     stuck-in-stage report until someone ticks it. Activity reminders start
-    out covering calls and meetings. Both are the Admin's to change after.
+    out covering calls and meetings, and going up the hierarchy to the
+    assignee's team leader and leadership. All are the Admin's to change
+    after.
     """
     env['crm.stage'].search([('is_won', '=', True)]).write({'stage_reminders': False})
     types = env['mail.activity.type']
@@ -40,3 +42,8 @@ def setup_notification_defaults(env):
     for company in env['res.company'].search([]):
         if not company.crm_activity_reminder_type_ids:
             company.crm_activity_reminder_type_ids = types
+    params = env['ir.config_parameter'].sudo()
+    for key in ('crm_consulting.activity_reminders_team_leader',
+                'crm_consulting.activity_reminders_leadership'):
+        if params._get_param(key) is None:
+            params.set_param(key, True)

@@ -20,34 +20,20 @@ WEEKDAY_SELECTION = [
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
+    # ── Hierarchy ─────────────────────────────────────────────────
+    # Leadership is picked here; managers are sales team leaders and BDAs
+    # their team members, both taken from the sales teams (see crm_lead.py).
+    crm_leadership_ids = fields.Many2many(
+        related='company_id.crm_leadership_ids', readonly=False,
+    )
+
     # ── Change notifications ──────────────────────────────────────
     crm_change_notify = fields.Boolean(
         string='Change Notifications',
         config_parameter='crm_consulting.change_notify',
         help="Email whenever an opportunity is created, deleted, or a change "
-             "to it is recorded in its audit log.",
-    )
-    crm_change_recipient_ids = fields.Many2many(
-        related='company_id.crm_change_recipient_ids', readonly=False,
-    )
-    crm_change_notify_bda = fields.Boolean(
-        string="Also send to the opportunity's BDAs",
-        config_parameter='crm_consulting.change_notify_bda',
-    )
-    crm_change_notify_bda_leader = fields.Boolean(
-        string="Also send to the BDAs' sales team leaders",
-        config_parameter='crm_consulting.change_notify_bda_leader',
-        help="The Team Leader of each sales team the opportunity's BDAs "
-             "belong to.",
-    )
-    crm_change_notify_upward = fields.Boolean(
-        string='Only send to people above whoever made the change',
-        config_parameter='crm_consulting.change_notify_upward',
-        help="Leadership (the people under Send to) ranks above managers "
-             "(sales team leaders), who rank above everyone else. A change "
-             "goes only to those ranked higher than the person who made it - "
-             "not to their peers, and not to themselves. Changes made by a "
-             "scheduled job go to everyone.",
+             "to it is recorded in its audit log - to everyone above whoever "
+             "made the change, and never to them.",
     )
 
     # ── Stuck-in-stage report ─────────────────────────────────────
@@ -87,22 +73,14 @@ class ResConfigSettings(models.TransientModel):
     crm_activity_reminder_type_ids = fields.Many2many(
         related='company_id.crm_activity_reminder_type_ids', readonly=False,
     )
-    crm_activity_reminder_recipient_ids = fields.Many2many(
-        related='company_id.crm_activity_reminder_recipient_ids', readonly=False,
+    crm_activity_reminders_team_leader = fields.Boolean(
+        string='Also remind their sales team leader',
+        config_parameter='crm_consulting.activity_reminders_team_leader',
+        help="The leader of the sales team the person assigned is in.",
     )
-    crm_activity_reminders_bda = fields.Boolean(
-        string="Also send to the opportunity's BDAs",
-        config_parameter='crm_consulting.activity_reminders_bda',
-    )
-    crm_activity_reminders_bda_leader = fields.Boolean(
-        string="Also send to the BDAs' sales team leaders",
-        config_parameter='crm_consulting.activity_reminders_bda_leader',
-        help="The Team Leader of each sales team the opportunity's BDAs "
-             "belong to.",
-    )
-    crm_activity_reminders_assignee = fields.Boolean(
-        string='Also send to the person the activity is assigned to',
-        config_parameter='crm_consulting.activity_reminders_assignee',
+    crm_activity_reminders_leadership = fields.Boolean(
+        string='Also remind leadership',
+        config_parameter='crm_consulting.activity_reminders_leadership',
     )
 
     # ── Chatter mentions ──────────────────────────────────────────
@@ -117,9 +95,7 @@ class ResConfigSettings(models.TransientModel):
     # The recipient lists the Select everyone and Clear buttons may fill, each
     # a field of the company. The button names the list in its context.
     _CRM_RECIPIENT_FIELDS = (
-        'crm_change_recipient_ids',
         'crm_stage_reminder_recipient_ids',
-        'crm_activity_reminder_recipient_ids',
     )
 
     _CRM_DAY_FIELDS = {
