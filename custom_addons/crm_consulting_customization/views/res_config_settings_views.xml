@@ -189,6 +189,12 @@
                         </div>
                     </setting>
 
+                    <setting id="crm_mention_email_setting"
+                             string="Email Tagged Colleagues"
+                             help="Email anyone tagged with @ in an opportunity's chatter, even if they handle notifications in Odoo. The message stays in their Inbox too.">
+                        <field name="crm_mention_email"/>
+                    </setting>
+
                 </block>
             </xpath>
         </field>

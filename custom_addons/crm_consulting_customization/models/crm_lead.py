@@ -10,6 +10,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.misc import format_date
 
+from odoo.addons.mail.tools.discuss import Store
+
 from .crm_stage_report_xlsx import build_stage_report_xlsx
 
 _logger = logging.getLogger(__name__)
@@ -863,3 +865,63 @@ class CrmLead(models.Model):
         # Out now, not on the mail queue's next hourly run.
         self.env.ref('mail.ir_cron_mail_scheduler_action')._trigger()
         return len(partners)
+
+    # ── Chatter mentions ──────────────────────────────────────────
+    def _notify_get_recipients(self, message, msg_vals=False, **kwargs):
+        """Email the colleagues tagged in a chatter message.
+
+        Tagging someone with @ makes them a direct recipient of the message,
+        but an internal user left on "Handle in Odoo" only ever gets it in the
+        Inbox, which is easy to miss. On an opportunity they are mailed
+        instead, and _notify_thread puts the message back in their Inbox.
+        Followers who were not tagged, and system messages such as assignment
+        notices, keep to each user's own preference. Off unless switched on
+        under CRM > Configuration > Settings.
+        """
+        recipients_data = super()._notify_get_recipients(message, msg_vals=msg_vals, **kwargs)
+        if not self._notify_enabled('crm_consulting.mention_email'):
+            return recipients_data
+        msg_vals = msg_vals or {}
+        msg_sudo = message.sudo()
+        message_type = msg_vals['message_type'] if 'message_type' in msg_vals else msg_sudo.message_type
+        if message_type != 'comment' or kwargs.get('notify_skip_followers'):
+            return recipients_data
+        pids = msg_vals['partner_ids'] if 'partner_ids' in msg_vals else msg_sudo.partner_ids.ids
+        for rdata in recipients_data:
+            if (rdata['id'] in pids and rdata['notif'] == 'inbox'
+                    and rdata['type'] == 'user' and rdata['email_normalized']):
+                rdata['notif'] = 'email'
+                rdata['crm_mention_email'] = True
+        return recipients_data
+
+    def _notify_thread(self, message, msg_vals=False, **kwargs):
+        """Keep tagged colleagues' Inbox entry alongside their email.
+
+        A partner holds one notification per message, and an email one is
+        created already read, so the mention would drop out of the Inbox.
+        Marking it unread and pushing it as mail's own Inbox step does puts
+        it back, live.
+        """
+        recipients_data = super()._notify_thread(message, msg_vals=msg_vals, **kwargs)
+        uid_by_pid = {r['id']: r['uid'] for r in recipients_data if r.get('crm_mention_email')}
+        if not uid_by_pid:
+            return recipients_data
+        # sudo: mail.notification - as mail's own notify methods do. Nothing
+        # is found when the message is scheduled; this runs again on sending.
+        notifications = self.env['mail.notification'].sudo().search([
+            ('mail_message_id', '=', message.id),
+            ('res_partner_id', 'in', list(uid_by_pid)),
+            ('notification_type', '=', 'email'),
+        ])
+        notifications.is_read = False
+        for user in self.env['res.users'].browse(uid_by_pid[pid] for pid in notifications.res_partner_id.ids):
+            store = Store(bus_channel=user).add(
+                message.with_user(user).with_context(allowed_company_ids=[]),
+                msg_vals=msg_vals,
+                add_followers=True,
+            )
+            user._bus_send('mail.message/inbox', {
+                'message_id': message.id,
+                'store_data': store.get_result(),
+            })
+        return recipients_data

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.23.0',
+    'version': '19.0.1.24.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -52,6 +52,9 @@ opportunity's own BDAs:
 * Activity reminders - a set number of days before a scheduled activity of
   the picked types falls due (3 and 1 days, Call and Meeting by default).
   A further tick adds the person the activity is assigned to.
+* Tagged colleagues - anyone tagged with @ in an opportunity's chatter is
+  emailed, even if they handle notifications in Odoo, and the message stays
+  in their Inbox too.
 
 Access is CRM's own: this module adds no roles and no record rules, and who
 may see or do what is whatever the Sales privilege already says.

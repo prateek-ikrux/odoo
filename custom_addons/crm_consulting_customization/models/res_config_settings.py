@@ -84,6 +84,15 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='crm_consulting.activity_reminders_assignee',
     )
 
+    # ── Chatter mentions ──────────────────────────────────────────
+    crm_mention_email = fields.Boolean(
+        string='Email Tagged Colleagues',
+        config_parameter='crm_consulting.mention_email',
+        help="Email anyone tagged with @ in an opportunity's chatter, even if "
+             "they handle notifications in Odoo. The message stays in their "
+             "Inbox too.",
+    )
+
     # The recipient lists the Select everyone and Clear buttons may fill, each
     # a field of the company. The button names the list in its context.
     _CRM_RECIPIENT_FIELDS = (
