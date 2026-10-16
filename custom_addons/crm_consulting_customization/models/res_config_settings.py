@@ -87,9 +87,10 @@ class ResConfigSettings(models.TransientModel):
     crm_mention_email = fields.Boolean(
         string='Email Tagged Colleagues',
         config_parameter='crm_consulting.mention_email',
-        help="Email anyone tagged with @ in an opportunity's chatter, even if "
-             "they handle notifications in Odoo. The message stays in their "
-             "Inbox too.",
+        help="Email anyone tagged with @ in an opportunity's chatter, saying "
+             "who tagged them on which opportunity, with the message and a "
+             "button into it - whatever their own notification preference. "
+             "The message stays in their Inbox too.",
     )
 
     # The recipient lists the Select everyone and Clear buttons may fill, each

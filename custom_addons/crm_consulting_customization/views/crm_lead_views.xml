@@ -91,15 +91,14 @@
             </xpath>
 
             <!--
-                The two dates that bracket the pipeline sit together, in the
-                order they happen: first contact, then the date the deal is
-                expected to close. The label is replaced rather than
-                relabelled because CRM writes "Expected Closing" as the
-                label's own text, which an attribute cannot override.
+                Start Date and End Date take the place of CRM's Expected
+                Closing, both optional. Expected Closing is hidden rather than
+                removed: CRM's Forecast form is built on this one and reaches
+                for its node.
             -->
-            <xpath expr="//field[@name='date_deadline'][not(ancestor::list)]"
+            <xpath expr="//field[@name='date_deadline'][not(ancestor::list)]/parent::div"
                    position="attributes">
-                <attribute name="widget">ordinal_date</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
 
             <!--
@@ -111,8 +110,8 @@
                    position="replace"/>
 
             <xpath expr="//label[@for='date_deadline']" position="replace">
-                <field name="initial_outreach_date" widget="ordinal_date"/>
-                <label for="date_deadline" string="Expected Closure Date"/>
+                <field name="start_date" widget="ordinal_date"/>
+                <field name="end_date" widget="ordinal_date"/>
             </xpath>
 
             <!--
@@ -122,7 +121,7 @@
                 The column is untouched; anything already tagged keeps its
                 tags and they stay exportable.
             -->
-            <xpath expr="//label[@for='date_deadline']/parent::group/field[@name='tag_ids']"
+            <xpath expr="//field[@name='date_deadline'][not(ancestor::list)]/parent::div/following-sibling::field[@name='tag_ids']"
                    position="replace"/>
             <xpath expr="//group[@name='lead_priority']/field[@name='tag_ids']"
                    position="replace"/>
@@ -342,7 +341,8 @@
                 <field name="engagement_type" optional="show"/>
                 <field name="open_positions" optional="show" sum="Open Positions"/>
                 <field name="roles_open" optional="hide"/>
-                <field name="initial_outreach_date" widget="ordinal_date" optional="hide"/>
+                <field name="start_date" widget="ordinal_date" optional="show"/>
+                <field name="end_date" widget="ordinal_date" optional="show"/>
             </xpath>
             <!--
                 BDA replaces Salesperson here too, rather than sitting next to
@@ -533,9 +533,15 @@
                 <filter string="Engagement Type" name="group_by_engagement_type" context="{'group_by': 'engagement_type'}"/>
             </xpath>
 
+            <!-- Expected Closing is off the form, so it is off the group-bys. -->
+            <xpath expr="//filter[@name='date_deadline']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//filter[@name='date_deadline']" position="after">
-                <filter string="Initial Outreach Date" name="group_by_initial_outreach_date"
-                        context="{'group_by': 'initial_outreach_date'}"/>
+                <filter string="Start Date" name="group_by_start_date"
+                        context="{'group_by': 'start_date'}"/>
+                <filter string="End Date" name="group_by_end_date"
+                        context="{'group_by': 'end_date'}"/>
                 <filter string="Agreement Signed On" name="group_by_agreement_signed_date"
                         context="{'group_by': 'milestone_agreement_signed_date'}"/>
             </xpath>

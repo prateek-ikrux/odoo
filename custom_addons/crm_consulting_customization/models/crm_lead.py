@@ -10,8 +10,6 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.misc import format_date
 
-from odoo.addons.mail.tools.discuss import Store
-
 from .crm_stage_report_xlsx import build_stage_report_xlsx
 
 _logger = logging.getLogger(__name__)
@@ -37,8 +35,8 @@ DEFAULT_STAGE_REPORT_WEEKDAY = 0
 DEFAULT_STAGE_REPORT_MIN_DAYS = 6
 
 # The milestone flags, paired with the field that records when each was
-# raised. Kept in one place so write() and the cycle-time computation stay in
-# step with the field definitions instead of repeating the pairing.
+# raised. Kept in one place so create() and write() stay in step with the
+# field definitions instead of repeating the pairing.
 MILESTONE_DATE_FIELDS = {
     'milestone_requirement_received': 'milestone_requirement_received_date',
     'milestone_delivery_started': 'milestone_delivery_started_date',
@@ -149,19 +147,13 @@ class CrmLead(models.Model):
         tracking=True,
     )
 
-    initial_outreach_date = fields.Date(
-        'Initial Outreach Date',
-        # Optional, but pre-filled with the day the opportunity is created.
-        default=fields.Date.context_today,
-        tracking=True,
-        help='The day first contact was made. Start of the cycle time measured '
-             'against the date the agreement was signed.',
-    )
-
-    # Odoo already carries an "Expected Closing" date that its own forecast and
-    # rotting logic read. Relabelled rather than duplicated, so the native
-    # reporting keeps pointing at the field the business actually fills in.
-    date_deadline = fields.Date(string='Expected Closure Date')
+    # When the engagement starts and ends. Both optional and left empty until
+    # someone knows them. They replace the Initial Outreach Date, which was
+    # only ever pre-filled with the day the opportunity was created, and take
+    # CRM's Expected Closing off the form (19.0.1.27.0) - that one stays in
+    # the model, read by CRM's own forecast, but nothing here sets it.
+    start_date = fields.Date('Start Date', tracking=True)
+    end_date = fields.Date('End Date', tracking=True)
 
     # -------------------------------------------------------------------
     # Commercials
@@ -426,6 +418,12 @@ class CrmLead(models.Model):
                 raise ValidationError(
                     _('An opportunity needs at least one BDA assigned.'))
 
+    @api.constrains('start_date', 'end_date')
+    def _check_dates(self):
+        for lead in self:
+            if lead.start_date and lead.end_date and lead.end_date < lead.start_date:
+                raise ValidationError(_('The End Date cannot be before the Start Date.'))
+
     def _check_required_numbers(self, fnames):
         """Refuse a zero in a number the form marks as required.
 
@@ -674,7 +672,8 @@ class CrmLead(models.Model):
             'bdas': ', '.join(lead._get_bda_users().mapped('name')),
             'poc': ' - '.join(p for p in (lead.contact_name, lead.function) if p),
             'poc_contact': ' | '.join(p for p in (lead.email_from, lead.phone) if p),
-            'expected_closure': self._short_date(self.env, lead.date_deadline),
+            'start_date': self._short_date(self.env, lead.start_date),
+            'end_date': self._short_date(self.env, lead.end_date),
             'status': status,
             'lost_reason': (lead.lost_reason_id.name or '') if not lead.active else '',
             'created_by': lead.create_uid.name or '',
@@ -907,7 +906,8 @@ class CrmLead(models.Model):
                 'poc_phone': lead.phone or '',
                 'poc_email': lead.email_from or '',
                 'next_activity': details['next_activity'],
-                'expected_closure': details['expected_closure'],
+                'start_date': details['start_date'],
+                'end_date': details['end_date'],
                 'url': lead._get_form_url(),
             })
         rows.sort(key=lambda r: (-r['days'], r['client'].lower()))
@@ -965,16 +965,20 @@ class CrmLead(models.Model):
         return len(partners)
 
     # ── Chatter mentions ──────────────────────────────────────────
-    def _notify_get_recipients(self, message, msg_vals=False, **kwargs):
-        """Email the colleagues tagged in a chatter message.
+    # Tagging a colleague with @ makes them a direct recipient of the
+    # message. Odoo's own email for that is the bare message, which says
+    # neither that they were tagged nor where. On an opportunity they get an
+    # email of this module's instead, saying who tagged them on which
+    # opportunity, with the message and a button into it - and the Inbox
+    # notification Odoo gives them anyway, whatever their own preference.
 
-        Tagging someone with @ makes them a direct recipient of the message,
-        but an internal user left on "Handle in Odoo" only ever gets it in the
-        Inbox, which is easy to miss. On an opportunity they are mailed
-        instead, and _notify_thread puts the message back in their Inbox.
-        Followers who were not tagged, and system messages such as assignment
-        notices, keep to each user's own preference. Off unless switched on
-        under CRM > Configuration > Settings.
+    def _notify_get_recipients(self, message, msg_vals=False, **kwargs):
+        """Take tagged colleagues off Odoo's email for the message - they get
+        _notify_thread's own instead - and leave them its Inbox notification.
+
+        Followers who were not tagged, people outside the company, and
+        system messages such as assignment notices, keep to Odoo's own. Off
+        unless switched on under CRM > Configuration > Settings.
         """
         recipients_data = super()._notify_get_recipients(message, msg_vals=msg_vals, **kwargs)
         if not self._notify_enabled('crm_consulting.mention_email'):
@@ -986,40 +990,35 @@ class CrmLead(models.Model):
             return recipients_data
         pids = msg_vals['partner_ids'] if 'partner_ids' in msg_vals else msg_sudo.partner_ids.ids
         for rdata in recipients_data:
-            if (rdata['id'] in pids and rdata['notif'] == 'inbox'
-                    and rdata['type'] == 'user' and rdata['email_normalized']):
-                rdata['notif'] = 'email'
-                rdata['crm_mention_email'] = True
+            if rdata['id'] in pids and rdata['type'] == 'user':
+                rdata['notif'] = 'inbox'
+                rdata['crm_tagged'] = True
         return recipients_data
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
-        """Keep tagged colleagues' Inbox entry alongside their email.
-
-        A partner holds one notification per message, and an email one is
-        created already read, so the mention would drop out of the Inbox.
-        Marking it unread and pushing it as mail's own Inbox step does puts
-        it back, live.
-        """
         recipients_data = super()._notify_thread(message, msg_vals=msg_vals, **kwargs)
-        uid_by_pid = {r['id']: r['uid'] for r in recipients_data if r.get('crm_mention_email')}
-        if not uid_by_pid:
+        # A scheduled message is notified when it goes out; this runs again then.
+        if self._is_notification_scheduled(kwargs.get('scheduled_date')):
             return recipients_data
-        # sudo: mail.notification - as mail's own notify methods do. Nothing
-        # is found when the message is scheduled; this runs again on sending.
-        notifications = self.env['mail.notification'].sudo().search([
-            ('mail_message_id', '=', message.id),
-            ('res_partner_id', 'in', list(uid_by_pid)),
-            ('notification_type', '=', 'email'),
-        ])
-        notifications.is_read = False
-        for user in self.env['res.users'].browse(uid_by_pid[pid] for pid in notifications.res_partner_id.ids):
-            store = Store(bus_channel=user).add(
-                message.with_user(user).with_context(allowed_company_ids=[]),
-                msg_vals=msg_vals,
-                add_followers=True,
-            )
-            user._bus_send('mail.message/inbox', {
-                'message_id': message.id,
-                'store_data': store.get_result(),
-            })
+        tagged = self.env['res.partner'].browse(
+            r['id'] for r in recipients_data if r.get('crm_tagged') and r['email_normalized'])
+        if tagged and len(self) == 1:
+            self._send_tagged_mail(message, tagged)
         return recipients_data
+
+    def _send_tagged_mail(self, message, partners):
+        """Tell each tagged colleague who tagged them, on which opportunity,
+        and what the message said."""
+        msg = message.sudo()
+        self._send_lead_mail(
+            'crm_consulting_customization.mail_template_crm_tagged',
+            partners,
+            {'crm_tagged': {
+                'by': msg.author_id.name or _('Someone'),
+                'kind': _('an internal note') if msg.subtype_id.internal else _('a message'),
+                'body': msg.body,
+                'attachments': msg.attachment_ids.mapped('name'),
+                'sent_on': self._long_date(self.env, fields.Datetime.context_timestamp(
+                    self, msg.date).date()) if msg.date else '',
+            }},
+        )

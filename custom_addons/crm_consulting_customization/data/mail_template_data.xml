@@ -3,7 +3,7 @@
     <!-- No noupdate here: the wording carries no user-owned state, so
          reworded copy lands on the next upgrade.
 
-         All five share one layout with the Contracts emails: a coloured label
+         All six share one layout with the Contracts emails: a coloured label
          saying what happened, the opportunity's name, one sentence, a details
          table, a button straight into the opportunity, and a footer saying
          why the reader got it. Values arrive pre-formatted in the context -
@@ -45,7 +45,8 @@
         <tr t-if="d.get('poc')"><td t-att-style="label_td">POC</td><td t-att-style="value_td">
             <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
         </td></tr>
-        <tr t-if="d.get('expected_closure')"><td t-att-style="label_td">Expected Closure</td><td t-att-style="value_td" t-out="d['expected_closure']"/></tr>
+        <tr t-if="d.get('start_date')"><td t-att-style="label_td">Start Date</td><td t-att-style="value_td" t-out="d['start_date']"/></tr>
+        <tr t-if="d.get('end_date')"><td t-att-style="label_td">End Date</td><td t-att-style="value_td" t-out="d['end_date']"/></tr>
     </table>
 
     <p style="margin: 0 0 24px 0;">
@@ -289,6 +290,60 @@
     </p>
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
         You are receiving this as the person the activity is assigned to, or as their sales team leader or leadership.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <!-- ── Tagged in the chatter ─────────────────────────────────── -->
+        <record id="mail_template_crm_tagged" model="mail.template">
+            <field name="name">CRM: Tagged in a Message</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="subject">{{ (ctx.get('crm_tagged') or {}).get('by') or 'Someone' }} tagged you on {{ object.name }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to a colleague tagged with @ in an opportunity's chatter, in place of Odoo's own email for the message.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="d" t-value="ctx.get('crm_details') or {}"/>
+    <t t-set="tag" t-value="ctx.get('crm_tagged') or {}"/>
+    <t t-set="label_td" t-value="'padding: 7px 16px 7px 0; border-bottom: 1px solid #EEEEEE; color: #888888; width: 38%; vertical-align: top;'"/>
+    <t t-set="value_td" t-value="'padding: 7px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div style="border-left: 4px solid #714B67; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #714B67;">You Were Tagged</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="d.get('name')"/>
+        <div style="font-size: 13px; color: #888888;">
+            Stage: <t t-out="d.get('stage')"/> - BDAs: <t t-out="d.get('bdas')"/>
+        </div>
+    </div>
+
+    <p style="margin: 0 0 12px 0;">
+        <strong t-out="tag.get('by') or 'Someone'"/> tagged you in <t t-out="tag.get('kind') or 'a message'"/>
+        on the <strong t-out="d.get('name')"/> opportunity<t t-if="tag.get('sent_on')">, on <t t-out="tag['sent_on']"/></t>:
+    </p>
+
+    <div style="background-color: #F7F5F7; border: 1px solid #E6E0E5; border-radius: 4px; padding: 14px 16px; margin: 0 0 20px 0;">
+        <div t-out="tag.get('body')"/>
+        <div t-if="tag.get('attachments')" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #E6E0E5; font-size: 13px; color: #888888;">
+            Attached: <t t-out="', '.join(tag['attachments'])"/>
+        </div>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;">
+        <tr t-if="d.get('client_type')"><td t-att-style="label_td">Client Type</td><td t-att-style="value_td" t-out="d['client_type']"/></tr>
+        <tr><td t-att-style="label_td">Engagement Type</td><td t-att-style="value_td" t-out="d.get('engagement_type')"/></tr>
+        <tr><td t-att-style="label_td">Client Status</td><td t-att-style="value_td" t-out="d.get('client_status')"/></tr>
+        <tr t-if="d.get('poc')"><td t-att-style="label_td">Primary POC</td><td t-att-style="value_td">
+            <t t-out="d['poc']"/><div t-if="d.get('poc_contact')" style="color: #888888; font-size: 13px;" t-out="d['poc_contact']"/>
+        </td></tr>
+        <tr t-if="d.get('next_activity')"><td t-att-style="label_td">Next Activity</td><td t-att-style="value_td" t-out="d['next_activity']"/></tr>
+    </table>
+
+    <p style="margin: 0 0 24px 0;">
+        <a t-att-href="ctx.get('crm_url')" style="display: inline-block; background-color: #714B67; color: #FFFFFF; padding: 11px 22px; border-radius: 4px; text-decoration: none; font-weight: bold;">Open Opportunity and Reply</a>
+    </p>
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        You are receiving this because <t t-out="tag.get('by') or 'someone'"/> tagged you with @ in this opportunity's chatter. Reply from the opportunity so everyone working on it sees your answer.
     </div>
 </div>
             </field>

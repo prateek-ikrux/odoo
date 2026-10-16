@@ -54,7 +54,8 @@ actually lost — and a lost reason is now mandatory.
 | POC Location | `poc1_location` | Char | Yes |
 | POC LinkedIn | `poc1_linkedin` | Char, url widget | No (19.0.1.17.0) |
 | Client Status | `client_status` | Selection: Active / Inactive / Hold | Yes |
-| Initial Outreach Date | `initial_outreach_date` | Date | No (pre-filled with today) |
+| Start Date | `start_date` | Date (19.0.1.27.0) | No |
+| End Date | `end_date` | Date, not before the Start Date (19.0.1.27.0) | No |
 | Engagement Type | `engagement_type` | Selection: FTE / Consulting / FTE\|Consulting | Yes |
 | Commercial Basis | `commercial_basis` | Selection: Percentage / Lakhs per Month | No (set from Engagement Type) |
 | Commercial Agreement | `commercial_agreement_pct` | Float, percentage widget | No |
@@ -75,7 +76,6 @@ said the same thing:
 | Shown as | Is really | Why it was not a new field |
 |---|---|---|
 | Client Name | `name` | The opportunity's own title is the client's name (19.0.1.15.0) |
-| Expected Closure Date | `date_deadline` | Native forecasting already reads it |
 | **BDA** | `bda_ids`, replacing Salesperson on the form | Salesperson and BDA are one idea, so one field |
 | POC Name | `contact_name` | The person being dealt with **is** the primary POC |
 | Designation | `function` | |
@@ -161,7 +161,7 @@ Location and LinkedIn. Every POC is included, the primary first; an empty
 one is skipped.
 
 Every filter is optional: clients, Client Type, Industry / Domain, Client
-Status, Engagement Type, stage, BDA and an Initial Outreach date range. Lost
+Status, Engagement Type, stage, BDA and a Start Date range. Lost
 opportunities are left out unless **Include Lost Opportunities** is ticked,
 and **Primary POC Only** limits the sheet to each client's first POC. Selecting opportunities in
 the list and choosing **Actions > Export POCs** starts with just those clients.
@@ -196,6 +196,13 @@ A BDA in no sales team has no manager, so their changes reach leadership
 only. The upgrade to 19.0.1.25.0 makes whoever was on the change
 notification **Send to** list Leadership, and drops the activity reminder
 list and the BDA, team leader, assignee and upward-only ticks.
+
+**Email Tagged Colleagues** works outside the hierarchy: anyone tagged with
+@ in an opportunity's chatter gets an email saying who tagged them, on which
+opportunity, in a message or an internal note, with the message itself and
+an **Open Opportunity and Reply** button (19.0.1.27.0). It replaces the bare
+email Odoo would otherwise send them, whatever their own notification
+preference, and the message stays in their Odoo Inbox too.
 
 The stuck-in-stage report is a weekly summary, not news of one person's
 work, so it keeps its own **Send to** list, which starts empty; **Select
@@ -333,8 +340,8 @@ both columns by entry name, exactly as they did before.
   parsing and the date picker are untouched. The hover tooltip stays numeric,
   which is the one place the long form would not help.
 
-  It is on this module's five date fields: Expected Closure Date, Initial
-  Outreach Date and the three milestone dates. Dates elsewhere in Odoo are
+  It is on this module's five date fields: Start Date, End Date and the
+  three milestone dates. Dates elsewhere in Odoo are
   unaffected. The milestone dates carried a `numeric` option for the stock
   widget's habit of dropping the year from a date in the current year; this
   one always writes day, month and year, so the option went with it.

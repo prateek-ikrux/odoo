@@ -40,8 +40,8 @@
                         <field name="bda_ids" widget="many2many_tags"
                                placeholder="All BDAs..."
                                options="{'no_create': True}"/>
-                        <field name="date_from" placeholder="Start date..."/>
-                        <field name="date_to" placeholder="End date..."/>
+                        <field name="date_from" placeholder="Any..."/>
+                        <field name="date_to" placeholder="Any..."/>
                         <field name="include_lost"/>
                         <field name="primary_only"/>
                     </group>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.26.0',
+    'version': '19.0.1.27.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -58,9 +58,10 @@ the members of their teams. Email only ever goes up it.
   the picked types falls due (3 and 1 days, Call and Meeting by default), to
   the person it is assigned to and, each behind a tick that starts on, their
   sales team leader and leadership above them.
-* Tagged colleagues - anyone tagged with @ in an opportunity's chatter is
-  emailed, even if they handle notifications in Odoo, and the message stays
-  in their Inbox too.
+* Tagged colleagues - anyone tagged with @ in an opportunity's chatter gets
+  an email saying who tagged them on which opportunity, with the message and
+  a button into it, in place of Odoo's bare one. The message stays in their
+  Inbox too.
 
 Access is CRM's own Sales privilege, with one widening: a salesperson on
 "Own documents only" sees every opportunity they are a BDA on, not only those

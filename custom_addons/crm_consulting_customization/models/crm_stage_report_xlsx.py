@@ -15,7 +15,8 @@ STAGE_REPORT_COLUMNS = [
     ('POC Phone', 'poc_phone', 16),
     ('POC Email', 'poc_email', 28),
     ('Next Activity', 'next_activity', 34),
-    ('Expected Closure', 'expected_closure', 15),
+    ('Start Date', 'start_date', 15),
+    ('End Date', 'end_date', 15),
     ('Link', 'url', 10),
 ]
 

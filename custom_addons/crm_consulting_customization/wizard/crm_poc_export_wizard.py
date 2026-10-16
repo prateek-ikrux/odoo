@@ -44,8 +44,8 @@ class CrmPocExportWizard(models.TransientModel):
     stage_ids = fields.Many2many('crm.stage', string='Stages')
     bda_ids = fields.Many2many(
         'res.users', string='BDAs', domain="[('share', '=', False)]")
-    date_from = fields.Date('Outreach From')
-    date_to = fields.Date('Outreach To')
+    date_from = fields.Date('Start Date From')
+    date_to = fields.Date('Start Date To')
     include_lost = fields.Boolean(
         'Include Lost Opportunities',
         help='Lost opportunities are archived, so they are left out unless '
@@ -70,7 +70,7 @@ class CrmPocExportWizard(models.TransientModel):
     def _check_dates(self):
         for wizard in self:
             if wizard.date_from and wizard.date_to and wizard.date_from > wizard.date_to:
-                raise ValidationError(_("'Outreach From' cannot be later than 'Outreach To'."))
+                raise ValidationError(_("'Start Date From' cannot be later than 'Start Date To'."))
 
     def _get_domain(self):
         self.ensure_one()
@@ -92,9 +92,9 @@ class CrmPocExportWizard(models.TransientModel):
         if self.bda_ids:
             domain.append(('bda_ids', 'in', self.bda_ids.ids))
         if self.date_from:
-            domain.append(('initial_outreach_date', '>=', self.date_from))
+            domain.append(('start_date', '>=', self.date_from))
         if self.date_to:
-            domain.append(('initial_outreach_date', '<=', self.date_to))
+            domain.append(('start_date', '<=', self.date_to))
         return domain
 
     def _get_rows(self):
