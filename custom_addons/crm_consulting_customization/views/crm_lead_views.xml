@@ -343,6 +343,8 @@
                 <field name="roles_open" optional="hide"/>
                 <field name="start_date" widget="ordinal_date" optional="show"/>
                 <field name="end_date" widget="ordinal_date" optional="show"/>
+                <!-- What the Client Inactivity Report lists clients by. -->
+                <field name="last_activity_date" optional="show"/>
             </xpath>
             <!--
                 BDA replaces Salesperson here too, rather than sitting next to

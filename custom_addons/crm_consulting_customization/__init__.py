@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import models
 from . import wizard
+from .models.crm_lead import fill_last_activity_dates
 
 
 def post_init_hook(env):
@@ -24,18 +25,24 @@ def post_init_hook(env):
     for lead in leads:
         lead.bda_ids = [(4, lead.user_id.id)]
     setup_notification_defaults(env)
+    # The column arrived dated today on every opportunity; date it from each
+    # one's own history instead.
+    fill_last_activity_dates(env.cr)
 
 
 def setup_notification_defaults(env):
     """Starting values for the email notifications, set once.
 
     The won stage is where a deal is meant to rest, so it is left out of the
-    stuck-in-stage report until someone ticks it. Activity reminders start
+    Stage Ageing and Client Inactivity reports until someone ticks it. Activity reminders start
     out covering calls and meetings, and going up the hierarchy to the
     assignee's team leader and leadership. All are the Admin's to change
     after.
     """
-    env['crm.stage'].search([('is_won', '=', True)]).write({'stage_reminders': False})
+    env['crm.stage'].search([('is_won', '=', True)]).write({
+        'stage_reminders': False,
+        'inactivity_reminders': False,
+    })
     types = env['mail.activity.type']
     for xmlid in ('mail.mail_activity_data_call', 'mail.mail_activity_data_meeting'):
         types |= env.ref(xmlid, raise_if_not_found=False) or types

@@ -167,34 +167,35 @@
             </field>
         </record>
 
-        <!-- ── Stuck-in-stage report ─────────────────────────────────── -->
-        <!-- One email a week with the full list attached as a spreadsheet.
-             Rendered on the company; everything arrives in
-             ctx['crm_stage_report'], built by crm.lead._send_stage_report. -->
+        <!-- ── Pipeline reports ──────────────────────────────────────── -->
+        <!-- Two scheduled emails, each with the full list attached as a
+             spreadsheet. Rendered on the company; everything arrives in
+             ctx['crm_pipeline_report'], built by crm.lead._send_pipeline_report. -->
         <record id="mail_template_crm_stage_report" model="mail.template">
-            <field name="name">CRM: Stuck-in-Stage Report</field>
+            <field name="name">CRM: Stage Ageing Report</field>
             <field name="model_id" ref="base.model_res_company"/>
-            <field name="subject">{{ (ctx.get('crm_stage_report') or {}).get('subject', 'Stuck-in-stage report') }}</field>
+            <field name="subject">{{ (ctx.get('crm_pipeline_report') or {}).get('subject', 'Stage Ageing Report') }}</field>
             <field name="auto_delete" eval="True"/>
-            <field name="description">Sent weekly at midnight on the day picked in CRM settings, with an Excel list of every active client whose opportunity has not moved stage for the set number of days.</field>
+            <field name="description">Sent on the schedule picked in CRM settings - daily, weekly or monthly, at a set time - with an Excel list of every active client whose opportunity has not progressed beyond its current stage for the set number of days.</field>
             <field name="body_html" type="html">
 <div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-    <t t-set="r" t-value="ctx.get('crm_stage_report') or {}"/>
+    <t t-set="r" t-value="ctx.get('crm_pipeline_report') or {}"/>
     <t t-set="accent" t-value="'#D68910' if r.get('count') else '#1E8449'"/>
     <t t-set="th" t-value="'padding: 6px 16px 6px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
     <t t-set="td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
 
     <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
-        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Stuck-in-Stage Report</div>
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Stage Ageing Report</div>
         <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="r.get('as_of')"/>
     </div>
 
     <t t-if="r.get('count')">
         <p style="margin: 0 0 20px 0;">
             <strong><t t-out="r['count']"/> active client<t t-if="r['count'] != 1">s</t></strong>
-            <t t-if="r['count'] == 1">has</t><t t-else="">have</t> not moved stage in
-            <strong><t t-out="r.get('min_days')"/> days or more</strong>.
-            The full list, with BDAs, POCs and next activities, is attached.
+            <t t-if="r['count'] == 1">has</t><t t-else="">have</t> not progressed beyond the current
+            stage in <strong><t t-out="r.get('min_days')"/> days or more</strong>.
+            The complete list, including BDAs, points of contact and next scheduled activities,
+            is attached for review.
         </p>
 
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
@@ -205,12 +206,12 @@
             </tr>
         </table>
 
-        <div style="font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #888888; margin: 0 0 6px 0;">Longest in stage</div>
+        <div style="font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #888888; margin: 0 0 6px 0;">Longest time in current stage</div>
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
             <tr>
                 <th t-att-style="th">Client</th>
-                <th t-att-style="th">Stage</th>
-                <th t-att-style="th + ' text-align: right;'">Days</th>
+                <th t-att-style="th">Current Stage</th>
+                <th t-att-style="th + ' text-align: right;'">Days in Stage</th>
             </tr>
             <tr t-foreach="r.get('longest') or []" t-as="row">
                 <td t-att-style="td"><a t-att-href="row['url']" style="color: #714B67; text-decoration: none; font-weight: bold;" t-out="row['client']"/></td>
@@ -220,11 +221,73 @@
         </table>
     </t>
     <p t-else="" style="margin: 0 0 24px 0;">
-        No active client has been in the same stage for <t t-out="r.get('min_days')"/> days or more. Nothing is stuck this week.
+        Every active client has progressed within the last <t t-out="r.get('min_days')"/> days.
+        No opportunities currently require attention.
     </p>
 
     <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
-        You are receiving this because you are on the stuck-in-stage report list in CRM settings.
+        You are receiving this email as a recipient of the Stage Ageing Report, configured in CRM Settings.
+    </div>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_crm_inactivity_report" model="mail.template">
+            <field name="name">CRM: Client Inactivity Report</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="subject">{{ (ctx.get('crm_pipeline_report') or {}).get('subject', 'Client Inactivity Report') }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent on the schedule picked in CRM settings - daily, weekly or monthly, at a set time - with an Excel list of every active client whose opportunity has had no recorded activity for the set number of days.</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+    <t t-set="r" t-value="ctx.get('crm_pipeline_report') or {}"/>
+    <t t-set="accent" t-value="'#C0392B' if r.get('count') else '#1E8449'"/>
+    <t t-set="th" t-value="'padding: 6px 16px 6px 0; border-bottom: 2px solid #DDDDDD; color: #888888; font-size: 12px; font-weight: bold; text-align: left; text-transform: uppercase;'"/>
+    <t t-set="td" t-value="'padding: 6px 16px 6px 0; border-bottom: 1px solid #EEEEEE; vertical-align: top;'"/>
+
+    <div t-attf-style="border-left: 4px solid {{ accent }}; padding: 2px 0 2px 14px; margin: 0 0 20px 0;">
+        <div t-attf-style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ accent }};">Client Inactivity Report</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;" t-out="r.get('as_of')"/>
+    </div>
+
+    <t t-if="r.get('count')">
+        <p style="margin: 0 0 20px 0;">
+            <strong><t t-out="r['count']"/> active client<t t-if="r['count'] != 1">s</t></strong>
+            <t t-if="r['count'] == 1">has</t><t t-else="">have</t> had no recorded activity in the last
+            <strong><t t-out="r.get('min_days')"/> days or more</strong> - no updates, notes,
+            emails or scheduled activities. The complete list, including BDAs, points of contact
+            and next scheduled activities, is attached for follow-up.
+        </p>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+            <tr><th t-att-style="th">Stage</th><th t-att-style="th + ' text-align: right; width: 25%;'">Clients</th></tr>
+            <tr t-foreach="r.get('by_stage') or []" t-as="stage">
+                <td t-att-style="td" t-out="stage[0]"/>
+                <td t-att-style="td + ' text-align: right;'"><strong t-out="stage[1]"/></td>
+            </tr>
+        </table>
+
+        <div style="font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #888888; margin: 0 0 6px 0;">Longest without activity</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333;">
+            <tr>
+                <th t-att-style="th">Client</th>
+                <th t-att-style="th">Last Activity</th>
+                <th t-att-style="th + ' text-align: right;'">Days Inactive</th>
+            </tr>
+            <tr t-foreach="r.get('longest') or []" t-as="row">
+                <td t-att-style="td"><a t-att-href="row['url']" style="color: #714B67; text-decoration: none; font-weight: bold;" t-out="row['client']"/></td>
+                <td t-att-style="td" t-out="row['since']"/>
+                <td t-att-style="td + ' text-align: right;'"><strong t-out="row['days']"/></td>
+            </tr>
+        </table>
+    </t>
+    <p t-else="" style="margin: 0 0 24px 0;">
+        Every active client has had recorded activity within the last <t t-out="r.get('min_days')"/> days.
+        No follow-up is currently required.
+    </p>
+
+    <div style="border-top: 1px solid #EEEEEE; padding-top: 12px; font-size: 12px; color: #999999;">
+        You are receiving this email as a recipient of the Client Inactivity Report, configured in CRM Settings.
     </div>
 </div>
             </field>

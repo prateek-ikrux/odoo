@@ -2,7 +2,7 @@
 <odoo>
 
     <!-- Beside Is Won Stage?, which is what usually decides it: the stage a
-         deal is meant to rest in should not nag anyone. -->
+         deal is meant to rest in should not be flagged in either report. -->
     <record id="crm_stage_form_consulting" model="ir.ui.view">
         <field name="name">crm.stage.form.consulting</field>
         <field name="model">crm.stage</field>
@@ -10,6 +10,7 @@
         <field name="arch" type="xml">
             <field name="is_won" position="after">
                 <field name="stage_reminders"/>
+                <field name="inactivity_reminders"/>
             </field>
         </field>
     </record>
@@ -20,7 +21,8 @@
         <field name="inherit_id" ref="crm.crm_stage_tree"/>
         <field name="arch" type="xml">
             <field name="is_won" position="after">
-                <field name="stage_reminders" string="In Stuck Report" optional="show"/>
+                <field name="stage_reminders" string="In Stage Ageing Report" optional="show"/>
+                <field name="inactivity_reminders" string="In Inactivity Report" optional="show"/>
             </field>
         </field>
     </record>

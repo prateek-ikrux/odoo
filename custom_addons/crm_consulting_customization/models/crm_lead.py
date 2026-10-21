@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 import base64
+import calendar
 import logging
 from collections import Counter
 from datetime import datetime, time, timedelta
 
 import pytz
 
-from odoo import _, api, fields, models
+from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.misc import format_date
 
-from .crm_stage_report_xlsx import build_stage_report_xlsx
+from .crm_pipeline_report_xlsx import (
+    INACTIVITY_COLUMNS, STAGE_AGEING_COLUMNS, build_pipeline_report_xlsx,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -23,16 +26,73 @@ DEFAULT_REMINDER_DAYS = {
     ACTIVITY_REMINDER_DAYS_PARAM: '3,1',
 }
 
-# The weekly stuck-in-stage report: whether it is on, the weekday it goes out
-# on at midnight (0 is Monday, as in Python), the days in one stage that make
-# a client stuck, and the timezone that midnight is in - the one of whoever
-# last saved the settings, so it is their weekday and their midnight.
+# The two pipeline reports. For each: whether it is on; how often it goes out
+# - daily, weekly on a weekday (0 is Monday, as in Python), or monthly on a
+# day of the month - and at what time of day; and the days that put a client
+# on it. All of it is in one timezone, the one of whoever last saved the
+# settings, so it is their weekday and their clock. The older parameter keys
+# predate the reports' names and are kept for the values saved under them.
+REPORT_PERIOD_SELECTION = [
+    ('daily', 'Daily'),
+    ('weekly', 'Weekly'),
+    ('monthly', 'Monthly'),
+]
+DEFAULT_REPORT_PERIOD = 'weekly'
+DEFAULT_REPORT_WEEKDAY = 0
+DEFAULT_REPORT_MONTHDAY = 1
+DEFAULT_REPORT_TIME = 0.0  # hours after midnight: 9.5 is 09:30
+
 STAGE_REPORT_PARAM = 'crm_consulting.stage_reminders'
+STAGE_REPORT_PERIOD_PARAM = 'crm_consulting.stage_report_period'
 STAGE_REPORT_WEEKDAY_PARAM = 'crm_consulting.stage_report_weekday'
+STAGE_REPORT_MONTHDAY_PARAM = 'crm_consulting.stage_report_monthday'
+STAGE_REPORT_TIME_PARAM = 'crm_consulting.stage_report_time'
 STAGE_REPORT_MIN_DAYS_PARAM = 'crm_consulting.stage_report_min_days'
 STAGE_REPORT_TZ_PARAM = 'crm_consulting.stage_report_tz'
-DEFAULT_STAGE_REPORT_WEEKDAY = 0
+DEFAULT_STAGE_REPORT_WEEKDAY = DEFAULT_REPORT_WEEKDAY
 DEFAULT_STAGE_REPORT_MIN_DAYS = 6
+
+INACTIVITY_REPORT_PARAM = 'crm_consulting.inactivity_report'
+INACTIVITY_REPORT_PERIOD_PARAM = 'crm_consulting.inactivity_report_period'
+INACTIVITY_REPORT_WEEKDAY_PARAM = 'crm_consulting.inactivity_report_weekday'
+INACTIVITY_REPORT_MONTHDAY_PARAM = 'crm_consulting.inactivity_report_monthday'
+INACTIVITY_REPORT_TIME_PARAM = 'crm_consulting.inactivity_report_time'
+INACTIVITY_REPORT_MIN_DAYS_PARAM = 'crm_consulting.inactivity_report_min_days'
+DEFAULT_INACTIVITY_REPORT_MIN_DAYS = 7
+
+# Stage ageing: active clients that have not moved stage for the days set.
+# Client inactivity: active clients nobody has done anything on for the days
+# set - no edit, message or activity (see last_activity_date).
+PIPELINE_REPORTS = {
+    'stage': {
+        'enabled_param': STAGE_REPORT_PARAM,
+        'period_param': STAGE_REPORT_PERIOD_PARAM,
+        'weekday_param': STAGE_REPORT_WEEKDAY_PARAM,
+        'monthday_param': STAGE_REPORT_MONTHDAY_PARAM,
+        'time_param': STAGE_REPORT_TIME_PARAM,
+        'last_sent_param': 'crm_consulting.stage_report_last_sent',
+        'min_days_param': STAGE_REPORT_MIN_DAYS_PARAM,
+        'default_min_days': DEFAULT_STAGE_REPORT_MIN_DAYS,
+        'stage_flag': 'stage_reminders',
+        'recipients': 'crm_stage_reminder_recipient_ids',
+        'template': 'crm_consulting_customization.mail_template_crm_stage_report',
+        'cron': 'crm_consulting_customization.ir_cron_crm_stage_reminders',
+    },
+    'inactivity': {
+        'enabled_param': INACTIVITY_REPORT_PARAM,
+        'period_param': INACTIVITY_REPORT_PERIOD_PARAM,
+        'weekday_param': INACTIVITY_REPORT_WEEKDAY_PARAM,
+        'monthday_param': INACTIVITY_REPORT_MONTHDAY_PARAM,
+        'time_param': INACTIVITY_REPORT_TIME_PARAM,
+        'last_sent_param': 'crm_consulting.inactivity_report_last_sent',
+        'min_days_param': INACTIVITY_REPORT_MIN_DAYS_PARAM,
+        'default_min_days': DEFAULT_INACTIVITY_REPORT_MIN_DAYS,
+        'stage_flag': 'inactivity_reminders',
+        'recipients': 'crm_inactivity_report_recipient_ids',
+        'template': 'crm_consulting_customization.mail_template_crm_inactivity_report',
+        'cron': 'crm_consulting_customization.ir_cron_crm_inactivity_report',
+    },
+}
 
 # The milestone flags, paired with the field that records when each was
 # raised. Kept in one place so create() and write() stay in step with the
@@ -65,6 +125,37 @@ PRIMARY_POC_FIELDS = {
     'poc1_location': 'location',
     'poc1_linkedin': 'linkedin',
 }
+
+
+def fill_last_activity_dates(cr):
+    """Date every opportunity's last activity from the history already there:
+    its creation, the last edit anyone but the system made, the last chatter
+    message not written by OdooBot, and the last activity someone scheduled
+    or rescheduled on it.
+
+    For the upgrade and the install that add the column. Left to Odoo, the
+    column's default would date every opportunity today, and the first
+    Client Inactivity Report would list nobody.
+    """
+    cr.execute("""
+        SELECT res_id FROM ir_model_data WHERE module = 'base' AND name = 'partner_root'
+    """)
+    row = cr.fetchone()
+    odoobot = row[0] if row else None
+    cr.execute("""
+        UPDATE crm_lead l
+           SET last_activity_date = GREATEST(
+                   l.create_date,
+                   CASE WHEN l.write_uid IS DISTINCT FROM %(root)s THEN l.write_date END,
+                   (SELECT max(m.date) FROM mail_message m
+                     WHERE m.model = 'crm.lead' AND m.res_id = l.id
+                       AND m.author_id IS DISTINCT FROM %(odoobot)s),
+                   (SELECT max(GREATEST(
+                               CASE WHEN a.create_uid IS DISTINCT FROM %(root)s THEN a.create_date END,
+                               CASE WHEN a.write_uid IS DISTINCT FROM %(root)s THEN a.write_date END))
+                      FROM mail_activity a
+                     WHERE a.res_model = 'crm.lead' AND a.res_id = l.id))
+    """, {'root': SUPERUSER_ID, 'odoobot': odoobot})
 
 
 class CrmLead(models.Model):
@@ -145,6 +236,22 @@ class CrmLead(models.Model):
         required=True,
         default='active',
         tracking=True,
+    )
+
+    # When someone last did anything on the opportunity: edited it (a stage
+    # move included), wrote in its chatter - a note, an email, or the client
+    # replying - or scheduled, rescheduled or completed an activity on it.
+    # What the system does on its own - scheduled jobs, OdooBot - does not
+    # count. The Client Inactivity Report lists clients by it.
+    last_activity_date = fields.Datetime(
+        string='Last Activity',
+        readonly=True,
+        copy=False,
+        index=True,
+        default=fields.Datetime.now,
+        help="When anyone last edited this opportunity, wrote in its chatter, "
+             "or scheduled or completed an activity on it. Automatic changes "
+             "do not count.",
     )
 
     # When the engagement starts and ends. Both optional and left empty until
@@ -484,6 +591,8 @@ class CrmLead(models.Model):
         return leads
 
     def write(self, vals):
+        if self._is_human_activity() and set(vals) - {'last_activity_date'}:
+            vals = dict(vals, last_activity_date=fields.Datetime.now())
         res = super().write(vals)
         self._check_required_numbers(vals)
         if values := self._primary_poc_values(vals):
@@ -540,6 +649,31 @@ class CrmLead(models.Model):
                     lead[date_field] = False
 
     # -------------------------------------------------------------------
+    # Last activity
+    # -------------------------------------------------------------------
+    def _is_human_activity(self):
+        """Whether what is happening now is someone's doing rather than the
+        system's: scheduled jobs and OdooBot run as the superuser. sudo does
+        not change who that is."""
+        return not self.env.user._is_superuser()
+
+    def _touch_last_activity(self):
+        """Mark the opportunities as worked on just now. Through the base
+        write: nothing else about them changes, so none of write()'s
+        follow-up applies."""
+        if self:
+            super(CrmLead, self.sudo()).write({'last_activity_date': fields.Datetime.now()})
+
+    def message_post(self, **kwargs):
+        message = super().message_post(**kwargs)
+        # Judged by the author rather than by who runs the code: an incoming
+        # email is posted by the mail gateway's job but written by the client,
+        # and counts. OdooBot's own messages do not.
+        if message.author_id != self.env.ref('base.partner_root'):
+            self._touch_last_activity()
+        return message
+
+    # -------------------------------------------------------------------
     # Email notifications
     # -------------------------------------------------------------------
     # Change notifications and activity reminders follow one hierarchy of
@@ -549,9 +683,9 @@ class CrmLead(models.Model):
     #   Managers    - the leaders of active sales teams
     #   BDAs        - everyone else, filed under the leader of their team
     #
-    # Someone on two levels counts at the higher. The stuck-in-stage report is
-    # a weekly summary rather than news about one person's work, and keeps a
-    # list of its own. Only opportunities: leads raised by the mail alias or
+    # Someone on two levels counts at the higher. The two pipeline reports
+    # are weekly summaries rather than news about one person's work, and each
+    # keeps a list of its own. Only opportunities: leads raised by the mail alias or
     # the website form would otherwise mail people about records nobody has
     # looked at yet.
 
@@ -854,68 +988,142 @@ class CrmLead(models.Model):
             # A notification must never block the deletion it reports on.
             _logger.exception("CRM deletion notification failed for %s.", leads.ids)
 
-    # ── Stuck-in-stage report ─────────────────────────────────────
-    # One email a week, at midnight on the weekday picked in CRM settings,
-    # carrying an Excel list of every active client whose opportunity has sat
-    # in one stage for at least the days picked there. How long it has sat is
-    # CRM's own date_last_stage_update, which CRM resets on every stage change.
+    # ── Pipeline reports ──────────────────────────────────────────
+    # Two emails, each on the schedule set for it in CRM settings - daily,
+    # weekly or monthly, at a time of day - each with an Excel list attached
+    # and its own recipients:
+    #
+    #   Stage Ageing      - active clients whose opportunity has not moved
+    #                       stage for the days set. Time in stage is CRM's own
+    #                       date_last_stage_update, reset on every stage move.
+    #   Client Inactivity - active clients nobody has worked on for the days
+    #                       set, by last_activity_date.
+    #
+    # Each stage says whether it is included in each report.
+    #
+    # Each report's job runs every day at the time set, and sends only on the
+    # days its schedule names. Odoo moves a job's next run on by its interval
+    # once the run is over, overwriting anything the run itself set, so a
+    # daily job deciding for itself is what lets the schedule be any of the
+    # three - and Odoo keeps the hour of a daily job across DST changes.
 
     @api.model
-    def _stage_report_settings(self):
-        """(weekday, min_days, tz) as set in CRM settings."""
-        params = self.env['ir.config_parameter'].sudo()
-        weekday = params.get_param(STAGE_REPORT_WEEKDAY_PARAM) or ''
-        min_days = params.get_param(STAGE_REPORT_MIN_DAYS_PARAM) or ''
+    def _report_tz(self):
         try:
-            tz = pytz.timezone(params.get_param(STAGE_REPORT_TZ_PARAM) or 'UTC')
+            return pytz.timezone(self.env['ir.config_parameter'].sudo().get_param(
+                STAGE_REPORT_TZ_PARAM) or 'UTC')
         except pytz.UnknownTimeZoneError:
-            tz = pytz.utc
-        weekday = int(weekday) if weekday.isdigit() and int(weekday) < 7 \
-            else DEFAULT_STAGE_REPORT_WEEKDAY
+            return pytz.utc
+
+    @api.model
+    def _pipeline_report_schedule(self, kind):
+        """How often and when one report goes out, as set in CRM settings:
+        period, weekday, monthday and time (hours after midnight, as a float),
+        each falling back to its default when unset or out of range."""
+        report = PIPELINE_REPORTS[kind]
+        params = self.env['ir.config_parameter'].sudo()
+
+        def number(param, cast, low, high, default):
+            try:
+                value = cast(params.get_param(report[param]) or '')
+            except ValueError:
+                return default
+            return value if low <= value < high else default
+
+        period = params.get_param(report['period_param'])
+        return {
+            'period': period if period in dict(REPORT_PERIOD_SELECTION) else DEFAULT_REPORT_PERIOD,
+            'weekday': number('weekday_param', int, 0, 7, DEFAULT_REPORT_WEEKDAY),
+            'monthday': number('monthday_param', int, 1, 32, DEFAULT_REPORT_MONTHDAY),
+            'time': number('time_param', float, 0, 24, DEFAULT_REPORT_TIME),
+        }
+
+    @api.model
+    def _pipeline_report_settings(self, kind):
+        """(min_days, tz) of one report, as set in CRM settings."""
+        report = PIPELINE_REPORTS[kind]
+        min_days = self.env['ir.config_parameter'].sudo().get_param(report['min_days_param']) or ''
         min_days = int(min_days) if min_days.isdigit() and int(min_days) > 0 \
-            else DEFAULT_STAGE_REPORT_MIN_DAYS
-        return weekday, min_days, tz
+            else report['default_min_days']
+        return min_days, self._report_tz()
+
+    @api.model
+    def _is_pipeline_report_day(self, kind, day):
+        """Whether the report's schedule names this day. A monthly report set
+        for a day a month does not have - the 31st, say - goes out on the
+        month's last day instead."""
+        schedule = self._pipeline_report_schedule(kind)
+        if schedule['period'] == 'daily':
+            return True
+        if schedule['period'] == 'weekly':
+            return day.weekday() == schedule['weekday']
+        last_day = calendar.monthrange(day.year, day.month)[1]
+        return day.day == min(schedule['monthday'], last_day)
+
+    @api.model
+    def _run_pipeline_report(self, kind):
+        """One report's daily run: sends on the days its schedule names, at
+        most once a day - saving the settings can bring the next run forward
+        to later the same day - and nothing while it is switched off."""
+        report = PIPELINE_REPORTS[kind]
+        if not self._notify_enabled(report['enabled_param']):
+            return
+        today = pytz.utc.localize(fields.Datetime.now()).astimezone(self._report_tz()).date()
+        if not self._is_pipeline_report_day(kind, today):
+            return
+        params = self.env['ir.config_parameter'].sudo()
+        if params.get_param(report['last_sent_param']) == today.isoformat():
+            return
+        if self._send_pipeline_report(kind, today):
+            params.set_param(report['last_sent_param'], today.isoformat())
 
     @api.model
     def _cron_send_stage_report(self):
-        """The weekly run. Sends nothing while the report is switched off."""
-        if not self._notify_enabled(STAGE_REPORT_PARAM):
-            return True
-        self._send_stage_report()
+        self._run_pipeline_report('stage')
         return True
 
     @api.model
-    def _get_stage_report_rows(self, report_date, min_days, tz):
-        """Active clients' opportunities in a stage that is in the report,
-        in that stage for min_days or more as of report_date - longest first.
+    def _cron_send_inactivity_report(self):
+        self._run_pipeline_report('inactivity')
+        return True
+
+    @api.model
+    def _report_cutoff(self, report_date, min_days, tz):
+        """The naive UTC moment before which something has to have happened
+        to be min_days or more old on report_date.
 
         Days are counted between calendar days in the report's timezone, so
-        an opportunity that moved last Monday is 7 days in stage on the
-        following Monday, whatever the hour either happened at.
+        something that happened last Monday is 7 days old on the following
+        Monday, whatever the hour either fell at: it has to be before the
+        local midnight that starts the day after report_date - min_days.
         """
-        # In stage since report_date - min_days or earlier: moved before the
-        # local midnight that starts the day after that.
-        cutoff = tz.localize(datetime.combine(
+        return tz.localize(datetime.combine(
             report_date - timedelta(days=min_days - 1), time.min,
         )).astimezone(pytz.utc).replace(tzinfo=None)
+
+    @api.model
+    def _get_pipeline_report_rows(self, kind, report_date, min_days, tz):
+        """Active clients' opportunities in a stage included in the report,
+        whose clock - time in stage, or time since anyone did anything on
+        them - has run for min_days or more by report_date. Longest first."""
+        cutoff = self._report_cutoff(report_date, min_days, tz)
+        clock = 'date_last_stage_update' if kind == 'stage' else 'last_activity_date'
         leads = self.sudo().search([
             ('type', '=', 'opportunity'),
             ('client_status', '=', 'active'),
-            ('stage_id.stage_reminders', '=', True),
-            '|', ('date_last_stage_update', '<', cutoff),
-                 '&', ('date_last_stage_update', '=', False), ('create_date', '<', cutoff),
+            (f"stage_id.{PIPELINE_REPORTS[kind]['stage_flag']}", '=', True),
+            '|', (clock, '<', cutoff),
+                 '&', (clock, '=', False), ('create_date', '<', cutoff),
         ])
         rows = []
         for lead in leads:
-            moved = lead.date_last_stage_update or lead.create_date
-            entered = pytz.utc.localize(moved).astimezone(tz).date()
-            days = (report_date - entered).days
+            since = pytz.utc.localize(lead[clock] or lead.create_date).astimezone(tz).date()
             details = lead._get_mail_details()
             rows.append({
                 'client': lead.name or '',
                 'stage': lead.stage_id.name or '',
-                'since': self._short_date(self.env, entered),
-                'days': days,
+                'since': self._short_date(self.env, since),
+                'days': (report_date - since).days,
                 'bdas': details['bdas'],
                 'client_type': details['client_type'],
                 'industry': details['industry'],
@@ -932,51 +1140,56 @@ class CrmLead(models.Model):
         return rows
 
     @api.model
-    def _send_stage_report(self, report_date=None):
-        """Build the report as of report_date - today in the report's
-        timezone by default - and email it to the people picked in CRM
+    def _send_pipeline_report(self, kind, report_date=None):
+        """Build one report as of report_date - today in the report's
+        timezone by default - and email it to its recipients picked in CRM
         settings. Returns how many people it went to.
 
-        Sent even when nobody is stuck, so a quiet week still arrives and
+        Sent even when no client is listed, so a quiet week still arrives and
         says so, rather than leaving the list wondering whether it ran.
         """
-        _weekday, min_days, tz = self._stage_report_settings()
-        partners = self._mail_partners(self.env.company.sudo().crm_stage_reminder_recipient_ids)
-        template = self.env.ref('crm_consulting_customization.mail_template_crm_stage_report',
-                                raise_if_not_found=False)
+        report = PIPELINE_REPORTS[kind]
+        min_days, tz = self._pipeline_report_settings(kind)
+        partners = self._mail_partners(self.env.company.sudo()[report['recipients']])
+        template = self.env.ref(report['template'], raise_if_not_found=False)
         if not partners or not template:
             if not template:
-                _logger.warning("CRM stuck-in-stage report: mail template is missing.")
+                _logger.warning("CRM %s report: mail template is missing.", kind)
             return 0
         report_date = report_date or pytz.utc.localize(fields.Datetime.now()).astimezone(tz).date()
-        rows = self._get_stage_report_rows(report_date, min_days, tz)
+        rows = self._get_pipeline_report_rows(kind, report_date, min_days, tz)
         as_of = self._long_date(self.env, report_date)
-        plural = '' if len(rows) == 1 else 's'
+        count = len(rows)
+        clients = _('1 client') if count == 1 else _('%s clients', count)
+        if kind == 'stage':
+            title = _('Stage Ageing Report')
+            subtitle = _('Active clients that have not progressed beyond their current stage '
+                         'in %(days)s days or more, as of %(date)s - %(clients)s',
+                         days=min_days, date=as_of, clients=clients)
+            columns, sheet, filename = STAGE_AGEING_COLUMNS, _('Stage Ageing'), 'Stage_Ageing'
+        else:
+            title = _('Client Inactivity Report')
+            subtitle = _('Active clients with no recorded activity in the last %(days)s days '
+                         'or more, as of %(date)s - %(clients)s',
+                         days=min_days, date=as_of, clients=clients)
+            columns, sheet, filename = INACTIVITY_COLUMNS, _('Client Inactivity'), 'Client_Inactivity'
         values = {
-            'count': len(rows),
+            'count': count,
             'min_days': min_days,
             'as_of': as_of,
             'by_stage': sorted(Counter(r['stage'] for r in rows).items(), key=lambda kv: -kv[1]),
             'longest': rows[:5],
-            'subject': _('Stuck-in-stage report: %(count)s client%(s)s, %(date)s',
-                         count=len(rows), s=plural,
+            'subject': _('%(title)s - %(clients)s - %(date)s', title=title, clients=clients,
                          date=self._short_date(self.env, report_date)),
         }
         email_values = self._mail_email_values(partners)
         if rows:
-            xlsx = build_stage_report_xlsx(
-                rows,
-                _('Stuck-in-Stage Report'),
-                _('Active clients in the same stage for %(days)s days or more, as of '
-                  '%(date)s - %(count)s client%(s)s',
-                  days=min_days, date=as_of, count=len(rows), s=plural),
-                min_days,
-            )
+            xlsx = build_pipeline_report_xlsx(rows, columns, sheet, title, subtitle, min_days)
             email_values['attachments'] = [(
-                'Stuck_Clients_%s.xlsx' % report_date.strftime('%Y-%m-%d'),
+                '%s_%s.xlsx' % (filename, report_date.strftime('%Y-%m-%d')),
                 base64.b64encode(xlsx),
             )]
-        template.sudo().with_context(crm_stage_report=values).send_mail(
+        template.sudo().with_context(crm_pipeline_report=values).send_mail(
             self.env.company.id, email_values=email_values, force_send=False)
         # Out now, not on the mail queue's next hourly run.
         self.env.ref('mail.ir_cron_mail_scheduler_action')._trigger()

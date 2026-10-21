@@ -7,8 +7,13 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from .crm_lead import (
-    ACTIVITY_REMINDER_DAYS_PARAM, DEFAULT_STAGE_REPORT_MIN_DAYS, STAGE_REPORT_MIN_DAYS_PARAM,
-    STAGE_REPORT_PARAM, STAGE_REPORT_TZ_PARAM, STAGE_REPORT_WEEKDAY_PARAM,
+    ACTIVITY_REMINDER_DAYS_PARAM, DEFAULT_INACTIVITY_REPORT_MIN_DAYS, DEFAULT_REPORT_MONTHDAY,
+    DEFAULT_REPORT_PERIOD, DEFAULT_REPORT_TIME, DEFAULT_STAGE_REPORT_MIN_DAYS,
+    INACTIVITY_REPORT_MIN_DAYS_PARAM, INACTIVITY_REPORT_MONTHDAY_PARAM, INACTIVITY_REPORT_PARAM,
+    INACTIVITY_REPORT_PERIOD_PARAM, INACTIVITY_REPORT_TIME_PARAM, INACTIVITY_REPORT_WEEKDAY_PARAM,
+    PIPELINE_REPORTS, REPORT_PERIOD_SELECTION, STAGE_REPORT_MIN_DAYS_PARAM,
+    STAGE_REPORT_MONTHDAY_PARAM, STAGE_REPORT_PARAM, STAGE_REPORT_PERIOD_PARAM,
+    STAGE_REPORT_TIME_PARAM, STAGE_REPORT_TZ_PARAM, STAGE_REPORT_WEEKDAY_PARAM,
 )
 
 WEEKDAY_SELECTION = [
@@ -36,28 +41,80 @@ class ResConfigSettings(models.TransientModel):
              "made the change, and never to them.",
     )
 
-    # ── Stuck-in-stage report ─────────────────────────────────────
+    # ── Stage Ageing Report ───────────────────────────────────────
     crm_stage_reminders = fields.Boolean(
-        string='Stuck-in-Stage Report',
+        string='Stage Ageing Report',
         config_parameter=STAGE_REPORT_PARAM,
-        help="Once a week, email an Excel list of every active client whose "
-             "opportunity has not moved stage for the days set below.",
+        help="On the schedule set below, email an Excel list of every active "
+             "client whose opportunity has not progressed beyond its current "
+             "stage for the days set below.",
+    )
+    crm_stage_report_period = fields.Selection(
+        REPORT_PERIOD_SELECTION, string='Frequency', default=DEFAULT_REPORT_PERIOD,
+        config_parameter=STAGE_REPORT_PERIOD_PARAM,
     )
     crm_stage_report_weekday = fields.Selection(
-        WEEKDAY_SELECTION, string='Send every', default='0',
+        WEEKDAY_SELECTION, string='On', default='0',
         config_parameter=STAGE_REPORT_WEEKDAY_PARAM,
-        help="The report goes out at midnight at the start of this day, in "
-             "your own timezone.",
+    )
+    crm_stage_report_monthday = fields.Integer(
+        string='On day', default=DEFAULT_REPORT_MONTHDAY,
+        config_parameter=STAGE_REPORT_MONTHDAY_PARAM,
+        help="Day of the month, 1 to 31. In a month without that day, the "
+             "report goes out on the month's last day.",
+    )
+    crm_stage_report_time = fields.Float(
+        string='At', default=DEFAULT_REPORT_TIME,
+        config_parameter=STAGE_REPORT_TIME_PARAM,
+        help="Time of day the report goes out, in your own timezone.",
     )
     crm_stage_report_min_days = fields.Integer(
-        string='Stuck after', default=DEFAULT_STAGE_REPORT_MIN_DAYS,
+        string='Flag after', default=DEFAULT_STAGE_REPORT_MIN_DAYS,
         config_parameter=STAGE_REPORT_MIN_DAYS_PARAM,
-        help="A client is listed once its opportunity has been in the same "
+        help="A client is listed once its opportunity has remained in the same "
              "stage for this many days or more, counted to the day the report "
              "goes out.",
     )
     crm_stage_reminder_recipient_ids = fields.Many2many(
         related='company_id.crm_stage_reminder_recipient_ids', readonly=False,
+    )
+
+    # ── Client Inactivity Report ──────────────────────────────────
+    crm_inactivity_report = fields.Boolean(
+        string='Client Inactivity Report',
+        config_parameter=INACTIVITY_REPORT_PARAM,
+        help="On the schedule set below, email an Excel list of every active "
+             "client whose opportunity has had no recorded activity - no edit, "
+             "chatter message or activity - for the days set below.",
+    )
+    crm_inactivity_report_period = fields.Selection(
+        REPORT_PERIOD_SELECTION, string='Frequency', default=DEFAULT_REPORT_PERIOD,
+        config_parameter=INACTIVITY_REPORT_PERIOD_PARAM,
+    )
+    crm_inactivity_report_weekday = fields.Selection(
+        WEEKDAY_SELECTION, string='On', default='0',
+        config_parameter=INACTIVITY_REPORT_WEEKDAY_PARAM,
+    )
+    crm_inactivity_report_monthday = fields.Integer(
+        string='On day', default=DEFAULT_REPORT_MONTHDAY,
+        config_parameter=INACTIVITY_REPORT_MONTHDAY_PARAM,
+        help="Day of the month, 1 to 31. In a month without that day, the "
+             "report goes out on the month's last day.",
+    )
+    crm_inactivity_report_time = fields.Float(
+        string='At', default=DEFAULT_REPORT_TIME,
+        config_parameter=INACTIVITY_REPORT_TIME_PARAM,
+        help="Time of day the report goes out, in your own timezone.",
+    )
+    crm_inactivity_report_min_days = fields.Integer(
+        string='Flag after', default=DEFAULT_INACTIVITY_REPORT_MIN_DAYS,
+        config_parameter=INACTIVITY_REPORT_MIN_DAYS_PARAM,
+        help="A client is listed once nobody has done anything on its "
+             "opportunity for this many days or more, counted to the day the "
+             "report goes out.",
+    )
+    crm_inactivity_report_recipient_ids = fields.Many2many(
+        related='company_id.crm_inactivity_report_recipient_ids', readonly=False,
     )
 
     # ── Activity reminders ────────────────────────────────────────
@@ -97,6 +154,7 @@ class ResConfigSettings(models.TransientModel):
     # a field of the company. The button names the list in its context.
     _CRM_RECIPIENT_FIELDS = (
         'crm_stage_reminder_recipient_ids',
+        'crm_inactivity_report_recipient_ids',
     )
 
     _CRM_DAY_FIELDS = {
@@ -118,39 +176,68 @@ class ResConfigSettings(models.TransientModel):
         return values
 
     def set_values(self):
-        if self.crm_stage_reminders and self.crm_stage_report_min_days < 1:
-            raise ValidationError(_("'Stuck after' has to be at least 1 day."))
+        for prefix, title in (('crm_stage_report', _('Stage Ageing Report')),
+                              ('crm_inactivity_report', _('Client Inactivity Report'))):
+            if self[f'{prefix}_min_days'] < 1:
+                raise ValidationError(_("%s: 'Flag after' has to be at least 1 day.", title))
+            if self[f'{prefix}_period'] == 'monthly' \
+                    and not 1 <= self[f'{prefix}_monthday'] <= 31:
+                raise ValidationError(_("%s: the day of the month has to be from 1 to 31.",
+                                        title))
+            if not 0 <= self[f'{prefix}_time'] < 24:
+                raise ValidationError(_("%s: the time has to be between 00:00 and 23:59.",
+                                        title))
         super().set_values()
         params = self.env['ir.config_parameter'].sudo()
         for fname, param in self._CRM_DAY_FIELDS.items():
             days = sorted(set(self[fname].mapped('days')), reverse=True)
             params.set_param(param, ','.join(map(str, days)))
-        self._crm_schedule_stage_report()
+        self._crm_schedule_pipeline_reports()
 
-    # ── Stuck-in-stage report schedule ────────────────────────────
+    # ── Pipeline report schedules ─────────────────────────────────
+    # The settings field holding each report's time of day.
+    _CRM_REPORT_TIME_FIELDS = {
+        'stage': 'crm_stage_report_time',
+        'inactivity': 'crm_inactivity_report_time',
+    }
+
     @api.model
-    def _crm_get_stage_report_cron(self):
+    def _crm_get_report_cron(self, kind):
         return self.sudo().with_context(active_test=False).env.ref(
-            'crm_consulting_customization.ir_cron_crm_stage_reminders',
-            raise_if_not_found=False)
+            PIPELINE_REPORTS[kind]['cron'], raise_if_not_found=False)
 
-    def _crm_schedule_stage_report(self):
-        """Point the weekly job at the next midnight that starts the picked
-        weekday, in the timezone of whoever is saving - and remember that
-        timezone, so the report counts days in it too.
+    def _crm_schedule_pipeline_reports(self):
+        """Run each report's job daily at its time of day, in the timezone of
+        whoever is saving - and remember that timezone, so the reports read
+        their weekday, day of the month and day counts in it too. The job
+        itself sends only on the days the frequency names.
 
-        Left alone when it already points there, so saving other settings
+        A job already set to run then is left alone, so saving other settings
         never shifts it.
         """
-        cron = self._crm_get_stage_report_cron()
-        if not cron:
-            return
         tz_name = self.env.user.tz or 'UTC'
         self.env['ir.config_parameter'].sudo().set_param(STAGE_REPORT_TZ_PARAM, tz_name)
-        nextcall = self._crm_next_report_call(int(self.crm_stage_report_weekday or 0), tz_name,
-                                              self.env.cr.now())
-        if cron.nextcall != nextcall or cron.interval_type != 'weeks' or cron.interval_number != 1:
-            cron.write({'nextcall': nextcall, 'interval_number': 1, 'interval_type': 'weeks'})
+        for kind, time_field in self._CRM_REPORT_TIME_FIELDS.items():
+            cron = self._crm_get_report_cron(kind)
+            if not cron:
+                continue
+            nextcall = self._crm_next_daily_call(self[time_field], tz_name, self.env.cr.now())
+            if cron.nextcall != nextcall or cron.interval_type != 'days' \
+                    or cron.interval_number != 1:
+                cron.write({'nextcall': nextcall, 'interval_number': 1, 'interval_type': 'days'})
+
+    @api.model
+    def _crm_next_daily_call(self, hours, tz_name, now_utc):
+        """The next time the clock in tz_name reads hours (9.5 is 09:30)
+        after now_utc, as naive UTC."""
+        tz = pytz.timezone(tz_name)
+        local_now = pytz.utc.localize(now_utc).astimezone(tz)
+        minutes = min(round((hours or 0) * 60), 24 * 60 - 1)
+        at = time(minutes // 60, minutes % 60)
+        target = tz.localize(datetime.combine(local_now.date(), at))
+        if target <= local_now:
+            target = tz.localize(datetime.combine(local_now.date() + timedelta(days=1), at))
+        return target.astimezone(pytz.utc).replace(tzinfo=None)
 
     @api.model
     def _crm_next_report_call(self, weekday, tz_name, now_utc):
@@ -164,9 +251,16 @@ class ResConfigSettings(models.TransientModel):
         return target.astimezone(pytz.utc).replace(tzinfo=None)
 
     def action_crm_stage_report_send_now(self):
-        """Send this week's report straight away, as of today - to check
-        what it looks like, or to catch someone up."""
-        sent_to = self.env['crm.lead']._send_stage_report()
+        """Send this week's Stage Ageing Report straight away, as of today -
+        to check what it looks like, or to catch someone up."""
+        return self._crm_send_report_now('stage', _('Stage Ageing Report'))
+
+    def action_crm_inactivity_report_send_now(self):
+        """Send this week's Client Inactivity Report straight away, as of today."""
+        return self._crm_send_report_now('inactivity', _('Client Inactivity Report'))
+
+    def _crm_send_report_now(self, kind, title):
+        sent_to = self.env['crm.lead']._send_pipeline_report(kind)
         if not sent_to:
             raise UserError(_("Pick at least one person with an email address under "
                               "'Send to' first."))
@@ -175,7 +269,7 @@ class ResConfigSettings(models.TransientModel):
             'tag': 'display_notification',
             'params': {
                 'type': 'success',
-                'message': _('Stuck-in-stage report sent to %(count)s %(who)s.', count=sent_to,
+                'message': _('%(title)s sent to %(count)s %(who)s.', title=title, count=sent_to,
                              who=_('person') if sent_to == 1 else _('people')),
             },
         }

@@ -5,9 +5,10 @@
          its details only while it is on. Change notifications and activity
          reminders follow one hierarchy - leadership picked here, sales team
          leaders as managers, their team members as BDAs - and only ever go
-         up it. The stuck-in-stage report is one weekly email with a
-         spreadsheet, so it goes to its own list; Select everyone and Clear
-         fill or empty that list in one click. -->
+         up it. The Stage Ageing and Client Inactivity reports are scheduled
+         emails with a spreadsheet, each sent daily, weekly or monthly at a
+         time picked here, so each goes to its own list; Select
+         everyone and Clear fill or empty a list in one click. -->
     <record id="res_config_settings_view_form_consulting" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.crm.consulting</field>
         <field name="model">res.config.settings</field>
@@ -63,21 +64,44 @@
                     </setting>
 
                     <setting id="crm_stage_reminders_setting"
-                             string="Stuck-in-Stage Report"
-                             help="Once a week, at midnight, email an Excel list of every active client whose opportunity has not moved stage for a set number of days.">
+                             string="Stage Ageing Report"
+                             help="On a schedule of your choosing, email an Excel list of every active client whose opportunity has not progressed beyond its current stage for a set number of days.">
                         <field name="crm_stage_reminders"/>
                         <div class="content-group mt16" invisible="not crm_stage_reminders">
                             <div class="row">
-                                <label for="crm_stage_report_weekday" string="Send every"
+                                <label for="crm_stage_report_period" string="Frequency"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_stage_report_period" class="w-auto oe_inline"
+                                           required="crm_stage_reminders"/>
+                                </div>
+                            </div>
+                            <div class="row mt8" invisible="crm_stage_report_period != 'weekly'">
+                                <label for="crm_stage_report_weekday" string="On"
                                        class="col-lg-3 o_light_label"/>
                                 <div class="col-lg-9">
                                     <field name="crm_stage_report_weekday" class="w-auto oe_inline"
-                                           required="crm_stage_reminders"/>
-                                    <span class="text-muted"> at midnight, your time</span>
+                                           required="crm_stage_reminders and crm_stage_report_period == 'weekly'"/>
+                                </div>
+                            </div>
+                            <div class="row mt8" invisible="crm_stage_report_period != 'monthly'">
+                                <label for="crm_stage_report_monthday" string="On day"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_stage_report_monthday" class="w-auto oe_inline"/>
+                                    <span class="text-muted"> of each month (the last day, in shorter months)</span>
                                 </div>
                             </div>
                             <div class="row mt8">
-                                <label for="crm_stage_report_min_days" string="Stuck after"
+                                <label for="crm_stage_report_time" string="At"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_stage_report_time" widget="float_time" class="w-auto oe_inline"/>
+                                    <span class="text-muted"> your time</span>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_stage_report_min_days" string="Flag after"
                                        class="col-lg-3 o_light_label"/>
                                 <div class="col-lg-9">
                                     <field name="crm_stage_report_min_days" class="w-auto oe_inline"/>
@@ -89,7 +113,7 @@
                                        class="col-lg-3 o_light_label"/>
                                 <field name="crm_stage_reminder_recipient_ids" class="col-lg-9"
                                        widget="many2many_tags_avatar"
-                                       placeholder="Pick who should get the report..."
+                                       placeholder="Pick who should receive the report..."
                                        options="{'no_create': True}"/>
                             </div>
                             <div class="row">
@@ -120,7 +144,95 @@
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
                                  role="alert" invisible="crm_stage_reminder_recipient_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
-                                <span>Nobody is picked yet, so the report will not go out.</span>
+                                <span>No recipients are selected, so the report will not be sent.</span>
+                            </div>
+                        </div>
+                    </setting>
+
+                    <setting id="crm_inactivity_report_setting"
+                             string="Client Inactivity Report"
+                             help="On a schedule of your choosing, email an Excel list of every active client whose opportunity has had no recorded activity - no edit, chatter message or activity - for a set number of days.">
+                        <field name="crm_inactivity_report"/>
+                        <div class="content-group mt16" invisible="not crm_inactivity_report">
+                            <div class="row">
+                                <label for="crm_inactivity_report_period" string="Frequency"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_inactivity_report_period" class="w-auto oe_inline"
+                                           required="crm_inactivity_report"/>
+                                </div>
+                            </div>
+                            <div class="row mt8" invisible="crm_inactivity_report_period != 'weekly'">
+                                <label for="crm_inactivity_report_weekday" string="On"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_inactivity_report_weekday" class="w-auto oe_inline"
+                                           required="crm_inactivity_report and crm_inactivity_report_period == 'weekly'"/>
+                                </div>
+                            </div>
+                            <div class="row mt8" invisible="crm_inactivity_report_period != 'monthly'">
+                                <label for="crm_inactivity_report_monthday" string="On day"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_inactivity_report_monthday" class="w-auto oe_inline"/>
+                                    <span class="text-muted"> of each month (the last day, in shorter months)</span>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_inactivity_report_time" string="At"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_inactivity_report_time" widget="float_time" class="w-auto oe_inline"/>
+                                    <span class="text-muted"> your time</span>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_inactivity_report_min_days" string="Flag after"
+                                       class="col-lg-3 o_light_label"/>
+                                <div class="col-lg-9">
+                                    <field name="crm_inactivity_report_min_days" class="w-auto oe_inline"/>
+                                    <span class="text-muted"> days or more without any recorded activity</span>
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <label for="crm_inactivity_report_recipient_ids" string="Send to"
+                                       class="col-lg-3 o_light_label"/>
+                                <field name="crm_inactivity_report_recipient_ids" class="col-lg-9"
+                                       widget="many2many_tags_avatar"
+                                       placeholder="Pick who should receive the report..."
+                                       options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 small mt-1">
+                                    <button name="action_crm_recipients_select_all" type="object"
+                                            string="Select everyone" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_inactivity_report_recipient_ids'}"/>
+                                    <span class="text-muted mx-1">·</span>
+                                    <button name="action_crm_recipients_clear" type="object"
+                                            string="Clear" class="btn-link p-0 align-baseline"
+                                            context="{'recipient_field': 'crm_inactivity_report_recipient_ids'}"/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                    Activity is any edit to the opportunity, a note, message or email
+                                    in its chatter, or an activity scheduled or completed on it.
+                                    Automatic changes do not count. Only active clients are listed;
+                                    choose which stages are included under CRM > Configuration > Stages.
+                                </div>
+                            </div>
+                            <div class="row mt8">
+                                <div class="offset-lg-3 col-lg-9">
+                                    <button name="action_crm_inactivity_report_send_now" type="object"
+                                            string="Send now" icon="fa-paper-plane"
+                                            class="btn-secondary btn-sm"
+                                            invisible="not crm_inactivity_report_recipient_ids"/>
+                                </div>
+                            </div>
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                 role="alert" invisible="crm_inactivity_report_recipient_ids">
+                                <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                <span>No recipients are selected, so the report will not be sent.</span>
                             </div>
                         </div>
                     </setting>

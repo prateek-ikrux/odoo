@@ -12,10 +12,29 @@ class MailActivity(models.Model):
     # resets it.
     crm_reminder_sent_days = fields.Integer(readonly=True, copy=False)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        activities = super().create(vals_list)
+        activities._touch_crm_leads()
+        return activities
+
     def write(self, vals):
         if 'date_deadline' in vals:
             vals.setdefault('crm_reminder_sent_days', 0)
-        return super().write(vals)
+        res = super().write(vals)
+        # The reminder job's own bookkeeping runs as the superuser, and is
+        # left out by _touch_crm_leads like any other automatic change.
+        self._touch_crm_leads()
+        return res
+
+    def _touch_crm_leads(self):
+        """Scheduling or rescheduling an activity on an opportunity is work
+        on it. Completing one posts in its chatter, which counts on its own."""
+        Lead = self.env['crm.lead']
+        if not Lead._is_human_activity():
+            return
+        lead_ids = {a.res_id for a in self if a.res_model == 'crm.lead' and a.res_id}
+        Lead.browse(lead_ids).exists()._touch_last_activity()
 
     @api.model
     def _cron_send_crm_activity_reminders(self):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.27.0',
+    'version': '19.0.1.28.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -48,12 +48,21 @@ the members of their teams. Email only ever goes up it.
   change: a BDA's change to their team leader and leadership, a manager's to
   leadership, and leadership's to nobody. Never to the person themselves or
   their peers. Automatic changes go to the opportunity's whole hierarchy.
-* Stuck-in-stage report - one email a week, at midnight on the weekday
-  picked (Monday by default), with an Excel list of every active client whose
-  opportunity has sat in one stage for the days picked or more (6 by
-  default). Each stage says whether it is included; the won stage starts
-  left out. It goes to its own list, nobody by default, which Select
-  everyone and Clear fill or empty in one click.
+* Stage Ageing Report - an email on the schedule picked - daily, weekly on
+  a weekday, or monthly on a day of the month, at a time of day (weekly on
+  Monday at midnight by default) - with an Excel list of every active client
+  whose opportunity has not progressed beyond its current stage for the days
+  picked or more (6 by default).
+* Client Inactivity Report - the same, for every active client whose
+  opportunity has had no recorded activity for the days picked or more (7 by
+  default). Activity is any edit to the opportunity, a note, message or
+  email in its chatter - a client's reply included - or an activity
+  scheduled, rescheduled or completed on it; automatic changes do not count.
+  When it last happened is the opportunity's Last Activity, in the list.
+
+  Each report has its own schedule and its own list. In each, every stage
+  says whether it is included, the won stage starting left out, and the report goes to its own list, nobody by default,
+  which Select everyone and Clear fill or empty in one click.
 * Activity reminders - a set number of days before a scheduled activity of
   the picked types falls due (3 and 1 days, Call and Meeting by default), to
   the person it is assigned to and, each behind a tick that starts on, their
@@ -96,7 +105,8 @@ can be picked as BDAs.
     },
     # Fills the BDA list of opportunities that predate this module, which
     # would otherwise be left with an owner who is not one of their own BDAs.
-    # Also switches off stuck-in-stage reminders on the won stage and picks
+    # Also leaves the won stage out of both pipeline reports, dates every
+    # opportunity's last activity from its history, and picks
     # the default activity types for activity reminders.
     'post_init_hook': 'post_init_hook',
     'installable': True,

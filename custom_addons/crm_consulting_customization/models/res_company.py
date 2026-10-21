@@ -19,7 +19,12 @@ class ResCompany(models.Model):
     )
     crm_stage_reminder_recipient_ids = fields.Many2many(
         'res.users', 'crm_stage_reminder_recipient_rel', 'company_id', 'user_id',
-        string='CRM Stuck-in-Stage Reminder Recipients',
+        string='CRM Stage Ageing Report Recipients',
+        domain="[('share', '=', False)]",
+    )
+    crm_inactivity_report_recipient_ids = fields.Many2many(
+        'res.users', 'crm_inactivity_report_recipient_rel', 'company_id', 'user_id',
+        string='CRM Client Inactivity Report Recipients',
         domain="[('share', '=', False)]",
     )
     crm_activity_reminder_type_ids = fields.Many2many(
