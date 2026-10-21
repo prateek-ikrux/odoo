@@ -1,6 +1,6 @@
 import { Plugin } from "@html_editor/plugin";
 import { closestElement, descendants, selectElements } from "@html_editor/utils/dom_traversal";
-import { mergeAdjacentTextNodes, unwrapContents } from "@html_editor/utils/dom";
+import { mergeAdjacentTextNodes, removeClass, unwrapContents } from "@html_editor/utils/dom";
 import { findInSelection, callbacksForCursorUpdate } from "@html_editor/utils/selection";
 import { _t } from "@web/core/l10n/translation";
 import { LinkPopover } from "./link_popover";
@@ -12,6 +12,7 @@ import {
     isPhrasingContent,
     isProtected,
     isProtecting,
+    isTextNode,
     isVisible,
     isZwnbsp,
 } from "@html_editor/utils/dom_info";
@@ -21,7 +22,15 @@ import { memoize } from "@web/core/utils/functions";
 import { withSequence } from "@html_editor/utils/resource";
 import { isBlock, closestBlock } from "@html_editor/utils/blocks";
 import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
+import { removeFormat } from "@html_editor/core/format_plugin";
 import { isBrowserFirefox, isBrowserSafari } from "@web/core/browser/feature_detection";
+import { FONT_SIZE_CLASSES, formatsSpecs } from "@html_editor/utils/formatting";
+
+const FONT_SIZED_SPAN_SELECTOR = [
+    ...FONT_SIZE_CLASSES.map((className) => `span.${className}`),
+    'span[style*="font-size"]',
+].join(", ");
+const FONT_SIZED_BUTTON_CLASS = "o_btn_with_font_size";
 
 /** @typedef {import("@odoo/owl").Component} Component */
 /** @typedef {import("plugins").CSSSelector} CSSSelector */
@@ -90,7 +99,7 @@ async function fetchInternalMetaData(url) {
     }
 
     const result = await keepLastPromise
-        .add(fetch(urlParsed))
+        .add(fetch(urlParsed, { headers: { "Odoo-Link-Preview": "True" } }))
         .then((response) => response.text())
         .then(async (content) => {
             const html_parser = new window.DOMParser();
@@ -119,11 +128,12 @@ async function fetchAttachmentMetaData(url, ormService) {
     try {
         const urlParsed = new URL(url, window.location.origin);
         const attachementId = parseInt(urlParsed.pathname.split("/").pop());
-        return (
+        const result = (
             await ormService.read("ir.attachment", [attachementId], ["name", "mimetype", "type"])
         )[0];
+        return result || { name: url, type: "url" };
     } catch {
-        return { name: url };
+        return { name: url, type: "url" };
     }
 }
 
@@ -302,9 +312,17 @@ export class LinkPlugin extends Plugin {
         before_paste_handlers: this.updateCurrentLinkSyncState.bind(this),
         after_paste_handlers: this.onPasteNormalizeLink.bind(this),
         selectionchange_handlers: this.handleSelectionChange.bind(this),
-        clean_for_save_handlers: ({ root }) => this.removeEmptyLinks(root),
-        normalize_handlers: this.normalizeLink.bind(this),
+        clean_for_save_handlers: ({ root }) => {
+            this.removeEmptyLinks(root);
+            this.clearFontSizedButtonClass(root);
+        },
+        normalize_handlers: [
+            this.normalizeLink.bind(this),
+            this.updateFontSizedButtonClass.bind(this),
+        ],
+        system_classes: [FONT_SIZED_BUTTON_CLASS],
         after_insert_handlers: this.handleAfterInsert.bind(this),
+        format_selection_handlers: this.applyFormatToLinks.bind(this),
         on_will_remove_handlers: () => this.closeLinkTools(),
 
         /** Overrides */
@@ -348,11 +366,50 @@ export class LinkPlugin extends Plugin {
                 ev.preventDefault();
             }
         });
-        this.addDomListener(this.editable, "mousedown", () => {
-            this._isNavigatingByMouse = true;
-        });
-        this.addDomListener(this.editable, "keydown", () => {
-            delete this._isNavigatingByMouse;
+        this.addDomListener(this.editable, "pointerdown", (ev) => {
+            const clickedEl = this.document.elementFromPoint(ev.clientX, ev.clientY);
+            if (!clickedEl || !isContentEditable(clickedEl)) {
+                return;
+            }
+            let caretPosition = {};
+            if (this.document.caretPositionFromPoint) {
+                // Firefox API
+                const pos = this.document.caretPositionFromPoint(ev.clientX, ev.clientY);
+                caretPosition = pos;
+            } else if (this.document.caretRangeFromPoint) {
+                // Chrome / Safari API
+                const range = document.caretRangeFromPoint(ev.clientX, ev.clientY);
+                caretPosition.offsetNode = range?.startContainer;
+                caretPosition.offset = range?.startOffset;
+            }
+            const link = caretPosition?.offsetNode && closestElement(caretPosition.offsetNode, "A");
+            if (clickedEl.closest("a") && isZwnbsp(caretPosition.offsetNode)) {
+                // This handles the case of clicking at the start of the button
+                const isFirstFeff = !caretPosition.offsetNode.previousSibling;
+                if (isFirstFeff && caretPosition.offset === 0) {
+                    ev.preventDefault();
+                    this.dependencies.selection.setSelection({
+                        anchorNode: clickedEl,
+                        anchorOffset: 1,
+                    });
+                    this.dependencies.selection.focusEditable();
+                }
+            } else if (!clickedEl.closest("a") && link) {
+                // This handles the case of clicking outside the link that is
+                // at the start/end of paragraph
+                const anchorFeff =
+                    nodeSize(caretPosition.offsetNode) === caretPosition.offset
+                        ? link.nextSibling
+                        : link.previousSibling;
+                if (anchorFeff && isZwnbsp(anchorFeff)) {
+                    ev.preventDefault();
+                    this.dependencies.selection.setSelection({
+                        anchorNode: anchorFeff,
+                        anchorOffset: 1,
+                    });
+                    this.dependencies.selection.focusEditable();
+                }
+            }
         });
         this.addDomListener(this.editable, "auxclick", (ev) => {
             if (ev.button === 1) {
@@ -470,6 +527,54 @@ export class LinkPlugin extends Plugin {
         return pasteAsURLCommand;
     }
 
+    /**
+     * Apply the format on the fully selected links.
+     *
+     * @param {string} formatName
+     * @param {Object} options
+     */
+    applyFormatToLinks(formatName, { applyStyle, formatProps } = {}) {
+        const formatSpec = formatsSpecs[formatName];
+        if (!formatSpec.addNeutralStyle) {
+            return;
+        }
+        // Links often have styles applied to them by css which can only be
+        // overriden by applying the style to the link itself. Buttons are
+        // excluded as their font size only applies from inside them.
+        const links = new Set();
+        for (const node of this.dependencies.selection.getTargetedNodes()) {
+            if (!isTextNode(node)) {
+                continue;
+            }
+            const link = closestElement(node, "a:not(.btn)");
+            // Keep only the selected text that can be edited and formatted.
+            if (
+                link &&
+                isContentEditable(node) &&
+                (this.checkPredicates("is_formattable_node_predicates", node) ?? true) &&
+                !formatSpec.isFormatted(link.parentElement, formatProps) &&
+                this.dependencies.selection.areNodeContentsFullySelected(link)
+            ) {
+                links.add(link);
+            }
+        }
+        if (!links.size) {
+            return;
+        }
+        const cursors = this.dependencies.selection.preserveSelection();
+        for (const link of links) {
+            for (const node of [link, ...descendants(link).filter(isElement)]) {
+                removeFormat(node, formatSpec, cursors);
+            }
+            if (applyStyle && !formatSpec.isFormatted(link, formatProps)) {
+                formatSpec.addStyle(link, formatProps);
+            } else if (!applyStyle && formatSpec.isFormatted(link, formatProps)) {
+                formatSpec.addNeutralStyle(link);
+            }
+        }
+        cursors.restore();
+    }
+
     isLinkAllowedOnSelection() {
         const isLinkCompatible = this.checkPredicates("link_compatible_selection_predicates");
         if (isLinkCompatible !== undefined) {
@@ -498,8 +603,8 @@ export class LinkPlugin extends Plugin {
         this.LinkPopoverState.editing = false;
         let selection = this.dependencies.selection.getEditableSelection();
         const commonAncestor = closestElement(selection.commonAncestorContainer);
-        const isNonEditableLink =
-            commonAncestor.nodeName === "A" && !commonAncestor.isContentEditable;
+        const closestLink = closestElement(commonAncestor, "A");
+        const isNonEditableLink = closestLink && !closestLink.isContentEditable;
         if (!this.isLinkAllowedOnSelection() && !isNonEditableLink) {
             return this.services.notification.add(
                 _t("Unable to create a link on the current selection."),
@@ -794,48 +899,6 @@ export class LinkPlugin extends Plugin {
 
     handleSelectionChange(selectionData) {
         const selection = selectionData.editableSelection;
-        if (
-            this._isNavigatingByMouse &&
-            selection.isCollapsed &&
-            selectionData.documentSelectionIsInEditable
-        ) {
-            delete this._isNavigatingByMouse;
-            const { startContainer, startOffset, endContainer, endOffset } = selection;
-            const linkElement = closestElement(startContainer, "a");
-            if (
-                linkElement &&
-                linkElement.textContent.startsWith("\uFEFF") &&
-                linkElement.textContent.endsWith("\uFEFF")
-            ) {
-                const linkDescendants = descendants(linkElement);
-
-                // Check if the cursor is positioned at the begining of link.
-                const isCursorAtStartOfLink = isZwnbsp(startContainer)
-                    ? linkDescendants.indexOf(startContainer) === 0
-                    : startContainer.nodeType === Node.TEXT_NODE &&
-                      linkDescendants.indexOf(startContainer) === 1 &&
-                      startOffset === 0;
-
-                // Check if the cursor is positioned at the end of link.
-                const isCursorAtEndOfLink = isZwnbsp(endContainer)
-                    ? linkDescendants.indexOf(endContainer) === linkDescendants.length - 1
-                    : endContainer.nodeType === Node.TEXT_NODE &&
-                      linkDescendants.indexOf(endContainer) === linkDescendants.length - 2 &&
-                      endOffset === nodeSize(endContainer);
-
-                // Handle selection movement.
-                if (isCursorAtStartOfLink || isCursorAtEndOfLink) {
-                    const [targetNode, targetOffset] = isCursorAtStartOfLink
-                        ? leftPos(linkElement)
-                        : rightPos(linkElement);
-                    this.dependencies.selection.setSelection({
-                        anchorNode: targetNode,
-                        anchorOffset: isCursorAtStartOfLink ? targetOffset - 1 : targetOffset + 1,
-                    });
-                    return;
-                }
-            }
-        }
         const anchorNode = this.document.getSelection()?.anchorNode;
         const isSelectionInProtected =
             this.document.getSelection()?.isCollapsed &&
@@ -1069,6 +1132,27 @@ export class LinkPlugin extends Plugin {
             this.removeEmptyLinks(endBlock);
         }
         this.dependencies.history.addStep();
+    }
+
+    updateFontSizedButtonClass(root) {
+        const buttons = selectElements(root, ".btn");
+        const parentButton = closestElement(root, ".btn");
+        if (parentButton && parentButton !== root) {
+            buttons.push(parentButton);
+        }
+        for (const button of buttons) {
+            if (button.querySelector(FONT_SIZED_SPAN_SELECTOR)) {
+                button.classList.add(FONT_SIZED_BUTTON_CLASS);
+            } else if (button.classList.contains(FONT_SIZED_BUTTON_CLASS)) {
+                removeClass(button, FONT_SIZED_BUTTON_CLASS);
+            }
+        }
+    }
+
+    clearFontSizedButtonClass(root) {
+        for (const button of selectElements(root, `.${FONT_SIZED_BUTTON_CLASS}`)) {
+            removeClass(button, FONT_SIZED_BUTTON_CLASS);
+        }
     }
 
     removeEmptyLinks(root) {

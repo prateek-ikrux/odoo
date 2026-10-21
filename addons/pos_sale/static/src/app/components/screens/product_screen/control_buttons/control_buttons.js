@@ -13,14 +13,12 @@ patch(ControlButtons.prototype, {
             ["state", "!=", "cancel"],
             ["invoice_status", "!=", "invoiced"],
             ["currency_id", "=", this.pos.currency.id],
+            // A down payment still has to be deducted when settling the order
+            "|",
             ["amount_unpaid", ">", 0],
+            ["order_line.is_downpayment", "=", true],
         ];
-        if (this.pos.getOrder()?.getPartner()) {
-            domain = [
-                ...domain,
-                ["partner_id", "any", [["id", "child_of", [this.pos.getOrder().getPartner().id]]]],
-            ];
-        }
+
         const saleOrderIds = this.pos
             .getOrder()
             ?.lines?.map((l) => l.sale_order_origin_id?.id)

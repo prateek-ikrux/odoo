@@ -43,7 +43,7 @@ msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-07-10 17:37+0000\n"
-"PO-Revision-Date: 2026-08-24 05:53+0000\n"
+"PO-Revision-Date: 2026-10-15 07:33+0000\n"
 "Last-Translator: Saara Hakanen <sahak@odoo.com>\n"
 "Language-Team: Finnish <https://translate.odoo.com/projects/odoo-19/sale/fi/>"
 "\n"
@@ -52,7 +52,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 2026.6.1\n"
+"X-Generator: Weblate 2026.8.1\n"
 
 #. module: sale
 #. odoo-javascript
@@ -1421,7 +1421,7 @@ msgstr "Toimenpiteen poikkeuksen tyyli"
 #. module: sale
 #: model:ir.ui.menu,name:sale.sale_menu_config_activity_plan
 msgid "Activity Plans"
-msgstr "Toimintasuunnitelmat"
+msgstr "Toimenpidesuunnitelmat"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__activity_state
@@ -1431,7 +1431,7 @@ msgstr "Toimenpiteen tila"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__activity_type_icon
 msgid "Activity Type Icon"
-msgstr "Toimenpiteen ikoni"
+msgstr "Toimenpidetyypin kuvake"
 
 #. module: sale
 #: model:ir.actions.act_window,name:sale.mail_activity_type_action_config_sale
@@ -1528,12 +1528,12 @@ msgstr "Sallittu mittayksikkö"
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Allows you to send Pro-Forma Invoice to your customers"
-msgstr "Sallii pro forma -laskujen lähetyksen asiakkaille"
+msgstr "Sallii pro forma -laskun lähettämisen asiakkaille"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_res_config_settings__group_proforma_sales
 msgid "Allows you to send pro-forma invoice."
-msgstr "Sallii pro forma -laskun lähetyksen."
+msgstr "Sallii pro forma -laskun lähettämisen."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_product_document__attached_on_sale
@@ -1617,32 +1617,32 @@ msgstr ""
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__analytic_distribution
 msgid "Analytic Distribution"
-msgstr "Analyyttinen jako"
+msgstr "Laskentakohteiden kohdistus"
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__sale_order_line__qty_delivered_method__analytic
 msgid "Analytic From Expenses"
-msgstr "Analyytiikka kustannuksista"
+msgstr "Kuluihin liittyvä laskenta"
 
 #. module: sale
 #: model:ir.model,name:sale.model_account_analytic_line
 msgid "Analytic Line"
-msgstr "Analyyttinen rivi"
+msgstr "Laskentakohderivi"
 
 #. module: sale
 #: model:ir.model,name:sale.model_account_analytic_applicability
 msgid "Analytic Plan's Applicabilities"
-msgstr "Analyysisuunnitelman sovellettavuus"
+msgstr "Laskentakohderyhmän sovellettavuudet"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__analytic_precision
 msgid "Analytic Precision"
-msgstr "Analyyttinen tarkkuus"
+msgstr "Laskennallinen tarkkuus"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__analytic_line_ids
 msgid "Analytic lines"
-msgstr "Analyyttiset rivit"
+msgstr "Laskentakohderivit"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_line_wizard_form
@@ -2445,7 +2445,7 @@ msgstr "Toimitusosoite"
 #: model:ir.model.fields,field_description:sale.field_sale_order__commitment_date
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
 msgid "Delivery Date"
-msgstr "Toimituspvm"
+msgstr "Toimituspäivä"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
@@ -2616,7 +2616,7 @@ msgstr "Näyttötyyppi"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__distribution_analytic_account_ids
 msgid "Distribution Analytic Account"
-msgstr "Jakelun kustannuspaikka"
+msgstr "Laskentakohteen kohdistus"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -2779,7 +2779,7 @@ msgstr "Envia.com Connector"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__expected_date
 msgid "Expected Date"
-msgstr "Oletettu päivämäärä"
+msgstr "Odotettu päivä"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
@@ -3525,10 +3525,10 @@ msgid ""
 "and track the work hours."
 msgstr ""
 "Aseta määrät manuaalisesti tilauksesta: Lasku perustuu manuaalisesti "
-"syötettyyn määrään luomatta kustannuspaikkaa.\n"
+"syötettyyn määrään luomatta laskentakohdetta.\n"
 "Työaikakirjaukset sopimuksessa: Lasku perustuu siihen liittyvän "
-"työaikakirjausten tunteihin.\n"
-"Luo tehtävä ja seuraa tunteja: Luo tehtävä myyntitilauksen vahvistukseen ja "
+"työaikakirjauksen seurattaviin tunteihin.\n"
+"Luo tehtävä ja seuraa tunteja: Luo tehtävä myyntitilauksen vahvistuttua ja "
 "seuraa työtunteja."
 
 #. module: sale
@@ -3651,7 +3651,7 @@ msgstr "Seuraavan toimenpiteen eräpäivä"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__activity_summary
 msgid "Next Activity Summary"
-msgstr "Seuraavan toimenpiteen kuvaus"
+msgstr "Seuraavan toimenpiteen yhteenveto"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__activity_type_id
@@ -3852,7 +3852,7 @@ msgstr "Vaihtoehto tuotteelle: %s"
 #: model:ir.model.fields,field_description:sale.field_product_product__optional_product_ids
 #: model:ir.model.fields,field_description:sale.field_product_template__optional_product_ids
 msgid "Optional Products"
-msgstr "Lisätuotteet"
+msgstr "Valinnaiset tuotteet"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_product_product__optional_product_ids
@@ -3896,7 +3896,7 @@ msgstr "Tilausmäärä"
 #: model_terms:ir.ui.view,arch_db:sale.view_order_product_search
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
 msgid "Order Date"
-msgstr "Tilauksen pvm"
+msgstr "Tilauspäivä"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
@@ -4234,7 +4234,7 @@ msgstr "Tuotekuvaston tuote on myyntitilauksessa"
 #: model:ir.model.fields,field_description:sale.field_sale_report__categ_id
 #: model_terms:ir.ui.view,arch_db:sale.view_order_product_search
 msgid "Product Category"
-msgstr "Tuoteryhmä"
+msgstr "Tuotekategoria"
 
 #. module: sale
 #: model:ir.model,name:sale.model_product_document
@@ -4393,7 +4393,7 @@ msgstr "Tarjousten määrä"
 #: model_terms:ir.ui.view,arch_db:sale.report_saleorder_document
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
 msgid "Quotation Date"
-msgstr "Tarjouksen päiväys"
+msgstr "Tarjouspäivä"
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__sale_order__state__sent
@@ -4951,7 +4951,7 @@ msgstr "Myy ja osta tuotteita eri mittayksiköissä tai pakkauksissa"
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Sell variants of a product using attributes (size, color, etc.)"
-msgstr "Myy tuotevariantteja, käyttäen määritteitä (koko, väri, yms.)"
+msgstr "Myy tuotevariantteja käyttäen ominaisuuksia (koko, väri, jne.)"
 
 #. module: sale
 #. odoo-python
@@ -5187,10 +5187,10 @@ msgid ""
 "Today: Activity date is today\n"
 "Planned: Future activities."
 msgstr ""
-"Tila aktiviteetin perusteella\n"
-"Myöhässä: Eräpäivä on menneisyydessä\n"
-"Tänään: Eräpäivä on tänään\n"
-"Suunniteltu: Tulevaisuudessa."
+"Tila toimenpiteiden perusteella\n"
+"Myöhässä: Eräpäivä on jo mennyt\n"
+"Tänään: Toimenpiteen päivämäärä on tänään\n"
+"Suunniteltu: Tulevat toimenpiteet."
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__res_company__sale_onboarding_payment_method__stripe
@@ -5265,7 +5265,7 @@ msgstr "Vero 15%"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__tax_calculation_rounding_method
 msgid "Tax Calculation Rounding Method"
-msgstr "Veron pyöristysmenettely"
+msgstr "Verolaskelman pyöristysmenetelmä"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__tax_country_id
@@ -5301,7 +5301,7 @@ msgstr "Verot yhteensä"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__tax_calculation_rounding_method
 msgid "Tax calculation rounding method"
-msgstr "Veron pyöristysmenettely"
+msgstr "Verolaskelman pyöristysmenetelmä"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__amount_tax
@@ -5346,7 +5346,7 @@ msgstr "Toimitusehdot: %s"
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
 msgid "Terms &amp; Conditions"
-msgstr "Toimitusehdot"
+msgstr "Käyttöehdot"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__note
@@ -5811,7 +5811,7 @@ msgstr "Kirjoita nimi"
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__activity_exception_decoration
 msgid "Type of the exception activity on record."
-msgstr "Poikkeusaktiviteetin tyyppi tietueella."
+msgstr "Kirjatun poikkeustoimenpiteen tyyppi."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
@@ -6217,9 +6217,9 @@ msgid ""
 " Please change the company of your quotation or remove the products from "
 "other companies (%(bad_products)s)."
 msgstr ""
-"Tarjous sisältää tuotteita yrityksestä %(product_company)s, kun taas "
+"Tarjouksesi sisältää yrityksen %(product_company)s tuotteita, vaikka "
 "tarjouksesi kuuluu yritykselle %(quote_company)s. \n"
-"Vaihda tarjouksesi yritystä tai poista tuotteet muilta yrityksiltä (%"
+" Vaihda tarjouksesi yritystä tai poista tuotteet muilta yrityksiltä (%"
 "(bad_products)s)."
 
 #. module: sale

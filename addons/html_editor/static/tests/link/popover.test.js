@@ -1684,6 +1684,9 @@ describe("upload file via link popover", () => {
     });
 
     test("direct download option works as expected", async () => {
+        onRpc("ir.attachment", "read", () => [
+            { name: "file.txt", mimetype: "text/plain", type: "binary" },
+        ]);
         const { editor } = await setupEditor("<p>[]<br></p>", {
             config: { allowTargetBlank: true },
         });
@@ -1728,6 +1731,21 @@ describe("upload file via link popover", () => {
         );
         const favIcon = await waitFor(".o_we_preview_favicon span.o_image");
         expect(favIcon).toHaveAttribute("data-mimetype", "text/plain");
+    });
+
+    test("popover in preview mode should not crash when attachment was deleted", async () => {
+        onRpc("ir.attachment", "read", () => []);
+        await setupEditor(
+            '<p><a href="/web/content/1?download=true&unique=123">file.txt[]</a></p>',
+            {
+                config: { allowTargetBlank: true },
+            }
+        );
+        await waitFor(".o-we-linkpopover");
+        expect(".o_we_url_link").toHaveText("file.txt");
+        await click(".o_we_edit_link");
+        await waitFor(".o_we_href_input_link");
+        expect(".direct-download-option").toHaveCount(0);
     });
 
     test("should not insert attachment as link if popover is discarded during file upload", async () => {
@@ -2072,12 +2090,22 @@ test("Should properly show the preview if fetching metadata fails", async () => 
     expect(cleanLinkArtifacts(getContent(el))).toBe('<p><a href="/contactus">a[]b</a></p>');
 });
 
-test("Should open link popover in read only mode when link is not editable", async () => {
+test("Should open link popover in read only mode when link is not editable (1)", async () => {
     onRpc("/html_editor/link_preview_internal", () => ({}));
     onRpc("/link", () => ({}));
     const { el } = await setupEditor('<p><a contenteditable="false" href="/link">link</a></p>');
     setSelection({ anchorNode: el.querySelector("a"), anchorOffset: 1 });
-    await click(queryOne(`a[contenteditable="false"]`));
+    await waitFor(".o-we-linkpopover");
+    expect(".o_we_edit_link").toHaveCount(0);
+});
+
+test("Should open link popover in read only mode when link is not editable (2)", async () => {
+    onRpc("/html_editor/link_preview_internal", () => ({}));
+    onRpc("/link", () => ({}));
+    const { el } = await setupEditor(
+        '<p contenteditable="false"><a href="/link"><span contenteditable="false">link</span></a></p>'
+    );
+    setSelection({ anchorNode: el.querySelector("span"), anchorOffset: 0 });
     await waitFor(".o-we-linkpopover");
     expect(".o_we_edit_link").toHaveCount(0);
 });

@@ -980,7 +980,7 @@ class ProductTemplate(models.Model):
     def _get_google_analytics_data(self, product, combination_info):
         self.ensure_one()
         return {
-            'item_id': product.barcode or product.id,
+            'item_id': product.default_code or product.id,
             'item_name': combination_info['display_name'],
             'item_category': self.categ_id.name,
             'currency': combination_info['currency'].name,
@@ -1140,7 +1140,8 @@ class ProductTemplate(models.Model):
         if (
             message_operation == 'create'
             and not self.env.user._is_internal()
-            and not self.env['website'].is_view_active('website_sale.product_comment')
         ):
-            return dict.fromkeys(self, 'write')
+            website = self.env['website'].get_current_website()
+            if not website.with_context(website_id=website.id).is_view_active('website_sale.product_comment'):
+                return dict.fromkeys(self, 'write')
         return super()._mail_get_operation_for_mail_message_operation(message_operation)
