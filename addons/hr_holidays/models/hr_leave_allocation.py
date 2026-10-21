@@ -205,7 +205,7 @@ class HrLeaveAllocation(models.Model):
     @api.depends('employee_id', 'holiday_status_id')
     def _compute_leaves(self):
         date_from = fields.Date.today()
-        employee_days_per_allocation = self.employee_id._get_consumed_leaves(self.holiday_status_id, date_from, ignore_future=True)[0]
+        employee_days_per_allocation = self.employee_id._get_consumed_leaves(self.holiday_status_id, date_from)[0]
         for allocation in self:
             origin = allocation._origin
             virtual_leave = employee_days_per_allocation[origin.employee_id][origin.holiday_status_id][origin]
@@ -467,7 +467,6 @@ class HrLeaveAllocation(models.Model):
             else:
                 start_date = max(start_date, first_level_start_date)
 
-        date_to = date_to or fields.Date.today()
         already_accrued = {allocation.id: allocation.already_accrued or (allocation.number_of_days != 0 and allocation.accrual_plan_id.accrued_gain_time == 'start') for allocation in self}
         first_allocation = _("""This allocation have already ran once, any modification won't be effective to the days allocated to the employee. If you need to change the configuration of the allocation, delete and create a new one.""")
         for allocation in self:
@@ -477,6 +476,9 @@ class HrLeaveAllocation(models.Model):
             level_ids = allocation.accrual_plan_id.level_ids
             if not level_ids:
                 continue
+            if not date_to:
+                employee_tz = timezone(allocation.employee_id.tz or 'UTC')
+                date_to = datetime.now(employee_tz).date()
             # "cache" leaves taken, as it gets recomputed every time allocation.number_of_days is assigned to. Without this,
             # every loop will take 1+ second. It can be removed if computes don't chain in a way to always reassign accrual plan
             # even if the value doesn't change. This is the best performance atm.
@@ -993,6 +995,7 @@ class HrLeaveAllocation(models.Model):
             'number_of_days_display': 0.0,
             'number_of_hours_display': 0.0,
             'already_accrued': False,
+            'yearly_accrued_amount': 0,
             'carried_over_days_expiration_date': False,
             'expiring_carryover_days': 0
         }

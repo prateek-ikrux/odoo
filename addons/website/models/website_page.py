@@ -347,6 +347,9 @@ class WebsitePage(models.Model):
         html = response.response[0]
         html = re.sub(r'csrf_token: "[^"]+"', f'csrf_token: {csrf_token!r}', html)
         html = re.sub(r'name="csrf_token" value="[^"]+"', f'name="csrf_token" value={csrf_token!r}', html)
+        # the page may have been cached while the translations hash wasn't
+        translation_hash = self.env['ir.http']._get_cached_frontend_translations_hash(request.lang.code)
+        html = re.sub(r'"translation_hash": "[^"]*"', f'"translation_hash": "{translation_hash}"', html)
         response.response = [html]
 
         # used for _register_website_track
@@ -363,6 +366,7 @@ class WebsitePage(models.Model):
         return (
             request.website.id,
             request.lang.code,
+            request.httprequest.host,
             request.httprequest.path,
             request.session.debug,
             request.website._allConsentsGranted(),

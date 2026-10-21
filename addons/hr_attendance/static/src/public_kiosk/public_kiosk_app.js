@@ -27,6 +27,7 @@ class kioskAttendanceApp extends Component{
         barcodeSource: { type: String },
         fromTrialMode: { type: Boolean },
         deviceTrackingEnabled: { type: Boolean },
+        lang: { type: String },
     };
     static components = {
         KioskBarcodeScanner,
@@ -63,6 +64,7 @@ class kioskAttendanceApp extends Component{
             this.manualKioskMode = true;
             this.state.active_display = "manual";
         }
+        luxon.Settings.defaultLocale = this.props.lang;
     }
 
     switchDisplay(screen) {
@@ -136,26 +138,19 @@ class kioskAttendanceApp extends Component{
         if (!this.props.deviceTrackingEnabled || !navigator.geolocation) {
             return rpc(route, { ...params });
         }
-
-        return new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition(
-                async ({ coords: { latitude, longitude } }) => {
-                    const result = await rpc(route, {
-                        ...params,
-                        latitude,
-                        longitude,
-                    });
-                    resolve(result);
-                },
-                async (err) => {
-                    const result = await rpc(route, {
-                        ...params
-                    });
-                    resolve(result);
-                },
-                { enableHighAccuracy: true }
-            );
-        });
+        this.ui.block();
+        try {
+            const coords = await new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                    ({ coords: { latitude, longitude } }) => resolve({ latitude, longitude }),
+                    () => resolve({}),
+                    { enableHighAccuracy: true }
+                );
+            });
+            return await rpc(route, { ...params, ...coords });
+        } finally {
+            this.ui.unblock();
+        }
     }
 
     async onManualSelection(employeeId, enteredPin) {
@@ -231,6 +226,7 @@ export async function createPublicKioskAttendance(document, kiosk_backend_info) 
                 barcodeSource: kiosk_backend_info.barcode_source,
                 fromTrialMode: kiosk_backend_info.from_trial_mode,
                 deviceTrackingEnabled: kiosk_backend_info.device_tracking_enabled,
+                lang: kiosk_backend_info.lang,
             },
         dev: env.debug,
         translateFn: appTranslateFn,

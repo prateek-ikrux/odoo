@@ -809,12 +809,14 @@ class AccountChartTemplate(models.AbstractModel):
 
     def _get_chart_template_model_data(self, template_code, model):
         """Lightweight version of `_get_chart_template_data` targeting only one model."""
-        data = defaultdict(dict)
+        model_data = defaultdict(dict)
         for code in [None] + self._get_parent_template(template_code):
             for func in self._template_register[code].get(model, []):
-                for xmlid, values in func(self, template_code).items():
-                    data[xmlid].update(values)
-        return dict(data)
+                data = func(self, template_code)
+                if data is not None:
+                    for xmlid, values in data.items():
+                        model_data[xmlid].update(values)
+        return dict(model_data)
 
     def _get_chart_template_data(self, template_code):
         template_data = defaultdict(lambda: defaultdict(dict))
@@ -1230,7 +1232,7 @@ class AccountChartTemplate(models.AbstractModel):
     def ref(self, xmlid, raise_if_not_found=True):
         return (
             self.env.ref(self.company_xmlid(xmlid), raise_if_not_found=False)
-            or self.env.ref(self.company_xmlid(xmlid, self.env.company.parent_ids[0]), raise_if_not_found)
+            or self.env.ref(self.company_xmlid(xmlid, self.env.company.root_id), raise_if_not_found)
         )
 
     def _get_parent_template(self, code):

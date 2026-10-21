@@ -11,12 +11,16 @@ class TestCIIFR(TestUBLCommon):
     def setUpClass(cls):
         super().setUpClass()
 
+        cls.is_l10n_fr_pdp_installed = cls.env['ir.module.module']._get('l10n_fr_pdp').state == 'installed'
+
         cls.partner_1 = cls.env['res.partner'].create({
             'name': "partner_1",
             'street': "Rue Jean Jaurès, 42",
             'zip': "75000",
             'city': "Paris",
             'vat': 'FR05677404089',
+            'peppol_eas': '9957',
+            'peppol_endpoint': 'FR05677404089',
             'country_id': cls.env.ref('base.fr').id,
             'bank_ids': [(0, 0, {'acc_number': 'FR15001559627230', 'allow_out_payment': True})],
             'phone': '+1 (650) 555-0111',
@@ -31,6 +35,8 @@ class TestCIIFR(TestUBLCommon):
             'zip': "52330",
             'city': "Colombey-les-Deux-Églises",
             'vat': 'FR35562153452',
+            'peppol_eas': '9957',
+            'peppol_endpoint': 'FR35562153452',
             'country_id': cls.env.ref('base.fr').id,
             'bank_ids': [(0, 0, {'acc_number': 'FR90735788866632', 'allow_out_payment': True})],
             'ref': 'ref_partner_2',
@@ -109,9 +115,30 @@ class TestCIIFR(TestUBLCommon):
             **kwargs,
         )
 
+    def _adapt_expected_etree_to_installed_modules(self, expected_etree):
+        super()._adapt_expected_etree_to_installed_modules(expected_etree)
+        if not self.is_l10n_fr_pdp_installed:
+            ns = {'ram': 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'}
+            for note in expected_etree.findall('.//ram:IncludedNote', namespaces=ns):
+                subject_code = note.findtext('ram:SubjectCode', namespaces=ns)
+                if subject_code in ('PMT', 'PMD', 'AAB'):
+                    note.getparent().remove(note)
+
     ####################################################
     # Test export - import
     ####################################################
+
+    def test_compute_siren_from_vat(self):
+        partner = self.env['res.partner'].create({
+            'name': 'French partner with only a VAT number',
+            'country_id': self.env.ref('base.fr').id,
+            'vat': 'FR23334175221',
+        })
+
+        self.assertRecordValues(partner, [{
+            'peppol_eas': '0225',
+            'peppol_endpoint': '334175221',
+        }])
 
     def test_export_pdf(self):
         acc_bank = self.env['res.partner.bank'].create({
