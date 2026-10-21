@@ -12,6 +12,9 @@ def migrate(cr, version):
     if not version:
         return
     env = api.Environment(cr, SUPERUSER_ID, {'contracts_billing_sync': True})
+    if not hasattr(env['contracts.contract'], '_compute_billing'):
+        # Billing stopped being copied down in 19.0.1.20.0.
+        return
     placed = env['contracts.contract'].with_context(active_test=False).search([
         ('contract_type', '=', 'sow'),
     ])

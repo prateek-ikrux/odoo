@@ -20,7 +20,8 @@ def migrate(cr, version):
     consulting = env.ref('contracts.contract_type_consulting', raise_if_not_found=False)
     if not consulting:
         return
-    if not consulting.allows_sow:
+    # Gone since 19.0.1.20.0, where the billing mode took its place.
+    if 'allows_sow' in consulting._fields and not consulting.allows_sow:
         consulting.allows_sow = True
     msas = env['contracts.contract'].with_context(active_test=False).search([
         ('contract_type', '=', 'msa'),

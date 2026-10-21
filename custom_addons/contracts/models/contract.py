@@ -29,12 +29,6 @@ YES_NO_SELECTION = [
     ('yes', 'Yes'),
 ]
 
-BILLING_CURRENCY_SELECTION = [
-    ('inr', 'INR'),
-    ('usd', 'USD'),
-    ('other', 'Others'),
-]
-
 BILLING_FREQUENCY_SELECTION = [
     ('monthly', 'Monthly'),
     ('quarterly', 'Quarterly'),
@@ -49,15 +43,21 @@ TERM_SELECTION = [
     ('until_completion', 'Until Completion of Service'),
 ]
 
-# Set on the overarching contract and copied down to the ones placed under it.
-BILLING_FIELDS = [
+# Billing follows the business done. FTE is billed on the overarching contract,
+# by bill rate; consulting on each contract placed under it, by budget. Each
+# contract carries only the fields of the business it is billed for.
+FTE_BILLING_FIELDS = [
     'bill_rate',
-    'billing_currency',
-    'billing_currency_other',
+    'billing_poc',
+    'billing_start_date',
+]
+CONSULTING_BILLING_FIELDS = [
+    'budget',
     'billing_frequency',
     'billing_poc',
     'billing_start_date',
 ]
+BILLING_FIELDS = list(dict.fromkeys(FTE_BILLING_FIELDS + CONSULTING_BILLING_FIELDS))
 
 # Fallback for the 'contracts.reminder_days' system parameter: how many days
 # before the end date an expiry reminder goes out.
@@ -85,13 +85,28 @@ class Contract(models.Model):
         help="Picked from the master list under Contracts > Configuration > "
              "Contract Types. Only an overarching contract carries one.",
     )
+    billing_mode = fields.Selection(related='type_id.billing_mode')
+    # Set by the type, except for one doing both, where the contract ticks
+    # which business it covers. Consulting is what lets contracts be placed
+    # under it; FTE is what puts billing terms on the contract itself.
+    is_fte = fields.Boolean(
+        string='FTE', tracking=True,
+        compute='_compute_business', store=True, readonly=False, precompute=True,
+        help="Full-time placements, billed on this contract by bill rate.",
+    )
+    is_consulting = fields.Boolean(
+        string='Consulting', tracking=True,
+        compute='_compute_business', store=True, readonly=False, precompute=True,
+        help="Consulting, billed on each Statement of Work placed under this "
+             "contract, by budget.",
+    )
     parent_contract_id = fields.Many2one(
         'contracts.contract', string='Parent Contract',
         # A terminated contract is not offered for new placements. Not a
         # constraint: placements made before it was terminated stay valid, and
         # an import of past placements still has to be able to name it.
         domain="[('contract_type', '=', 'msa'), ('state', '!=', 'terminated'), "
-               "('type_id.allows_sow', '=', True)]",
+               "('is_consulting', '=', True)]",
         ondelete='restrict', index=True, tracking=True,
         help="The overarching contract this one is placed under.",
     )
@@ -205,41 +220,28 @@ class Contract(models.Model):
     remarks = fields.Text(string='Remarks', tracking=True)
 
     # ── Billing ───────────────────────────────────────────────────
-    # Agreed on the overarching contract. A placed contract bills on the same
-    # terms, so it takes every one of them from the contract above it.
+    # FTE is billed on the overarching contract (FTE_BILLING_FIELDS), consulting
+    # on each contract placed under it (CONSULTING_BILLING_FIELDS). Whatever
+    # does not apply to a contract is cleared on save.
     bill_rate = fields.Float(
         string='Bill Rate', digits=(5, 2), tracking=True,
-        compute='_compute_billing', store=True, readonly=False, precompute=True,
-        recursive=True,
-        help="Bill rate, as a percentage.",
+        help="FTE bill rate, as a percentage.",
     )
-    billing_currency = fields.Selection(
-        BILLING_CURRENCY_SELECTION, string='Billing Currency', tracking=True,
-        compute='_compute_billing', store=True, readonly=False, precompute=True,
-        recursive=True,
-    )
-    billing_currency_other = fields.Char(
-        string='Other Currency', tracking=True,
-        compute='_compute_billing', store=True, readonly=False, precompute=True,
-        recursive=True,
-        help="The currency billed in, when it is neither INR nor USD.",
+    budget = fields.Float(
+        string='Budget', digits=(12, 2), tracking=True,
+        help="Consulting budget, in lakhs per month (LPM).",
     )
     billing_frequency = fields.Selection(
         BILLING_FREQUENCY_SELECTION, string='Billing Frequency', tracking=True,
-        compute='_compute_billing', store=True, readonly=False, precompute=True,
-        recursive=True,
+        help="Consulting only: FTE is not billed on a cycle.",
     )
     billing_poc = fields.Char(
         string='Billing POC', tracking=True,
-        compute='_compute_billing', store=True, readonly=False, precompute=True,
-        recursive=True,
         help="Person in charge of billing for this contract. Never the same "
              "person as the Contract POC.",
     )
     billing_start_date = fields.Date(
         string='Billing Start Date', tracking=True,
-        compute='_compute_billing', store=True, readonly=False, precompute=True,
-        recursive=True,
     )
 
     # ── Display name ──────────────────────────────────────────────
@@ -278,17 +280,36 @@ class Contract(models.Model):
             elif not rec.client:
                 rec.client = False
 
-    @api.depends('contract_type', *(f'parent_contract_id.{f}' for f in BILLING_FIELDS))
-    def _compute_billing(self):
-        """A placed contract always bills on the terms of the contract above it."""
+    @api.depends('contract_type', 'type_id.billing_mode')
+    def _compute_business(self):
+        """FTE or consulting, as the type says. A type doing both leaves the
+        choice to the contract, so whatever was ticked is kept. A placed
+        contract has no type and covers neither: it is billed on its own."""
         for rec in self:
-            if rec.contract_type == 'sow' and rec.parent_contract_id:
-                for fname in BILLING_FIELDS:
-                    rec[fname] = rec.parent_contract_id[fname]
+            mode = rec.contract_type == 'msa' and rec.type_id.billing_mode
+            if mode == 'both':
+                rec.is_fte, rec.is_consulting = rec.is_fte, rec.is_consulting
             else:
-                for fname in BILLING_FIELDS:
-                    if not rec[fname]:
-                        rec[fname] = False
+                rec.is_fte = mode == 'fte'
+                rec.is_consulting = mode == 'consulting'
+
+    def _get_billing_fields(self):
+        """The billing fields this contract is billed on."""
+        self.ensure_one()
+        if self.contract_type == 'sow':
+            return CONSULTING_BILLING_FIELDS
+        return FTE_BILLING_FIELDS if self.is_fte else []
+
+    def _clear_unused_billing(self):
+        """Wipe billing values that no longer apply - an MSA taken off FTE,
+        say - so they stop showing in emails and exports with nobody able
+        to see them on the form. The form only hides them until the save,
+        so switching back and forth by mistake loses nothing."""
+        for rec in self:
+            keep = rec._get_billing_fields()
+            vals = {f: False for f in BILLING_FIELDS if f not in keep and rec[f]}
+            if vals:
+                super(Contract, rec).write(vals)
 
     @api.depends('child_contract_ids.state')
     def _compute_active_child_count(self):
@@ -357,12 +378,6 @@ class Contract(models.Model):
         if self.is_extended != 'yes':
             self.extended_end_date = False
 
-    @api.onchange('billing_currency')
-    def _onchange_billing_currency(self):
-        """The free-text currency only means something under Others."""
-        if self.billing_currency != 'other':
-            self.billing_currency_other = False
-
     @api.model
     def _normalize_extension_vals(self, vals, records=None):
         """Keep the extension answer and the extended date in step.
@@ -380,6 +395,29 @@ class Contract(models.Model):
                 vals['extended_end_date'] = False
         elif vals.get('extended_end_date') and 'is_extended' not in vals:
             vals['is_extended'] = 'yes'
+        return vals
+
+    @api.model
+    def _normalize_business_vals(self, vals, records=None):
+        """Let the type decide FTE and Consulting unless it does both.
+
+        The ticks are only asked on a type doing both. Anywhere else whatever
+        came with them - an import's blank column arrives as False - is
+        dropped, so the type's own answer stands. ``records`` is the
+        recordset being written, whose type counts when none is passed.
+        """
+        if 'is_fte' not in vals and 'is_consulting' not in vals:
+            return vals
+        if 'type_id' in vals:
+            types = self.env['contracts.type'].browse(vals['type_id'] or [])
+            is_msa = vals.get('contract_type', self.env.context.get('default_contract_type')) == 'msa'                 if records is None \
+                else all(r.contract_type == 'msa' for r in records)
+        else:
+            types = records.type_id if records is not None else self.env['contracts.type']
+            is_msa = records is not None and all(r.contract_type == 'msa' for r in records)
+        if not (is_msa and types and all(t.billing_mode == 'both' for t in types)):
+            vals.pop('is_fte', None)
+            vals.pop('is_consulting', None)
         return vals
 
     def _get_documents(self):
@@ -476,10 +514,10 @@ class Contract(models.Model):
                     )
                 # Checked only when the parent is set or changed, so SOWs
                 # placed before types existed stay valid until then.
-                if not rec.parent_contract_id.type_id.allows_sow:
+                if not rec.parent_contract_id.is_consulting:
                     raise ValidationError(
-                        _("Contract '%(parent)s' is not of a contract type that "
-                          "allows Statements of Work (%(type)s).",
+                        _("Statements of Work can only be placed under a contract "
+                          "doing consulting; '%(parent)s' does not (%(type)s).",
                           parent=rec.parent_contract_id.display_name,
                           type=rec.parent_contract_id.type_id.name or _("no type set"))
                     )
@@ -493,7 +531,7 @@ class Contract(models.Model):
                     _("Contract '%s' cannot be its own parent.", rec.display_name)
                 )
 
-    @api.constrains('contract_type', 'type_id')
+    @api.constrains('contract_type', 'type_id', 'is_consulting')
     def _check_type(self):
         for rec in self:
             if rec.contract_type != 'msa' and rec.type_id:
@@ -501,11 +539,31 @@ class Contract(models.Model):
                     _("Only a Master Service Agreement has a contract type; "
                       "contract '%s' cannot.", rec.display_name)
                 )
-            if rec.child_contract_ids and not rec.type_id.allows_sow:
+            if rec.child_contract_ids and not rec.is_consulting:
                 raise ValidationError(
                     _("Contract '%(name)s' has Statements of Work placed under "
-                      "it, so its type has to be one that allows them.",
+                      "it, so it has to keep doing consulting.",
                       name=rec.display_name)
+                )
+
+    @api.constrains('contract_type', 'type_id', 'is_fte', 'is_consulting')
+    def _check_business(self):
+        """A type doing both needs at least one of them ticked; anywhere else
+        the ticks have to say what the type says. Ticks sent for another type
+        are dropped on the way in, so this only guards against a stray write
+        that went round that."""
+        for rec in self:
+            mode = rec.contract_type == 'msa' and rec.type_id.billing_mode
+            if mode == 'both':
+                if not (rec.is_fte or rec.is_consulting):
+                    raise ValidationError(
+                        _("Tick FTE, Consulting or both on contract '%s'.",
+                          rec.display_name)
+                    )
+            elif (rec.is_fte, rec.is_consulting) != (mode == 'fte', mode == 'consulting'):
+                raise ValidationError(
+                    _("FTE and Consulting can only be picked on a contract whose "
+                      "type does both; contract '%s' cannot.", rec.display_name)
                 )
 
     @api.constrains('contract_type', 'role', 'candidate')
@@ -552,28 +610,21 @@ class Contract(models.Model):
             if not (rec.poc and rec.billing_poc) \
                     or rec.poc.strip().casefold() != rec.billing_poc.strip().casefold():
                 continue
-            if rec.contract_type == 'sow':
-                raise ValidationError(
-                    _("The Contract POC on contract '%(name)s' cannot be %(poc)s, who is "
-                      "the Billing POC on its parent contract '%(parent)s'.",
-                      name=rec.display_name, poc=rec.billing_poc,
-                      parent=rec.parent_contract_id.display_name)
-                )
             raise ValidationError(
                 _("The Billing POC cannot be the same person as the Contract POC "
                   "on contract '%s'.", rec.display_name)
             )
 
-    @api.constrains('bill_rate', 'billing_currency', 'billing_currency_other')
+    @api.constrains('bill_rate', 'budget')
     def _check_billing(self):
         for rec in self:
             if rec.bill_rate < 0:
                 raise ValidationError(
                     _("Bill Rate cannot be negative on contract '%s'.", rec.display_name)
                 )
-            if rec.billing_currency == 'other' and not (rec.billing_currency_other or '').strip():
+            if rec.budget < 0:
                 raise ValidationError(
-                    _("Name the billing currency on contract '%s'.", rec.display_name)
+                    _("Budget cannot be negative on contract '%s'.", rec.display_name)
                 )
 
     # ── State synchronisation ─────────────────────────────────────
@@ -608,12 +659,10 @@ class Contract(models.Model):
             # so the insert would fail on the NOT NULL column instead of here.
             if vals.get('contract_type') == 'sow' and not vals.get('parent_contract_id'):
                 raise ValidationError(_("A parent contract is required."))
-            if vals.get('contract_type') == 'sow':
-                # Taken from the parent; anything passed in would override that.
-                for fname in BILLING_FIELDS:
-                    vals.pop(fname, None)
             self._normalize_extension_vals(vals)
+            self._normalize_business_vals(vals)
         records = super().create(vals_list)
+        records._clear_unused_billing()
         records._link_attachments_to_record()
         records._sync_expired_state()
         records._send_change_notification('created')
@@ -621,6 +670,7 @@ class Contract(models.Model):
 
     def write(self, vals):
         self._normalize_extension_vals(vals, self)
+        self._normalize_business_vals(vals, self)
         if 'end_date' in vals or 'extended_end_date' in vals:
             # A renewal or an extension pushes the end out, which has to re-arm
             # the whole reminder sequence. setdefault keeps the cron's own write
@@ -628,13 +678,9 @@ class Contract(models.Model):
             vals.setdefault('reminder_sent_days', 0)
             vals.setdefault('reminder_last_sent', False)
         res = super().write(vals)
-        if any(fname in vals for fname in BILLING_FIELDS) \
-                and not self.env.context.get('contracts_billing_sync'):
-            # A placed contract cannot be given billing terms of its own; put
-            # back the ones of the contract above it. Called outside of a
-            # recompute, the assignments come back through here - hence the flag.
-            self.filtered(lambda c: c.contract_type == 'sow') \
-                .with_context(contracts_billing_sync=True)._compute_billing()
+        if any(fname in vals for fname in
+               ('contract_type', 'type_id', 'is_fte', 'is_consulting', *BILLING_FIELDS)):
+            self._clear_unused_billing()
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()
         if any(fname in vals for fname in ('end_date', 'extended_end_date', 'term', 'state')):
@@ -922,8 +968,6 @@ class Contract(models.Model):
         next_days = max(later) if later else 0
         children = self.child_contract_ids.filtered(lambda c: c.state == 'active') \
             .sorted(lambda c: (c.effective_end_date or fields.Date.today(), c.id))
-        currency = self.billing_currency_other if self.billing_currency == 'other' \
-            else label('billing_currency')
         return {
             'days_left': self.days_left,
             'urgent': self.days_left <= 7,
@@ -940,7 +984,7 @@ class Contract(models.Model):
                 self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
             'appraisal_due': short_date(self.annual_appraisal_due),
             'bill_rate': f'{self.bill_rate:g}%' if self.bill_rate else '',
-            'billing_currency': currency or '',
+            'budget': f'{self.budget:g} LPM' if self.budget else '',
             'billing_frequency': label('billing_frequency'),
             'billing_start': short_date(self.billing_start_date),
             'documents': len(self._get_documents()),

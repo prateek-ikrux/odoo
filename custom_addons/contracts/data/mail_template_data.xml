@@ -140,17 +140,15 @@
         </tr>
 
         <!-- Billing -->
-        <t t-if="r.get('bill_rate') or r.get('billing_currency') or r.get('billing_frequency') or r.get('billing_start') or object.billing_poc">
-            <tr><td colspan="2" t-att-style="group_td">
-                Billing<span t-if="is_sow" style="font-weight: normal; text-transform: none; letter-spacing: 0; color: #888888;"> - from the MSA</span>
-            </td></tr>
+        <t t-if="r.get('bill_rate') or r.get('budget') or r.get('billing_frequency') or r.get('billing_start') or object.billing_poc">
+            <tr><td colspan="2" t-att-style="group_td">Billing</td></tr>
             <tr t-if="r.get('bill_rate')">
                 <td t-att-style="label_td">Bill Rate</td>
                 <td t-att-style="value_td" t-out="r['bill_rate']"/>
             </tr>
-            <tr t-if="r.get('billing_currency')">
-                <td t-att-style="label_td">Currency</td>
-                <td t-att-style="value_td" t-out="r['billing_currency']"/>
+            <tr t-if="r.get('budget')">
+                <td t-att-style="label_td">Budget</td>
+                <td t-att-style="value_td" t-out="r['budget']"/>
             </tr>
             <tr t-if="r.get('billing_frequency')">
                 <td t-att-style="label_td">Frequency</td>

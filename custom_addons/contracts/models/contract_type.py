@@ -2,14 +2,24 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+# How business is done under a contract of this type. FTE is billed on the
+# overarching contract itself; consulting is billed on each Statement of Work
+# placed under it; a type doing both lets each contract tick which applies.
+BILLING_MODE_SELECTION = [
+    ('fte', 'FTE'),
+    ('consulting', 'Consulting'),
+    ('both', 'FTE & Consulting'),
+]
+
 
 class ContractTypeMaster(models.Model):
     """Master list of contract types, kept under Configuration.
 
     Not to be confused with ``contracts.contract.contract_type``, the hidden
     MSA / SOW discriminator: this is the business classification picked on an
-    overarching contract. A placed contract has none: SOWs only ever sit
-    under MSAs whose type allows them, so the type would say nothing.
+    overarching contract, which also decides how that contract is billed. A
+    placed contract has none: it is always a consulting placement, billed on
+    its own, under the contract above it.
     """
     _name = 'contracts.type'
     _description = 'Contract Type'
@@ -21,10 +31,14 @@ class ContractTypeMaster(models.Model):
     # were recorded with, it just stops being offered for new ones.
     active = fields.Boolean(default=True)
     description = fields.Text(string='Description')
-    allows_sow = fields.Boolean(
-        string='Allows SOWs',
-        help="Statements of Work can only be placed under a Master Service "
-             "Agreement whose type has this ticked.",
+    billing_mode = fields.Selection(
+        BILLING_MODE_SELECTION, string='Billing Mode',
+        required=True, default='consulting',
+        help="FTE: billed on the Master Service Agreement, by bill rate.\n"
+             "Consulting: billed on each Statement of Work under it, by budget; "
+             "only these take Statements of Work.\n"
+             "FTE & Consulting: each Master Service Agreement ticks which of "
+             "the two it does, or both.",
     )
     contract_count = fields.Integer(
         string='# Contracts', compute='_compute_contract_count',
@@ -42,10 +56,11 @@ class ContractTypeMaster(models.Model):
         for rec in self:
             rec.contract_count = counts.get(rec, 0)
 
-    @api.constrains('allows_sow')
-    def _check_allows_sow(self):
-        """Unticking cannot strand SOWs already placed under this type."""
-        for rec in self.filtered(lambda t: not t.allows_sow):
+    @api.constrains('billing_mode')
+    def _check_billing_mode(self):
+        """Moving a type to FTE alone cannot strand SOWs already placed
+        under its contracts: FTE takes none."""
+        for rec in self.filtered(lambda t: t.billing_mode == 'fte'):
             used = self.env['contracts.contract'].search_count([
                 ('contract_type', '=', 'sow'),
                 ('parent_contract_id.type_id', '=', rec.id),
@@ -53,6 +68,6 @@ class ContractTypeMaster(models.Model):
             if used:
                 raise ValidationError(
                     _("Contract type '%s' still has Statements of Work placed "
-                      "under its contracts, so it has to keep allowing them.",
+                      "under its contracts, so it has to keep Consulting.",
                       rec.name)
                 )

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.19.0',
+    'version': '19.0.1.20.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -28,9 +28,15 @@ only), the start and end dates and the number of days left; its documents are
 attached from the chatter, and are optional. An overarching contract also has a contract type, picked
 from a master list kept under Contracts > Configuration > Contract Types. A
 placed contract has no type; it additionally names the candidate and the role,
-must reference the contract it sits under - one whose type allows Statements of
-Work, such as Consulting - takes its client from that contract, and has to run
-inside its period.
+must reference the contract it sits under - one doing consulting - takes its
+client from that contract, and has to run inside its period.
+
+Billing follows the business done with the client, which the contract type
+sets: FTE, Consulting, or FTE/Consulting, where the contract ticks either or
+both. FTE is billed on the overarching contract, by a bill rate in percent,
+with no billing frequency. Consulting is billed on each contract placed under
+it, by a budget in lakhs per month, on a billing frequency; only a contract
+doing consulting takes placed contracts at all.
 
 Before a contract runs out, a nightly scheduled action emails an internal list
 at a set of day milestones - 45, 30 and 7 days left by default. Both the

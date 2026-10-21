@@ -2,8 +2,8 @@
 <odoo>
 
     <!-- ── Master list: Contract Types ─────────────────────────────────── -->
-    <!-- Edited in place: a type is just a name, so a form would be one field
-         on an otherwise empty sheet. -->
+    <!-- Edited in place: a type is a name and how it is billed, so a form
+         would be two fields on an otherwise empty sheet. -->
     <record id="view_contracts_type_list" model="ir.ui.view">
         <field name="name">contracts.type.list</field>
         <field name="model">contracts.type</field>
@@ -11,7 +11,7 @@
             <list string="Contract Types" editable="bottom">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
-                <field name="allows_sow"/>
+                <field name="billing_mode"/>
                 <field name="description" optional="show"/>
                 <field name="contract_count" string="Contracts"/>
                 <field name="active" column_invisible="1"/>
