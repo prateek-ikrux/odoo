@@ -3,7 +3,8 @@ import io
 
 # ── Column definitions ────────────────────────────────────────────────────────
 # Each entry: (column_label, data_key, col_width, kind)
-# kind drives the cell format: 'text' | 'date' | 'int' | 'status' | 'days_left'
+# kind drives the cell format:
+# 'text' | 'date' | 'int' | 'number' | 'status' | 'days_left'
 
 _CLIENT_COLUMN = [
     ('Client',           'client',           24, 'text'),
@@ -16,11 +17,20 @@ _COMMON_COLUMNS = [
     ('Days Left',        'days_left',        11, 'days_left'),
     ('Status',           'status',           14, 'status'),
     ('Termination Date', 'termination_date', 16, 'date'),
+]
+_ATTACHMENT_COLUMNS = [
     ('# Attachments',    'attachment_count', 13, 'int'),
     ('Attachments',      'attachments',      40, 'text'),
 ]
+# FTE is billed on the MSA; a consulting-only MSA leaves these as N/A, its
+# billing sitting on each SOW under it.
+_MSA_BILLING_COLUMNS = [
+    ('Bill Rate (%)',      'bill_rate',          12, 'number'),
+    ('Billing POC',        'billing_poc',        20, 'text'),
+    ('Billing Start Date', 'billing_start_date', 16, 'date'),
+]
 
-MSA_COLUMNS = _CLIENT_COLUMN + _COMMON_COLUMNS
+MSA_COLUMNS = _CLIENT_COLUMN + _COMMON_COLUMNS + _MSA_BILLING_COLUMNS + _ATTACHMENT_COLUMNS
 
 # A placed contract is reported on in the client's own terms - who is placed,
 # what they do, and how the dates have moved - rather than on the lifecycle
@@ -33,6 +43,10 @@ SOW_COLUMNS = [
     ('Contract End Date',       'end_date',             16, 'date'),
     ('Annual Appraisal Due',    'annual_appraisal_due', 18, 'date'),
     ('Extended End Date',       'extended_end_date',    16, 'date'),
+    ('Budget (LPM)',            'budget',               13, 'number'),
+    ('Billing Frequency',       'billing_frequency',    15, 'text'),
+    ('Billing POC',             'billing_poc',          20, 'text'),
+    ('Billing Start Date',      'billing_start_date',   16, 'date'),
     ('Remarks',                 'remarks',              40, 'text'),
 ]
 
@@ -88,6 +102,9 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
         'border': 1, 'valign': 'vcenter', 'align': 'center', 'num_format': 'dd-mmm-yyyy',
     })
     int_fmt = workbook.add_format({'border': 1, 'valign': 'vcenter', 'align': 'center'})
+    number_fmt = workbook.add_format({
+        'border': 1, 'valign': 'vcenter', 'align': 'right', 'num_format': '0.00',
+    })
     na_fmt = workbook.add_format({
         'border': 1, 'valign': 'vcenter', 'align': 'center',
         'font_color': '#999999', 'italic': True,
@@ -180,6 +197,13 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
                     worksheet.write_number(r, col, days, int_fmt)
             elif kind == 'int':
                 worksheet.write_number(r, col, val or 0, int_fmt)
+            elif kind == 'number':
+                # Zero is what an unset bill rate or budget reads as, so it
+                # shows as not applicable rather than as a rate of nothing.
+                if val:
+                    worksheet.write_number(r, col, val, number_fmt)
+                else:
+                    worksheet.write(r, col, 'N/A', na_fmt)
             else:
                 worksheet.write(r, col, val or '', cell_fmt)
 

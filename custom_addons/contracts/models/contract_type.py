@@ -4,12 +4,14 @@ from odoo.exceptions import ValidationError
 
 # How business is done under a contract of this type. FTE is billed on the
 # overarching contract itself; consulting is billed on each Statement of Work
-# placed under it; a type doing both lets each contract tick which applies.
+# placed under it; a type doing both does each, in its own place.
 BILLING_MODE_SELECTION = [
     ('fte', 'FTE'),
     ('consulting', 'Consulting'),
     ('both', 'FTE & Consulting'),
 ]
+FTE_MODES = ('fte', 'both')
+CONSULTING_MODES = ('consulting', 'both')
 
 
 class ContractTypeMaster(models.Model):
@@ -37,8 +39,8 @@ class ContractTypeMaster(models.Model):
         help="FTE: billed on the Master Service Agreement, by bill rate.\n"
              "Consulting: billed on each Statement of Work under it, by budget; "
              "only these take Statements of Work.\n"
-             "FTE & Consulting: each Master Service Agreement ticks which of "
-             "the two it does, or both.",
+             "FTE & Consulting: both - FTE billed on the Master Service "
+             "Agreement, consulting on each Statement of Work under it.",
     )
     contract_count = fields.Integer(
         string='# Contracts', compute='_compute_contract_count',
@@ -71,3 +73,13 @@ class ContractTypeMaster(models.Model):
                       "under its contracts, so it has to keep Consulting.",
                       rec.name)
                 )
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'billing_mode' in vals:
+            # Contracts of a type moved off FTE stop showing their bill rate;
+            # wipe it, as moving a single contract to such a type would.
+            self.env['contracts.contract'].search([
+                ('contract_type', '=', 'msa'), ('type_id', 'in', self.ids),
+            ])._clear_unused_billing()
+        return res

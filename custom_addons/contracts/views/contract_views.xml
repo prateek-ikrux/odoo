@@ -112,7 +112,7 @@
                                 type="object"
                                 class="oe_stat_button"
                                 icon="fa-sitemap"
-                                invisible="contract_type != 'msa' or not id or not is_consulting">
+                                invisible="contract_type != 'msa' or not id or billing_mode not in ('consulting', 'both')">
                             <div class="o_stat_info">
                                 <field name="child_contract_count" class="o_stat_value"/>
                                 <span class="o_stat_text">Linked</span>
@@ -183,18 +183,9 @@
                                  contract has no type of its own. -->
                             <field name="type_id"
                                    options="{'no_create': True, 'no_open': True}"
-                                   invisible="contract_type != 'msa'"/>
-                            <!-- Any other type already says which business it
-                                 is; only one doing both asks the contract. -->
+                                   invisible="contract_type != 'msa'"
+                                   required="contract_type == 'msa'"/>
                             <field name="billing_mode" invisible="1"/>
-                            <label for="is_fte" string="Business"
-                                   invisible="billing_mode != 'both'"/>
-                            <div class="o_row" invisible="billing_mode != 'both'">
-                                <field name="is_fte" class="oe_inline"/>
-                                <label for="is_fte" class="me-4"/>
-                                <field name="is_consulting" class="oe_inline"/>
-                                <label for="is_consulting"/>
-                            </div>
                             <field name="poc"/>
                             <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                             <field name="create_date" widget="contracts_datetime" string="Created On" readonly="1"/>
@@ -211,7 +202,7 @@
                          billed on each SOW placed under it. An SOW is always
                          consulting, so always billed. -->
                     <group string="Billing" name="billing"
-                           invisible="contract_type == 'msa' and not is_fte">
+                           invisible="contract_type == 'msa' and billing_mode not in ('fte', 'both')">
                         <group name="billing_terms">
                             <label for="bill_rate" invisible="contract_type != 'msa'"/>
                             <div class="o_row" invisible="contract_type != 'msa'">
@@ -233,7 +224,7 @@
                         </group>
                     </group>
                     <div class="text-muted mb-3"
-                         invisible="contract_type != 'msa' or not is_consulting">
+                         invisible="contract_type != 'msa' or billing_mode not in ('consulting', 'both')">
                         <i class="fa fa-info-circle" title="Information"/>
                         Consulting is billed on each Statement of Work placed
                         under this contract.
@@ -245,7 +236,7 @@
                                    placeholder="Notes about this contract - extensions, appraisals, anything worth recording..."/>
                         </page>
                         <page string="Linked Contracts" name="children"
-                              invisible="contract_type != 'msa' or not is_consulting">
+                              invisible="contract_type != 'msa' or billing_mode not in ('consulting', 'both')">
                             <field name="child_contract_ids" readonly="1" nolabel="1">
                                 <list decoration-danger="state == 'terminated'"
                                       decoration-muted="state == 'expired'">
@@ -323,18 +314,20 @@
                         domain="[('state', '=', 'active'), ('days_left', '&lt;=', 45)]"/>
                 <filter name="filter_expiring_30" string="Expiring in 30 Days"
                         domain="[('state', '=', 'active'), ('days_left', '&lt;=', 30)]"/>
-                <!-- Inside the reminder window but never mailed about: either
-                     the cron has not run yet, or it failed on this record. -->
+                <!-- Inside the reminder window set in the settings but never
+                     mailed about: either the cron has not run yet, or it
+                     failed on this record. -->
                 <filter name="filter_reminder_pending" string="No Reminder Sent"
-                        domain="[('state', '=', 'active'), ('days_left', '&lt;=', 45), ('reminder_sent_days', '=', 0)]"/>
+                        domain="[('reminder_pending', '=', True)]"/>
                 <filter name="filter_my_contracts" string="My Contracts"
                         domain="[('created_by_id', '=', uid)]"/>
                 <filter name="filter_until_completion" string="Until Completion of Service"
                         domain="[('term', '=', 'until_completion')]"/>
                 <separator/>
-                <filter name="filter_fte" string="FTE" domain="[('is_fte', '=', True)]"/>
+                <filter name="filter_fte" string="FTE"
+                        domain="[('type_id.billing_mode', 'in', ('fte', 'both'))]"/>
                 <filter name="filter_consulting" string="Consulting"
-                        domain="[('is_consulting', '=', True)]"/>
+                        domain="[('type_id.billing_mode', 'in', ('consulting', 'both'))]"/>
                 <separator/>
                 <filter name="filter_start_date" string="Start Date" date="start_date"/>
                 <filter name="filter_end_date" string="End Date" date="end_date"/>

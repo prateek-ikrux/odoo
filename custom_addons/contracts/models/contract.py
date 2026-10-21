@@ -7,6 +7,8 @@ from odoo import _, api, fields, models
 from odoo.tools.misc import format_date
 from odoo.exceptions import ValidationError
 
+from .contract_type import CONSULTING_MODES, FTE_MODES
+
 _logger = logging.getLogger(__name__)
 
 STATE_SELECTION = [
@@ -85,28 +87,16 @@ class Contract(models.Model):
         help="Picked from the master list under Contracts > Configuration > "
              "Contract Types. Only an overarching contract carries one.",
     )
+    # The type says which business the contract covers: FTE puts billing terms
+    # on the contract itself, consulting lets contracts be placed under it.
     billing_mode = fields.Selection(related='type_id.billing_mode')
-    # Set by the type, except for one doing both, where the contract ticks
-    # which business it covers. Consulting is what lets contracts be placed
-    # under it; FTE is what puts billing terms on the contract itself.
-    is_fte = fields.Boolean(
-        string='FTE', tracking=True,
-        compute='_compute_business', store=True, readonly=False, precompute=True,
-        help="Full-time placements, billed on this contract by bill rate.",
-    )
-    is_consulting = fields.Boolean(
-        string='Consulting', tracking=True,
-        compute='_compute_business', store=True, readonly=False, precompute=True,
-        help="Consulting, billed on each Statement of Work placed under this "
-             "contract, by budget.",
-    )
     parent_contract_id = fields.Many2one(
         'contracts.contract', string='Parent Contract',
         # A terminated contract is not offered for new placements. Not a
         # constraint: placements made before it was terminated stay valid, and
         # an import of past placements still has to be able to name it.
         domain="[('contract_type', '=', 'msa'), ('state', '!=', 'terminated'), "
-               "('is_consulting', '=', True)]",
+               "('type_id.billing_mode', 'in', ('consulting', 'both'))]",
         ondelete='restrict', index=True, tracking=True,
         help="The overarching contract this one is placed under.",
     )
@@ -188,6 +178,13 @@ class Contract(models.Model):
     )
     reminder_last_sent = fields.Date(
         string='Reminder Sent On', readonly=True, copy=False,
+    )
+    reminder_pending = fields.Boolean(
+        string='No Reminder Sent', compute='_compute_reminder_pending',
+        search='_search_reminder_pending',
+        help="Inside the earliest reminder milestone set in the settings, but "
+             "never mailed about: either the nightly run has not reached it "
+             "yet, or it failed on this contract.",
     )
     is_extended = fields.Selection(
         YES_NO_SELECTION, string='Is Contract Getting Extended?',
@@ -280,25 +277,22 @@ class Contract(models.Model):
             elif not rec.client:
                 rec.client = False
 
-    @api.depends('contract_type', 'type_id.billing_mode')
-    def _compute_business(self):
-        """FTE or consulting, as the type says. A type doing both leaves the
-        choice to the contract, so whatever was ticked is kept. A placed
-        contract has no type and covers neither: it is billed on its own."""
-        for rec in self:
-            mode = rec.contract_type == 'msa' and rec.type_id.billing_mode
-            if mode == 'both':
-                rec.is_fte, rec.is_consulting = rec.is_fte, rec.is_consulting
-            else:
-                rec.is_fte = mode == 'fte'
-                rec.is_consulting = mode == 'consulting'
+    def _does_fte(self):
+        """An MSA whose type covers FTE, and so is billed itself."""
+        self.ensure_one()
+        return self.contract_type == 'msa' and self.type_id.billing_mode in FTE_MODES
+
+    def _does_consulting(self):
+        """An MSA whose type covers consulting, and so takes SOWs."""
+        self.ensure_one()
+        return self.contract_type == 'msa' and self.type_id.billing_mode in CONSULTING_MODES
 
     def _get_billing_fields(self):
         """The billing fields this contract is billed on."""
         self.ensure_one()
         if self.contract_type == 'sow':
             return CONSULTING_BILLING_FIELDS
-        return FTE_BILLING_FIELDS if self.is_fte else []
+        return FTE_BILLING_FIELDS if self._does_fte() else []
 
     def _clear_unused_billing(self):
         """Wipe billing values that no longer apply - an MSA taken off FTE,
@@ -371,6 +365,34 @@ class Contract(models.Model):
         target = fields.Date.add(today, days=value)
         return [('state', '=', 'active'), ('effective_end_date', operator, target)]
 
+    def _reminder_window_end(self):
+        """The last end date inside the earliest reminder milestone, or None
+        when no milestone is set and nothing is ever reminded about."""
+        days = self._get_reminder_days()
+        if not days:
+            return None
+        return fields.Date.add(fields.Date.context_today(self), days=max(days))
+
+    @api.depends('state', 'effective_end_date', 'reminder_sent_days')
+    def _compute_reminder_pending(self):
+        window_end = self._reminder_window_end()
+        today = fields.Date.context_today(self)
+        for rec in self:
+            rec.reminder_pending = bool(
+                window_end and rec.state == 'active' and not rec.reminder_sent_days
+                and rec.effective_end_date and today <= rec.effective_end_date <= window_end)
+
+    def _search_reminder_pending(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            raise ValidationError(_("'No Reminder Sent' can only be filtered on as set or not."))
+        window_end = self._reminder_window_end()
+        domain = [('state', '=', 'active'), ('reminder_sent_days', '=', 0),
+                  ('effective_end_date', '>=', fields.Date.context_today(self)),
+                  ('effective_end_date', '<=', window_end)] if window_end else [('id', '=', False)]
+        if (operator == '=') == value:
+            return domain
+        return ['!', *(['&'] * (len(domain) - 1)), *domain]
+
     @api.onchange('is_extended')
     def _onchange_is_extended(self):
         """Clear the hidden date straight away, so the form stops showing an
@@ -395,29 +417,6 @@ class Contract(models.Model):
                 vals['extended_end_date'] = False
         elif vals.get('extended_end_date') and 'is_extended' not in vals:
             vals['is_extended'] = 'yes'
-        return vals
-
-    @api.model
-    def _normalize_business_vals(self, vals, records=None):
-        """Let the type decide FTE and Consulting unless it does both.
-
-        The ticks are only asked on a type doing both. Anywhere else whatever
-        came with them - an import's blank column arrives as False - is
-        dropped, so the type's own answer stands. ``records`` is the
-        recordset being written, whose type counts when none is passed.
-        """
-        if 'is_fte' not in vals and 'is_consulting' not in vals:
-            return vals
-        if 'type_id' in vals:
-            types = self.env['contracts.type'].browse(vals['type_id'] or [])
-            is_msa = vals.get('contract_type', self.env.context.get('default_contract_type')) == 'msa'                 if records is None \
-                else all(r.contract_type == 'msa' for r in records)
-        else:
-            types = records.type_id if records is not None else self.env['contracts.type']
-            is_msa = records is not None and all(r.contract_type == 'msa' for r in records)
-        if not (is_msa and types and all(t.billing_mode == 'both' for t in types)):
-            vals.pop('is_fte', None)
-            vals.pop('is_consulting', None)
         return vals
 
     def _get_documents(self):
@@ -514,7 +513,7 @@ class Contract(models.Model):
                     )
                 # Checked only when the parent is set or changed, so SOWs
                 # placed before types existed stay valid until then.
-                if not rec.parent_contract_id.is_consulting:
+                if not rec.parent_contract_id._does_consulting():
                     raise ValidationError(
                         _("Statements of Work can only be placed under a contract "
                           "doing consulting; '%(parent)s' does not (%(type)s).",
@@ -531,7 +530,7 @@ class Contract(models.Model):
                     _("Contract '%s' cannot be its own parent.", rec.display_name)
                 )
 
-    @api.constrains('contract_type', 'type_id', 'is_consulting')
+    @api.constrains('contract_type', 'type_id')
     def _check_type(self):
         for rec in self:
             if rec.contract_type != 'msa' and rec.type_id:
@@ -539,31 +538,17 @@ class Contract(models.Model):
                     _("Only a Master Service Agreement has a contract type; "
                       "contract '%s' cannot.", rec.display_name)
                 )
-            if rec.child_contract_ids and not rec.is_consulting:
+            # The type decides how the contract is billed and whether anything
+            # can be placed under it, so an MSA cannot go without one.
+            if rec.contract_type == 'msa' and not rec.type_id:
+                raise ValidationError(
+                    _("A Contract Type is required on contract '%s'.", rec.display_name)
+                )
+            if rec.child_contract_ids and not rec._does_consulting():
                 raise ValidationError(
                     _("Contract '%(name)s' has Statements of Work placed under "
-                      "it, so it has to keep doing consulting.",
+                      "it, so its type has to be one doing consulting.",
                       name=rec.display_name)
-                )
-
-    @api.constrains('contract_type', 'type_id', 'is_fte', 'is_consulting')
-    def _check_business(self):
-        """A type doing both needs at least one of them ticked; anywhere else
-        the ticks have to say what the type says. Ticks sent for another type
-        are dropped on the way in, so this only guards against a stray write
-        that went round that."""
-        for rec in self:
-            mode = rec.contract_type == 'msa' and rec.type_id.billing_mode
-            if mode == 'both':
-                if not (rec.is_fte or rec.is_consulting):
-                    raise ValidationError(
-                        _("Tick FTE, Consulting or both on contract '%s'.",
-                          rec.display_name)
-                    )
-            elif (rec.is_fte, rec.is_consulting) != (mode == 'fte', mode == 'consulting'):
-                raise ValidationError(
-                    _("FTE and Consulting can only be picked on a contract whose "
-                      "type does both; contract '%s' cannot.", rec.display_name)
                 )
 
     @api.constrains('contract_type', 'role', 'candidate')
@@ -660,7 +645,6 @@ class Contract(models.Model):
             if vals.get('contract_type') == 'sow' and not vals.get('parent_contract_id'):
                 raise ValidationError(_("A parent contract is required."))
             self._normalize_extension_vals(vals)
-            self._normalize_business_vals(vals)
         records = super().create(vals_list)
         records._clear_unused_billing()
         records._link_attachments_to_record()
@@ -670,7 +654,6 @@ class Contract(models.Model):
 
     def write(self, vals):
         self._normalize_extension_vals(vals, self)
-        self._normalize_business_vals(vals, self)
         if 'end_date' in vals or 'extended_end_date' in vals:
             # A renewal or an extension pushes the end out, which has to re-arm
             # the whole reminder sequence. setdefault keeps the cron's own write
@@ -679,7 +662,7 @@ class Contract(models.Model):
             vals.setdefault('reminder_last_sent', False)
         res = super().write(vals)
         if any(fname in vals for fname in
-               ('contract_type', 'type_id', 'is_fte', 'is_consulting', *BILLING_FIELDS)):
+               ('contract_type', 'type_id', *BILLING_FIELDS)):
             self._clear_unused_billing()
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()

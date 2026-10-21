@@ -32,8 +32,7 @@ must reference the contract it sits under - one doing consulting - takes its
 client from that contract, and has to run inside its period.
 
 Billing follows the business done with the client, which the contract type
-sets: FTE, Consulting, or FTE/Consulting, where the contract ticks either or
-both. FTE is billed on the overarching contract, by a bill rate in percent,
+sets: FTE, Consulting, or FTE/Consulting, which does both. FTE is billed on the overarching contract, by a bill rate in percent,
 with no billing frequency. Consulting is billed on each contract placed under
 it, by a budget in lakhs per month, on a billing frequency; only a contract
 doing consulting takes placed contracts at all.

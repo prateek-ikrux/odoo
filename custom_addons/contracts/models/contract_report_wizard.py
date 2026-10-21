@@ -168,9 +168,10 @@ class ContractReportWizard(models.TransientModel):
             order='client asc, effective_end_date desc, id asc',
         )
 
-        term_labels = dict(
-            self.env['contracts.contract']._fields['term']._description_selection(self.env)
-        )
+        Contract = self.env['contracts.contract']
+        term_labels = dict(Contract._fields['term']._description_selection(self.env))
+        frequency_labels = dict(
+            Contract._fields['billing_frequency']._description_selection(self.env))
         rows = []
         for seq, contract in enumerate(contracts, start=1):
             attachments = contract._get_documents()
@@ -197,6 +198,13 @@ class ContractReportWizard(models.TransientModel):
                 'annual_appraisal_due': contract.annual_appraisal_due,
                 'extended_end_date': contract.extended_end_date,
                 'remarks': contract.remarks or '',
+                # Billing: the bill rate on an FTE MSA, the rest on an SOW.
+                # Whatever does not apply is empty, and shows as N/A.
+                'bill_rate': contract.bill_rate,
+                'budget': contract.budget,
+                'billing_frequency': frequency_labels.get(contract.billing_frequency, ''),
+                'billing_poc': contract.billing_poc or '',
+                'billing_start_date': contract.billing_start_date,
             })
         return rows
 
