@@ -32,6 +32,7 @@ class PdpRegistration(models.TransientModel):
         required=True,
         help="The identifier starts with the SIREN, the part after the SIREN is optional. The expected format of the identifier is: SIREN, SIREN_SIRET, SIREN_SIRET_CodeRoutage or SIREN_SuffixeAdressage",
     )
+    # DEPRECATED - was for the pre-prod phase
     pdp_pilot_phase = fields.Boolean(
         related='company_id.l10n_fr_pdp_pilot_phase',
         readonly=False,
@@ -154,13 +155,13 @@ class PdpRegistration(models.TransientModel):
                 and participant_info.get('platform_id')
                 and not participant_info.get('receiver_on_odoo')
                ):
-                platform_name = participant_info.get("platform_name")
+                platform_name = f" '{name}'" if (name := participant_info.get("platform_name")) else ""
                 warnings["company_pdp_annuaire_warning"] = {
                     "level": "warning",
                     "message": self.env._(
                         "Another platform is already assigned to this identifier in the annuaire (Platform%(platform_name)s with ID %(platform_id)s). "
                         "By registering, you confirm that you want to migrate to Odoo.",
-                        platform_name=f" '{platform_name}'" if platform_name else "",
+                        platform_name=platform_name,
                         platform_id=participant_info.get("platform_id"),
                     ),
                 }
@@ -235,6 +236,14 @@ class PdpRegistration(models.TransientModel):
         if not self.contact_email or not single_email_re.match(self.contact_email):
             raise ValidationError(self.env._("Invalid email address '%s'", self.contact_email))
         base_url = self.company_id._pdp_get_iap_url()
+        if self.env['res.company'].search_count([
+            ('peppol_eas', '=', '0225'),
+            ('peppol_endpoint', '=like', f'{self.siren_number}%'),
+            ('account_peppol_proxy_state', 'in', ('receiver', 'smp_registration')),
+        ], limit=1):
+            # Another company/branch on same db registered with the same siren (and so will do the same kyc)
+            return self.button_register_pdp_participant()
+
         response = iap_tools.iap_jsonrpc(f'{base_url}/api/id_authentication/1/authentication', params={
             'db_uuid': self.env['ir.config_parameter'].sudo().get_param('database.uuid'),
             'vat': self._get_kyc_siren(),

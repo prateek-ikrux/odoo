@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The Client Type and Industry / Domain master lists, under
+    CRM > Configuration > Pipeline beside Lost Reasons.
+
+    Both lists are edited in place: drag to reorder, type to rename, and
+    archive an entry to take it off the opportunity dropdown without touching
+    the opportunities already on it. An entry in use cannot be deleted.
+-->
+<odoo>
+
+    <!-- Client Type -->
+    <record id="crm_client_type_view_list" model="ir.ui.view">
+        <field name="name">crm.client.type.list</field>
+        <field name="model">crm.client.type</field>
+        <field name="arch" type="xml">
+            <list string="Client Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="lead_count"/>
+                <button name="action_view_leads" type="object" string="Opportunities"
+                        icon="fa-star" class="btn-link"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="crm_client_type_view_search" model="ir.ui.view">
+        <field name="name">crm.client.type.search</field>
+        <field name="model">crm.client.type</field>
+        <field name="arch" type="xml">
+            <search string="Client Types">
+                <field name="name"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="crm_client_type_action" model="ir.actions.act_window">
+        <field name="name">Client Types</field>
+        <field name="res_model">crm.client.type</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create a Client Type</p>
+            <p>Every opportunity picks its Client Type from this list.</p>
+        </field>
+    </record>
+
+    <!-- Industry / Domain -->
+    <record id="crm_industry_domain_view_list" model="ir.ui.view">
+        <field name="name">crm.industry.domain.list</field>
+        <field name="model">crm.industry.domain</field>
+        <field name="arch" type="xml">
+            <list string="Industries / Domains" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="lead_count"/>
+                <button name="action_view_leads" type="object" string="Opportunities"
+                        icon="fa-star" class="btn-link"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="crm_industry_domain_view_search" model="ir.ui.view">
+        <field name="name">crm.industry.domain.search</field>
+        <field name="model">crm.industry.domain</field>
+        <field name="arch" type="xml">
+            <search string="Industries / Domains">
+                <field name="name"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="crm_industry_domain_action" model="ir.actions.act_window">
+        <field name="name">Industries / Domains</field>
+        <field name="res_model">crm.industry.domain</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create an Industry / Domain</p>
+            <p>Opportunities pick their Industry / Domain from this list.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_crm_client_type"
+              name="Client Types"
+              parent="crm.menu_crm_config_lead"
+              action="crm_client_type_action"
+              sequence="7"/>
+
+    <menuitem id="menu_crm_industry_domain"
+              name="Industries / Domains"
+              parent="crm.menu_crm_config_lead"
+              action="crm_industry_domain_action"
+              sequence="8"/>
+
+</odoo>

@@ -14,6 +14,7 @@ from odoo.addons.account.models.account_move import MAX_HASH_VERSION
 
 
 _logger = logging.getLogger(__name__)
+_ignore_tax_lock_date = object()
 
 
 class AccountMoveLine(models.Model):
@@ -193,6 +194,9 @@ class AccountMoveLine(models.Model):
     # === Tax fields === #
     tax_ids = fields.Many2many(
         comodel_name='account.tax',
+        relation='account_move_line_account_tax_rel',
+        column1='account_move_line_id',
+        column2='account_tax_id',
         string="Taxes",
         compute='_compute_tax_ids', store=True, readonly=False, precompute=True,
         context={'active_test': False, 'hide_original_tax_ids': True},
@@ -291,7 +295,7 @@ class AccountMoveLine(models.Model):
         comodel_name='account.move.line',
         compute='_compute_reconciled_lines_excluding_exchange_diff_ids',
     )
-    count_reconciled_lines_excluding_exchange_diff = fields.Boolean(compute='_compute_reconciled_lines_excluding_exchange_diff_ids')
+    count_reconciled_lines_excluding_exchange_diff = fields.Integer(compute='_compute_reconciled_lines_excluding_exchange_diff_ids')
     exchange_move_ids = fields.Many2many(
         comodel_name='account.move',
         compute='_compute_exchange_move',
@@ -908,7 +912,7 @@ class AccountMoveLine(models.Model):
         for line in self:
             line.sequence = seq_map.get(line.display_type, 100)
 
-    @api.depends('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id')
+    @api.depends('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id', 'amount_currency')
     def _compute_totals(self):
         """ Compute 'price_subtotal' / 'price_total' outside of `_sync_tax_lines` because those values must be visible for the
         user on the UI with draft moves and the dynamic lines are synchronized only when saving the record.
@@ -1000,7 +1004,7 @@ class AccountMoveLine(models.Model):
             else:
                 line.discount_allocation_key = False
 
-    @api.depends('account_id', 'company_id', 'discount', 'price_unit', 'quantity', 'currency_rate', 'analytic_distribution')
+    @api.depends('account_id', 'company_id', 'price_unit', 'quantity', 'currency_rate', 'move_id.line_ids.discount', 'move_id.line_ids.analytic_distribution')
     def _compute_discount_allocation_needed(self):
         line2discounted_amount = {
             line: [
@@ -1019,12 +1023,13 @@ class AccountMoveLine(models.Model):
         distribution_totals = defaultdict(lambda: defaultdict(float))
         for line, discounted_amounts in line2discounted_amount.items():
             for account, _amount_currency, amount in discounted_amounts:
-                for analytic_account_id in line.analytic_distribution or {}:
+                for analytic_account_id, percentage in (line.analytic_distribution or {}).items():
+                    weighted_amount = amount * percentage / 100
                     distribution_totals[frozendict({
                         'move_id': line.move_id.id,
                         'account_id': account.id,
                         'currency_rate': line.currency_rate,
-                    })][analytic_account_id] += amount
+                    })][analytic_account_id] += weighted_amount
 
         for line in self:
             line.discount_allocation_dirty = True
@@ -1139,6 +1144,7 @@ class AccountMoveLine(models.Model):
                 grouping_key_counterpart = frozendict({
                     'move_id': move.id,
                     'account_id': grouping_key['account_id'],
+                    'analytic_distribution': grouping_key['analytic_distribution'],
                     'display_type': 'epd',
                 })
                 aggregated_base_lines = [
@@ -1785,7 +1791,8 @@ class AccountMoveLine(models.Model):
             exit_stack.enter_context(self.env.protecting([protected for vals, line in zip(vals_list, lines) for protected in self.env['account.move']._get_protected_vals(vals, line)]))
             container['records'] = lines
 
-        lines._check_tax_lock_date()
+        if self.env.context.get('ignore_tax_lock_date') is not _ignore_tax_lock_date:
+            lines._check_tax_lock_date()
 
         if not self.env.context.get('tracking_disable'):
             # Log changes to move lines on each move
@@ -1989,11 +1996,12 @@ class AccountMoveLine(models.Model):
 
         # Check the lock date. (Only relevant if the move is posted and non zero lines)
         non_zero_lines = self.filtered(lambda l: l.balance or l.amount_currency)
-        moves_to_check = non_zero_lines.move_id.filtered(lambda m: m.state == 'posted')
-        moves_to_check._check_fiscal_lock_dates()
 
-        # Check the tax lock date.
-        self._check_tax_lock_date()
+        # Lock dates
+        if self.env.context.get('ignore_tax_lock_date') is not _ignore_tax_lock_date:
+            moves_to_check = non_zero_lines.move_id.filtered(lambda m: m.state == 'posted')
+            moves_to_check._check_fiscal_lock_dates()
+            self._check_tax_lock_date()
 
         if not self.env.context.get('tracking_disable'):
             # Log changes to move lines on each move
@@ -3117,7 +3125,7 @@ class AccountMoveLine(models.Model):
                 ))
 
         # ==== Create the moves ====
-        exchange_moves = self.env['account.move'].with_context(no_exchange_difference=True).create(exchange_move_values_list)
+        exchange_moves = self.env['account.move'].with_context(no_exchange_difference=True, move_reverse_cancel=False).create(exchange_move_values_list)
         # The reconciliation of exchange moves is now dealt thanks to the reconciled_lines_ids field
 
         # ==== See if the exchange moves need to be posted or not ====

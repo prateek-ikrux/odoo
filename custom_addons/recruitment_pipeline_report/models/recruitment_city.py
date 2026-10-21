@@ -8,6 +8,7 @@ class RecruitmentCity(models.Model):
 
     name = fields.Char(string='City Name', required=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique (name)', 'City name must be unique!')
-    ]
+    _name_uniq = models.Constraint(
+        'unique (name)',
+        'City name must be unique!',
+    )

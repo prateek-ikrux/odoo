@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The shell shared by login, sign-up, reset password and 2FA: a brand
+         panel beside the card. The card keeps o_database_list, which Odoo's
+         own user-switch tour looks for, and still renders login_card_classes,
+         disable_footer and disable_database_manager as the original did. -->
+    <template id="login_layout" inherit_id="web.login_layout" name="iKrux Login Layout">
+        <xpath expr="//t[@t-set='body_classname']" position="attributes">
+            <attribute name="t-value">'o_ikx_login'</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('container')]" position="replace">
+            <div class="o_ikx_shell">
+                <aside class="o_ikx_brand">
+                    <img class="o_ikx_brand_logo" src="/ikrux_login/static/src/img/ikrux_logo_white.png" alt="iKrux"/>
+                    <div class="o_ikx_brand_copy">
+                        <span class="o_ikx_eyebrow">iKrux Workspace</span>
+                        <h1 class="o_ikx_headline">Engineering better, <span>together.</span></h1>
+                        <p class="o_ikx_tagline">One platform. Connected teams. Smarter execution.</p>
+                    </div>
+                    <div class="o_ikx_brand_footer">
+                        © <t t-out="res_company.name"/>
+                    </div>
+                </aside>
+                <section class="o_ikx_panel">
+                    <div t-attf-class="o_ikx_card {{login_card_classes}} o_database_list">
+                        <t t-out="0"/>
+                        <div class="o_ikx_card_footer" t-if="not disable_footer and not disable_database_manager">
+                            <a href="/web/database/manager">Manage Databases</a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Heading for the login page only; sign-up and reset password keep
+         their own content under the same shell. -->
+    <template id="login" inherit_id="web.login" name="iKrux Login Heading">
+        <xpath expr="//div[@id='oe_structure_login_top']" position="before">
+            <div class="o_ikx_heading">
+                <h2>Welcome back</h2>
+                <p>Sign in to your iKrux workspace.</p>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- "- or -" above the passkey / OAuth buttons becomes a ruled divider. -->
+    <template id="login_oauth" inherit_id="web.login_oauth" name="iKrux Login Divider">
+        <xpath expr="//div[hasclass('o_login_auth')]/em" position="replace">
+            <em class="o_ikx_or my-3">or</em>
+        </xpath>
+    </template>
+
+</odoo>

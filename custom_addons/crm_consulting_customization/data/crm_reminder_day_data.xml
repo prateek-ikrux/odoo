@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The choices offered in the reminder pickers out of the box. Any other
+         number can be typed into a picker and is added on the fly. -->
+    <data noupdate="1">
+        <record id="crm_reminder_day_1" model="crm.reminder.day"><field name="days">1</field></record>
+        <record id="crm_reminder_day_2" model="crm.reminder.day"><field name="days">2</field></record>
+        <record id="crm_reminder_day_3" model="crm.reminder.day"><field name="days">3</field></record>
+        <record id="crm_reminder_day_5" model="crm.reminder.day"><field name="days">5</field></record>
+        <record id="crm_reminder_day_6" model="crm.reminder.day"><field name="days">6</field></record>
+        <record id="crm_reminder_day_7" model="crm.reminder.day"><field name="days">7</field></record>
+        <record id="crm_reminder_day_10" model="crm.reminder.day"><field name="days">10</field></record>
+        <record id="crm_reminder_day_12" model="crm.reminder.day"><field name="days">12</field></record>
+        <record id="crm_reminder_day_14" model="crm.reminder.day"><field name="days">14</field></record>
+        <record id="crm_reminder_day_15" model="crm.reminder.day"><field name="days">15</field></record>
+        <record id="crm_reminder_day_18" model="crm.reminder.day"><field name="days">18</field></record>
+        <record id="crm_reminder_day_21" model="crm.reminder.day"><field name="days">21</field></record>
+        <record id="crm_reminder_day_30" model="crm.reminder.day"><field name="days">30</field></record>
+    </data>
+</odoo>

@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 from . import pipeline_constants
+from . import notify_mixin
+from . import recruitment_reminder_day
 from . import stage_history
 from . import recruiter_team
 from . import hr_job
 from . import hr_applicant
+from . import hr_applicant_reminder
+from . import hr_recruitment_stage
 from . import hr_department
 from . import res_partner
 from . import recruitment_city
@@ -16,3 +20,5 @@ from . import applicant_tracker_wizard
 from . import applicant_tracker_xlsx
 from . import assessment_report_wizard
 from . import assessment_report_xlsx
+from . import res_company
+from . import res_config_settings

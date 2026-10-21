@@ -70,6 +70,8 @@
             </xpath>
             <xpath expr="//field[@name='job_id']" position="attributes">
                 <attribute name="required">1</attribute>
+                <!-- A closed role cannot be picked; Odoo's own company rule kept -->
+                <attribute name="domain">[('x_role_status', '!=', 'closed')] + (company_id and [('company_id', '=', company_id)] or [])</attribute>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="attributes">
                 <attribute name="required">1</attribute>

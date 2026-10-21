@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Seed values only: the three ways business is done with a client.
+         noupdate keeps a rename or other edit from being reverted by an
+         upgrade. Types made by hand before these shipped are adopted by the
+         pre-migrate scripts rather than duplicated. -->
+    <data noupdate="1">
+        <record id="contract_type_consulting" model="contracts.type">
+            <field name="name">Consulting</field>
+            <field name="sequence">10</field>
+            <field name="billing_mode">consulting</field>
+        </record>
+        <record id="contract_type_fte" model="contracts.type">
+            <field name="name">FTE</field>
+            <field name="sequence">20</field>
+            <field name="billing_mode">fte</field>
+        </record>
+        <record id="contract_type_fte_consulting" model="contracts.type">
+            <field name="name">FTE/Consulting</field>
+            <field name="sequence">30</field>
+            <field name="billing_mode">both</field>
+        </record>
+    </data>
+</odoo>

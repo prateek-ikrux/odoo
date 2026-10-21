@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Export POCs.
+
+        One row per POC per client - the primary POC first - in an Excel sheet. Every
+        filter is optional; left empty, the export covers every client the
+        user can see in the pipeline. Opened from the Actions menu with
+        opportunities selected, it starts with just those clients.
+    -->
+    <record id="crm_poc_export_wizard_view_form" model="ir.ui.view">
+        <field name="name">crm.poc.export.wizard.form</field>
+        <field name="model">crm.poc.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export POCs">
+                <p class="text-muted">
+                    Exports Client Name, POC Name, Designation, Mobile Number,
+                    Email, Location and LinkedIn for every POC on the matching
+                    clients. Leave a filter empty to include everything.
+                </p>
+                <group>
+                    <group string="Clients">
+                        <field name="lead_ids" widget="many2many_tags"
+                               placeholder="All clients..."
+                               options="{'no_create': True}"/>
+                        <field name="client_type_ids" widget="many2many_tags"
+                               placeholder="All client types..."
+                               options="{'no_create': True}"/>
+                        <field name="industry_domain_ids" widget="many2many_tags"
+                               placeholder="All industries..."
+                               options="{'no_create': True}"/>
+                        <field name="client_status" placeholder="Any status..."/>
+                        <field name="engagement_type" placeholder="Any engagement..."/>
+                    </group>
+                    <group string="Pipeline">
+                        <field name="stage_ids" widget="many2many_tags"
+                               placeholder="All stages..."
+                               options="{'no_create': True}"/>
+                        <field name="bda_ids" widget="many2many_tags"
+                               placeholder="All BDAs..."
+                               options="{'no_create': True}"/>
+                        <field name="date_from" placeholder="Any..."/>
+                        <field name="date_to" placeholder="Any..."/>
+                        <field name="include_lost"/>
+                        <field name="primary_only"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" string="Export Excel"
+                            type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="crm_poc_export_wizard_action" model="ir.actions.act_window">
+        <field name="name">Export POCs</field>
+        <field name="res_model">crm.poc.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="crm_poc_export_wizard_view_form"/>
+        <field name="binding_model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+
+    <menuitem id="menu_crm_poc_export"
+              name="Export POCs"
+              parent="crm.crm_menu_report"
+              action="crm_poc_export_wizard_action"
+              sequence="10"/>
+
+</odoo>

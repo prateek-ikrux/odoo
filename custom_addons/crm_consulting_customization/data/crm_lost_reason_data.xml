@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Reasons an opportunity is closed-lost.
+
+    Closed-lost is a status, not a stage: a lost opportunity keeps the stage
+    it died in, which is what lets the funnel report show where deals are
+    actually being lost. The reason is required (see models/crm_lead_lost.py)
+    and drives the closed-lost analysis report.
+
+    CRM ships three reasons of its own. They are left in place - some suit
+    this business and the rest an Admin can archive from
+    CRM > Configuration > Lost Reasons - and these are added alongside.
+-->
+<odoo noupdate="1">
+
+    <record id="lost_reason_rate_not_agreed" model="crm.lost.reason">
+        <field name="name">Commercials not agreed</field>
+    </record>
+
+    <record id="lost_reason_went_to_competitor" model="crm.lost.reason">
+        <field name="name">Went to a competitor</field>
+    </record>
+
+    <record id="lost_reason_requirement_withdrawn" model="crm.lost.reason">
+        <field name="name">Requirement withdrawn by client</field>
+    </record>
+
+    <record id="lost_reason_hiring_freeze" model="crm.lost.reason">
+        <field name="name">Hiring freeze at client</field>
+    </record>
+
+    <record id="lost_reason_msa_not_cleared" model="crm.lost.reason">
+        <field name="name">MSA not cleared by client procurement</field>
+    </record>
+
+    <record id="lost_reason_no_response" model="crm.lost.reason">
+        <field name="name">No response from client</field>
+    </record>
+
+    <record id="lost_reason_capability_mismatch" model="crm.lost.reason">
+        <field name="name">Capability mismatch</field>
+    </record>
+
+</odoo>

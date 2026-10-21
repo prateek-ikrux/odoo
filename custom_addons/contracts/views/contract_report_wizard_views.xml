@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Export wizard form ─────────────────────────────────────────── -->
+    <record id="view_contracts_report_wizard_form" model="ir.ui.view">
+        <field name="name">contracts.report.wizard.form</field>
+        <field name="model">contracts.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Contracts">
+                <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+                    <i class="fa fa-file-excel-o fa-2x" title="Excel"/>
+                    <div>
+                        <strong>Contracts Excel Export</strong>
+                        <div class="small">
+                            Narrow the export with the filters below. Anything left
+                            empty includes every record.
+                        </div>
+                    </div>
+                </div>
+
+                <field name="contract_type" invisible="1"/>
+
+                <group>
+                    <group string="Contract" name="contract_filters">
+                        <field name="client" placeholder="All clients..."/>
+                        <field name="type_ids"
+                               invisible="contract_type != 'msa'"
+                               widget="many2many_tags"
+                               placeholder="All contract types..."
+                               options="{'no_create_edit': True}"/>
+                        <field name="state" placeholder="All statuses..."/>
+                        <field name="created_by_ids"
+                               widget="many2many_tags"
+                               placeholder="Anyone..."
+                               domain="[('share', '=', False)]"
+                               options="{'no_create_edit': True}"/>
+                    </group>
+                    <!-- Only a placement carries a person and a role, so for the
+                         other section the column is dropped rather than left as
+                         two empty inputs. -->
+                    <group string="Placement" name="placement_filters"
+                           invisible="contract_type != 'sow'">
+                        <field name="candidate" placeholder="All candidates..."/>
+                        <field name="role" placeholder="All roles..."/>
+                    </group>
+                </group>
+
+                <group>
+                    <group string="Start Date Range" name="start_range">
+                        <field name="start_date_from" widget="contracts_date" string="From" placeholder="Any..."/>
+                        <field name="start_date_to" widget="contracts_date" string="To" placeholder="Any..."/>
+                    </group>
+                    <group string="End Date Range" name="end_range">
+                        <field name="end_date_from" widget="contracts_date" string="From" placeholder="Any..."/>
+                        <field name="end_date_to" widget="contracts_date" string="To" placeholder="Any..."/>
+                    </group>
+                </group>
+
+                <group string="Expiry Shortcut" name="expiry">
+                    <label for="expiring_within_days"/>
+                    <div class="o_row">
+                        <field name="expiring_within_days" class="oe_inline"/>
+                        <span class="text-muted">days from today - 0 ignores this filter</span>
+                    </div>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx"
+                            string="Export Excel"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Wizard action (dialog) ─────────────────────────────────────── -->
+    <record id="action_contracts_report_wizard" model="ir.actions.act_window">
+        <field name="name">Export Contracts</field>
+        <field name="res_model">contracts.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_contracts_report_wizard_form"/>
+    </record>
+
+</odoo>

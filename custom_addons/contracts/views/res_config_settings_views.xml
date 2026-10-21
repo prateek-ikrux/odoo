@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The settings form is one shared record across every module, so this
+         only adds a tab to it. name="contracts" is what the action's
+         {'module': 'contracts'} context opens, and it is also what the tab
+         logo is taken from - static/description/icon.png, which the module
+         already ships for its menu. -->
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.contracts</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Contracts" string="Contracts" name="contracts">
+
+                    <!-- Both kinds of email side by side, each with its own
+                         switch and its own people. Their details sit inside
+                         the switch, so a feature that is off shows nothing
+                         to fill in. Nobody is on a list until picked;
+                         Select everyone and Clear fill or empty it at once. -->
+                    <block title="Email Notifications" name="contracts_notifications">
+                        <setting id="contracts_reminders_setting"
+                                 string="Expiry Reminders"
+                                 help="Email a heads-up before an MSA or SOW reaches its end date, so it can be renewed, extended or closed in time.">
+                            <field name="contracts_reminders_enabled"/>
+                            <div class="content-group mt16"
+                                 invisible="not contracts_reminders_enabled">
+                                <div class="row">
+                                    <label for="contracts_reminder_milestone_ids"
+                                           string="Send at"
+                                           class="col-lg-3 o_light_label"/>
+                                    <div class="col-lg-9">
+                                        <!-- Pick from the list, or type any
+                                             number of days to add it. -->
+                                        <field name="contracts_reminder_milestone_ids"
+                                               widget="many2many_tags"
+                                               placeholder="Pick or type days..."
+                                               options="{'color_field': 'color', 'no_create_edit': True}"/>
+                                        <div class="text-muted small mt-1">
+                                            before the end date - type a number to add your own
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                     role="alert"
+                                     invisible="contracts_reminder_milestone_ids">
+                                    <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                    <span>No days picked, so no reminders will go out.</span>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="contracts_reminder_recipient_ids"
+                                           string="Send to"
+                                           class="col-lg-3 o_light_label"/>
+                                    <field name="contracts_reminder_recipient_ids"
+                                           class="col-lg-9"
+                                           widget="many2many_tags_avatar"
+                                           placeholder="Pick who should be reminded..."
+                                           options="{'no_create': True}"/>
+                                </div>
+                                <div class="row">
+                                    <div class="offset-lg-3 col-lg-9 small mt-1">
+                                        <button name="action_contracts_recipients_select_all" type="object"
+                                                string="Select everyone" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_reminder_recipient_ids'}"/>
+                                        <span class="text-muted mx-1">·</span>
+                                        <button name="action_contracts_recipients_clear" type="object"
+                                                string="Clear" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_reminder_recipient_ids'}"/>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                        Only people with an email address on their user receive these.
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                     role="alert"
+                                     invisible="contracts_reminder_recipient_ids">
+                                    <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                    <span>Nobody is picked yet, so no reminders will go out.</span>
+                                </div>
+                            </div>
+                        </setting>
+
+                        <setting id="contracts_change_notify_setting"
+                                 string="Change Notifications"
+                                 help="An email as soon as an MSA or SOW is created, deleted or has a change recorded in its audit log.">
+                            <field name="contracts_change_notify"/>
+                            <div class="content-group mt16"
+                                 invisible="not contracts_change_notify">
+                                <div class="row">
+                                    <label for="contracts_change_recipient_ids"
+                                           string="Send to"
+                                           class="col-lg-3 o_light_label"/>
+                                    <field name="contracts_change_recipient_ids"
+                                           class="col-lg-9"
+                                           widget="many2many_tags_avatar"
+                                           placeholder="Pick who should be notified..."
+                                           options="{'no_create': True}"/>
+                                </div>
+                                <div class="row">
+                                    <div class="offset-lg-3 col-lg-9 small mt-1">
+                                        <button name="action_contracts_recipients_select_all" type="object"
+                                                string="Select everyone" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_change_recipient_ids'}"/>
+                                        <span class="text-muted mx-1">·</span>
+                                        <button name="action_contracts_recipients_clear" type="object"
+                                                string="Clear" class="btn-link p-0 align-baseline"
+                                                context="{'recipient_field': 'contracts_change_recipient_ids'}"/>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="offset-lg-3 col-lg-9 text-muted small mt-1">
+                                        Only people with an email address on their user receive these.
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
+                                     role="alert"
+                                     invisible="contracts_change_recipient_ids">
+                                    <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                    <span>Nobody is picked yet, so no notifications will go out.</span>
+                                </div>
+                            </div>
+                        </setting>
+
+                    </block>
+
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_contracts_config_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'contracts', 'bin_size': False}</field>
+    </record>
+
+</odoo>

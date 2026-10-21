@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from .pipeline_constants import (
     ROLE_STATUS_LABELS,
+    ROLE_STATUS_SELECTION,
     SUB_STATUS_LABELS,
     SUB_STATUS_SELECTION,
     EMP_TYPE_LABELS,
@@ -54,7 +55,7 @@ class PipelineSummaryWizard(models.TransientModel):
     poc_ids        = fields.Many2many('res.partner',   string='POC')
     poc_ids_domain = fields.Binary(compute='_compute_poc_ids_domain')
     role_status    = fields.Selection(
-        ROLE_STATUS_LABELS.items(),
+        ROLE_STATUS_SELECTION,
         string='Role Status',
     )
     sub_status     = fields.Selection(

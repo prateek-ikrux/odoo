@@ -512,7 +512,7 @@ class ProjectProject(models.Model):
             for follower in old_project.message_follower_ids:
                 new_project.message_subscribe(partner_ids=follower.partner_id.ids, subtype_ids=follower.subtype_ids.ids)
             if old_project.allow_milestones:
-                new_project.milestone_ids = self.milestone_ids.copy().ids
+                new_project.milestone_ids = old_project.milestone_ids.copy().ids
             if 'tasks' not in default:
                 old_project.map_tasks(new_project.id)
             if not old_project.active:
@@ -1153,6 +1153,8 @@ class ProjectProject(models.Model):
             'costs': profitability_items['costs'],
             'revenues': profitability_items['revenues'],
             'expected_percentage': expected_percentage,
+            'to_bill_to_invoice': to_bill_to_invoice,
+            'billed_invoiced': billed_invoiced,
             'to_bill_to_invoice_percentage': to_bill_to_invoice_percentage,
             'billed_invoiced_percentage': billed_invoiced_percentage,
             'total': {

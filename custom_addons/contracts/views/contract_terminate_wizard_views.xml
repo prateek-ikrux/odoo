@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_contracts_terminate_confirm_form" model="ir.ui.view">
+        <field name="name">contracts.terminate.confirm.form</field>
+        <field name="model">contracts.terminate.confirm</field>
+        <field name="arch" type="xml">
+            <form string="Terminate Contract">
+                <field name="contract_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fa fa-exclamation-triangle" title="Warning"/>
+                    <strong>This contract still has contracts running under it.</strong>
+                    <p class="mb-0 mt-2">
+                        Only this contract will be closed. The ones listed below stay
+                        as they are and have to be closed separately.
+                    </p>
+                </div>
+                <group>
+                    <field name="child_names" nolabel="1" colspan="2" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_confirm"
+                            string="Terminate"
+                            type="object"
+                            class="btn-danger"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -30,9 +30,10 @@ class RecruiterTeam(models.Model):
 
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('name_uniq', 'unique (name)', 'A recruiter group with this name already exists!'),
-    ]
+    _name_uniq = models.Constraint(
+        'unique (name)',
+        'A recruiter group with this name already exists!',
+    )
 
     @api.constrains('team_lead_id', 'member_ids')
     def _check_team_lead_is_member(self):
