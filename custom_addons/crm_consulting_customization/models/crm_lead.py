@@ -582,6 +582,24 @@ class CrmLead(models.Model):
         """The partners behind users who can actually be mailed."""
         return users.filtered(lambda u: u.active and u.email).partner_id
 
+    @api.model
+    def _mail_email_to(self, partners):
+        """Everyone on one To line, so a notification goes out as a single
+        email they all share. Odoo sends a separate copy to each partner in
+        ``recipient_ids``; ``email_to`` goes out once, to all of it."""
+        return ', '.join(partners.mapped('email_formatted'))
+
+    @api.model
+    def _mail_email_values(self, partners):
+        """Send-mail values addressing a template's email to ``partners``
+        alone, on one shared To line.
+
+        ``recipient_ids`` is emptied as well: left alone, the template falls back
+        on the record's own default recipients - a lead's customer, a
+        candidate - and would mail them the internal notification too.
+        """
+        return {'email_to': self._mail_email_to(partners), 'recipient_ids': []}
+
     def _get_bda_users(self):
         # Archived BDAs are still on the record; read them, the mailer drops them.
         return self.sudo().with_context(active_test=False).bda_ids
@@ -705,7 +723,7 @@ class CrmLead(models.Model):
                     **values,
                 ).send_mail(
                     self.id,
-                    email_values={'recipient_ids': [(6, 0, partners.ids)]},
+                    email_values=self._mail_email_values(partners),
                     force_send=False,
                 )
             return True
@@ -829,7 +847,7 @@ class CrmLead(models.Model):
                 self.env['mail.mail'].sudo().create({
                     'subject': template._render_field('subject', lead.ids)[lead.id],
                     'body_html': template._render_field('body_html', lead.ids)[lead.id],
-                    'recipient_ids': [(6, 0, partners.ids)],
+                    'email_to': self._mail_email_to(partners),
                     'auto_delete': True,
                 })
         except Exception:
@@ -944,7 +962,7 @@ class CrmLead(models.Model):
                          count=len(rows), s=plural,
                          date=self._short_date(self.env, report_date)),
         }
-        email_values = {'recipient_ids': [(6, 0, partners.ids)]}
+        email_values = self._mail_email_values(partners)
         if rows:
             xlsx = build_stage_report_xlsx(
                 rows,

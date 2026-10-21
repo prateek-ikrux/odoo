@@ -750,6 +750,24 @@ class Contract(models.Model):
         """The partners behind picked users who can actually be mailed."""
         return users.filtered(lambda u: u.active and u.email).partner_id
 
+    @api.model
+    def _recipient_email_to(self, partners):
+        """Everyone on one To line, so a notification goes out as a single
+        email they all share. Odoo sends a separate copy to each partner in
+        ``recipient_ids``; ``email_to`` goes out once, to all of it."""
+        return ', '.join(partners.mapped('email_formatted'))
+
+    @api.model
+    def _recipient_email_values(self, partners):
+        """Send-mail values addressing a template's email to ``partners``
+        alone, on one shared To line.
+
+        ``recipient_ids`` is emptied as well: left alone, the template falls back
+        on the record's own default recipients - a lead's customer, a
+        candidate - and would mail them the internal notification too.
+        """
+        return {'email_to': self._recipient_email_to(partners), 'recipient_ids': []}
+
     def _send_change_notification(self, event, changes=None):
         """Email a contract 'created', 'deleted', or 'updated' with its list
         of changes to the change notification list, one email per contract.
@@ -800,7 +818,7 @@ class Contract(models.Model):
                     self.env['mail.mail'].sudo().create({
                         'subject': rendered._render_field('subject', rec.ids)[rec.id],
                         'body_html': rendered._render_field('body_html', rec.ids)[rec.id],
-                        'recipient_ids': [(6, 0, partners.ids)],
+                        'email_to': self._recipient_email_to(partners),
                         'auto_delete': True,
                     })
                     queued = True
@@ -1086,7 +1104,7 @@ class Contract(models.Model):
                         contracts_reminder=rec._get_expiry_reminder_values(milestone, days),
                     ).send_mail(
                         rec.id,
-                        email_values={'recipient_ids': [(6, 0, recipients.ids)]},
+                        email_values=self._recipient_email_values(recipients),
                         force_send=False,
                     )
                     rec.write({

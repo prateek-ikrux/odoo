@@ -63,6 +63,24 @@ class RecruitmentNotifyMixin(models.AbstractModel):
         users = users.filtered(lambda u: u.active and u.email and not u.share)
         return users.partner_id
 
+    @api.model
+    def _rn_email_to(self, partners):
+        """Everyone on one To line, so a notification goes out as a single
+        email they all share. Odoo sends a separate copy to each partner in
+        ``recipient_ids``; ``email_to`` goes out once, to all of it."""
+        return ', '.join(partners.mapped('email_formatted'))
+
+    @api.model
+    def _rn_email_values(self, partners):
+        """Send-mail values addressing a template's email to ``partners``
+        alone, on one shared To line.
+
+        ``recipient_ids`` is emptied as well: left alone, the template falls back
+        on the record's own default recipients - a lead's customer, a
+        candidate - and would mail them the internal notification too.
+        """
+        return {'email_to': self._rn_email_to(partners), 'recipient_ids': []}
+
     # ── Formatting ────────────────────────────────────────────────
     @api.model
     def _rn_date(self, value, pattern='d MMM y'):
@@ -138,7 +156,7 @@ class RecruitmentNotifyMixin(models.AbstractModel):
                     **values,
                 ).send_mail(
                     self.id,
-                    email_values={'recipient_ids': [(6, 0, partners.ids)]},
+                    email_values=self._rn_email_values(partners),
                     force_send=False,
                 )
             return True
@@ -175,7 +193,7 @@ class RecruitmentNotifyMixin(models.AbstractModel):
                 self.env['mail.mail'].sudo().create({
                     'subject': template._render_field('subject', first.ids)[first.id],
                     'body_html': template._render_field('body_html', first.ids)[first.id],
-                    'recipient_ids': [(6, 0, partners.ids)],
+                    'email_to': self._rn_email_to(partners),
                     'auto_delete': True,
                 })
         except Exception:
