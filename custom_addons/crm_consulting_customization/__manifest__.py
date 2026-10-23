@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.28.0',
+    'version': '19.0.1.29.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -41,13 +41,16 @@ Opportunities can email people as they move. Each kind is switched on and
 configured under CRM > Configuration > Settings. Change notifications and
 activity reminders follow one three-level hierarchy: Leadership, picked in
 the settings; managers, who are the Team Leaders of sales teams; and BDAs,
-the members of their teams. Email only ever goes up it.
+the members of their teams.
 
 * Change notifications - when an opportunity is created, deleted, or a change
-  to it is recorded in its audit log, to everyone above whoever made the
-  change: a BDA's change to their team leader and leadership, a manager's to
-  leadership, and leadership's to nobody. Never to the person themselves or
-  their peers. Automatic changes go to the opportunity's whole hierarchy.
+  to it - its POC list included - is recorded in its audit log. Always to the
+  opportunity's BDAs, those just taken off it among them; then a BDA's change
+  to their team leader and leadership, a manager's to the BDAs' team leaders
+  and leadership, and leadership's to the BDAs' team leaders. Never to the
+  person themselves. Automatic changes go to the opportunity's whole
+  hierarchy. Odoo's own "You have been assigned" email is left out for
+  opportunities while these are on, as the change notification covers it.
 * Stage Ageing Report - an email on the schedule picked - daily, weekly on
   a weekday, or monthly on a day of the month, at a time of day (weekly on
   Monday at midnight by default) - with an Excel list of every active client

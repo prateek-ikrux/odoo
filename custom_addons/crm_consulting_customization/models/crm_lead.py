@@ -126,6 +126,18 @@ PRIMARY_POC_FIELDS = {
     'poc1_linkedin': 'linkedin',
 }
 
+# The details of a POC that make up its line in poc_summary, in order.
+POC_SUMMARY_FIELDS = ('name', 'designation', 'location', 'email', 'phone', 'linkedin')
+
+
+def poc_summary_line(poc):
+    """One POC as one line of text: its details in POC_SUMMARY_FIELDS order,
+    the empty ones left out. Takes a POC or a dict of its values, so the
+    migration that fills the column writes exactly what the ORM would."""
+    return ' - '.join(
+        value.strip() for value in (poc[fname] for fname in POC_SUMMARY_FIELDS)
+        if value and value.strip())
+
 
 def fill_last_activity_dates(cr):
     """Date every opportunity's last activity from the history already there:
@@ -396,6 +408,25 @@ class CrmLead(models.Model):
     # Copied with the opportunity.
     poc_ids = fields.One2many(
         'crm.lead.poc', 'lead_id', string='POCs', copy=True)
+
+    # The POC list as text, one POC to a line in list order. A One2many
+    # cannot be tracked, so this is what puts a POC added, changed, removed
+    # or reordered in the audit log and the change notification, from the
+    # form, an import or the POC list alike. Off every view.
+    poc_summary = fields.Text(
+        'POC List', compute='_compute_poc_summary', store=True, tracking=True, copy=False)
+
+    @api.depends(*(f'poc_ids.{fname}' for fname in POC_SUMMARY_FIELDS), 'poc_ids.sequence')
+    def _compute_poc_summary(self):
+        for lead in self:
+            lines = (poc_summary_line(poc) for poc in lead.poc_ids.sorted('sequence'))
+            lead.poc_summary = '\n'.join(line for line in lines if line) or False
+
+    def _track_poc_change(self):
+        """Start tracking the POC List as the current user, ahead of a change
+        to a POC (see crm.lead.poc)."""
+        if not self.env.context.get('tracking_disable'):
+            self._track_prepare(['poc_summary'])
 
     def _get_primary_poc(self):
         """The first POC in the list. Sorted by the position alone, as the
@@ -867,32 +898,57 @@ class CrmLead(models.Model):
             return False
 
     # ── Change notifications ──────────────────────────────────────
-    def _get_change_partners(self):
-        """Everyone above whoever made the change, or nobody while change
-        notifications are off.
+    def _get_change_partners(self, previous_bdas=None):
+        """Who hears of a change to these opportunities, by whoever made it,
+        or nobody while change notifications are off:
 
-        A change made by a scheduled job has nobody behind it to rank, so it
-        goes to the whole of these opportunities' hierarchy instead: their
-        BDAs, the BDAs' team leaders, and leadership.
+          BDA         - the opportunities' BDAs, their own team leader and
+                        leadership
+          Manager     - the opportunities' BDAs, the BDAs' team leaders and
+                        leadership
+          Leadership  - the opportunities' BDAs and the BDAs' team leaders
+
+        previous_bdas, the BDAs a change has just taken off, count among the
+        BDAs, so nobody is dropped from an opportunity without hearing of it.
+        Never the person who made the change. A change made by a scheduled job
+        has nobody behind it to rank, so it goes to the whole of these
+        opportunities' hierarchy instead.
         """
         if not self._notify_enabled('crm_consulting.change_notify'):
             return self.env['res.partner']
         actor = self.env.user
+        bdas = self._get_bda_users()
+        if previous_bdas:
+            bdas |= previous_bdas.sudo().with_context(active_test=False)
+        leadership = self._get_leadership()
         if actor._is_superuser():
-            bdas = self._get_bda_users()
-            users = bdas | self._get_team_leaders(bdas) | self._get_leadership()
+            users = bdas | self._get_team_leaders(bdas) | leadership
+        elif self._get_hierarchy_level(actor, leadership) == 0:
+            users = bdas | self._get_users_above(actor)
         else:
-            users = self._get_users_above(actor)
-        return self._mail_partners(users)
+            users = bdas | self._get_team_leaders(bdas)
+            if actor not in leadership:
+                users |= leadership
+        return self._mail_partners(users - actor)
 
-    def _send_change_notification(self, event, changes=None):
+    def _send_change_notification(self, event, changes=None, previous_bdas=None):
         for lead in self.filtered(lambda l: l.type == 'opportunity'):
             lead._send_lead_mail(
                 'crm_consulting_customization.mail_template_crm_lead_created' if event == 'created'
                 else 'crm_consulting_customization.mail_template_crm_lead_updated',
-                lead._get_change_partners(),
+                lead._get_change_partners(previous_bdas),
                 {'crm_changes': changes or []},
             )
+
+    def _message_auto_subscribe_notify(self, partner_ids, template):
+        """Leave out Odoo's own "You have been assigned" email for
+        opportunities while change notifications are on: the new Primary BDA
+        is one of the BDAs, so the change notification already tells them,
+        with what else changed."""
+        leads = self
+        if self._notify_enabled('crm_consulting.change_notify'):
+            leads = self.filtered(lambda l: l.type != 'opportunity')
+        return super(CrmLead, leads)._message_auto_subscribe_notify(partner_ids, template)
 
     def _message_track(self, fields_iter, initial_values_dict):
         """Mail whatever the audit log just recorded.
@@ -906,22 +962,44 @@ class CrmLead(models.Model):
         for lead in self:
             changes = tracking.get(lead.id, (None, None))[0]
             if changes:
+                initial_values = initial_values_dict[lead.id]
                 lead._send_change_notification(
-                    'updated', lead._format_changes(changes, initial_values_dict[lead.id]))
+                    'updated', lead._format_changes(changes, initial_values),
+                    previous_bdas=initial_values.get('bda_ids') if 'bda_ids' in changes else None)
         return tracking
 
     def _format_changes(self, changes, initial_values):
         """Old and new value of each changed field, as display text, in the
         order the fields are declared."""
         self.ensure_one()
-        return [
-            {
+        formatted = []
+        for fname in self._fields:
+            if fname not in changes:
+                continue
+            if fname == 'poc_summary':
+                old, new = self._format_poc_change(initial_values.get(fname), self[fname])
+            else:
+                old = self._format_tracked_value(fname, initial_values.get(fname))
+                new = self._format_tracked_value(fname, self[fname])
+            formatted.append({
                 'field': self._fields[fname]._description_string(self.env),
-                'old': self._format_tracked_value(fname, initial_values.get(fname)),
-                'new': self._format_tracked_value(fname, self[fname]),
-            }
-            for fname in self._fields if fname in changes
-        ]
+                'old': old,
+                'new': new,
+            })
+        return formatted
+
+    @staticmethod
+    def _format_poc_change(old, new):
+        """Only the POCs that changed: a removed POC's line before, an added
+        one's after, and an edited one's in both. A reorder changes no line,
+        so it shows the whole list in each order."""
+        old_lines = (old or '').splitlines()
+        new_lines = (new or '').splitlines()
+        removed = [line for line in old_lines if line not in new_lines]
+        added = [line for line in new_lines if line not in old_lines]
+        if not removed and not added:
+            removed, added = old_lines, new_lines
+        return '\n'.join(removed) or '—', '\n'.join(added) or '—'
 
     def _format_tracked_value(self, fname, value):
         field = self._fields[fname]

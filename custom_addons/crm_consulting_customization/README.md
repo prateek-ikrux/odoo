@@ -181,11 +181,18 @@ Hierarchy**:
 | Managers | The **Team Leader** of each sales team | CRM > Configuration > Sales Teams |
 | BDAs | The members of each sales team | CRM > Configuration > Sales Teams |
 
-Someone on two levels counts at the higher. Email only goes up:
+Someone on two levels counts at the higher.
 
-- **Change notifications** go to everyone above whoever made the change - a
-  BDA's to their team leader and leadership, a manager's to leadership,
-  leadership's to nobody. Never to the person who made it, nor their peers.
+- **Change notifications** (19.0.1.29.0) always go to the opportunity's
+  BDAs - co-BDAs included, and any BDA the change took off it. Then a BDA's
+  change also goes to their own team leader and leadership, a manager's to
+  the BDAs' team leaders and leadership, leadership's to the BDAs' team
+  leaders. Never to the person who made it. Adding, editing, removing or
+  reordering POCs counts as a change: the POC list is tracked through
+  `poc_summary` (POC List), and the email shows only the POC lines that
+  changed. While change notifications are on, Odoo's own "You have been
+  assigned" email is left out for opportunities - the new Primary BDA is a
+  BDA, so the change notification already tells them.
   A change made by a scheduled job has nobody behind it, so it goes to the
   opportunity's BDAs, their team leaders and leadership.
 - **Activity reminders** go to the person the activity is assigned to, and
@@ -193,7 +200,8 @@ Someone on two levels counts at the higher. Email only goes up:
   start. An activity assigned to nobody is the opportunity's BDAs' to do.
 
 A BDA in no sales team has no manager, so their changes reach leadership
-only. The upgrade to 19.0.1.25.0 makes whoever was on the change
+only. CRM settings list every BDA on an opportunity who has no team leader,
+under Notification Hierarchy. The upgrade to 19.0.1.25.0 makes whoever was on the change
 notification **Send to** list Leadership, and drops the activity reminder
 list and the BDA, team leader, assignee and upward-only ticks.
 
