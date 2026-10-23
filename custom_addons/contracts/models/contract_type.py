@@ -36,8 +36,9 @@ class ContractTypeMaster(models.Model):
     billing_mode = fields.Selection(
         BILLING_MODE_SELECTION, string='Billing Mode',
         required=True, default='consulting',
-        help="FTE: billed on the Master Service Agreement, by bill rate.\n"
-             "Consulting: billed on each Statement of Work under it, by budget; "
+        help="FTE: billed on the Master Service Agreement, by budget.\n"
+             "Consulting: billed on each Statement of Work under it, by bill "
+             "rate; "
              "only these take Statements of Work.\n"
              "FTE & Consulting: both - FTE billed on the Master Service "
              "Agreement, consulting on each Statement of Work under it.",
@@ -77,7 +78,7 @@ class ContractTypeMaster(models.Model):
     def write(self, vals):
         res = super().write(vals)
         if 'billing_mode' in vals:
-            # Contracts of a type moved off FTE stop showing their bill rate;
+            # Contracts of a type moved off FTE stop showing their budget;
             # wipe it, as moving a single contract to such a type would.
             self.env['contracts.contract'].search([
                 ('contract_type', '=', 'msa'), ('type_id', 'in', self.ids),

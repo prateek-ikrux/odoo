@@ -4,7 +4,7 @@ import logging
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.tools.misc import format_date
+from odoo.tools.misc import format_date, formatLang
 from odoo.exceptions import ValidationError
 
 from .contract_type import CONSULTING_MODES, FTE_MODES
@@ -46,17 +46,16 @@ TERM_SELECTION = [
 ]
 
 # Billing follows the business done. FTE is billed on the overarching contract,
-# by bill rate; consulting on each contract placed under it, by budget. Each
-# contract carries only the fields of the business it is billed for.
+# by a budget; consulting on each contract placed under it, by a bill rate. Both
+# are entered as the full figure, not in lakhs. Each contract carries only the
+# fields of the business it is billed for.
 FTE_BILLING_FIELDS = [
-    'bill_rate',
-    'billing_poc',
+    'budget',
     'billing_start_date',
 ]
 CONSULTING_BILLING_FIELDS = [
-    'budget',
+    'bill_rate',
     'billing_frequency',
-    'billing_poc',
     'billing_start_date',
 ]
 BILLING_FIELDS = list(dict.fromkeys(FTE_BILLING_FIELDS + CONSULTING_BILLING_FIELDS))
@@ -123,7 +122,10 @@ class Contract(models.Model):
     )
     poc = fields.Char(
         string='Contract POC', required=True, tracking=True,
-        help="Point of contact for this contract.",
+        compute='_compute_poc', store=True, readonly=False, precompute=True,
+        recursive=True,
+        help="Point of contact for this contract. A placed contract takes the "
+             "one of the contract above it.",
     )
     created_by_id = fields.Many2one(
         'res.users', string='Created By',
@@ -220,22 +222,17 @@ class Contract(models.Model):
     # FTE is billed on the overarching contract (FTE_BILLING_FIELDS), consulting
     # on each contract placed under it (CONSULTING_BILLING_FIELDS). Whatever
     # does not apply to a contract is cleared on save.
-    bill_rate = fields.Float(
-        string='Bill Rate', digits=(5, 2), tracking=True,
-        help="FTE bill rate, as a percentage.",
-    )
     budget = fields.Float(
         string='Budget', digits=(12, 2), tracking=True,
-        help="Consulting budget, in lakhs per month (LPM).",
+        help="FTE budget, as the full figure - e.g. 1800000, not 18 lakhs.",
+    )
+    bill_rate = fields.Float(
+        string='Bill Rate', digits=(12, 2), tracking=True,
+        help="Consulting bill rate, as the full figure - e.g. 450000, not 4.5 lakhs.",
     )
     billing_frequency = fields.Selection(
         BILLING_FREQUENCY_SELECTION, string='Billing Frequency', tracking=True,
         help="Consulting only: FTE is not billed on a cycle.",
-    )
-    billing_poc = fields.Char(
-        string='Billing POC', tracking=True,
-        help="Person in charge of billing for this contract. Never the same "
-             "person as the Contract POC.",
     )
     billing_start_date = fields.Date(
         string='Billing Start Date', tracking=True,
@@ -276,6 +273,16 @@ class Contract(models.Model):
                 rec.client = rec.parent_contract_id.client
             elif not rec.client:
                 rec.client = False
+
+    @api.depends('contract_type', 'parent_contract_id.poc')
+    def _compute_poc(self):
+        """A placed contract always has the point of contact of the contract
+        above it, following it when it changes."""
+        for rec in self:
+            if rec.contract_type == 'sow' and rec.parent_contract_id:
+                rec.poc = rec.parent_contract_id.poc
+            elif not rec.poc:
+                rec.poc = False
 
     def _does_fte(self):
         """An MSA whose type covers FTE, and so is billed itself."""
@@ -589,27 +596,16 @@ class Contract(models.Model):
                       end=parent.effective_end_date or _("completion of service"))
                 )
 
-    @api.constrains('poc', 'billing_poc')
-    def _check_billing_poc(self):
-        for rec in self:
-            if not (rec.poc and rec.billing_poc) \
-                    or rec.poc.strip().casefold() != rec.billing_poc.strip().casefold():
-                continue
-            raise ValidationError(
-                _("The Billing POC cannot be the same person as the Contract POC "
-                  "on contract '%s'.", rec.display_name)
-            )
-
-    @api.constrains('bill_rate', 'budget')
+    @api.constrains('budget', 'bill_rate')
     def _check_billing(self):
         for rec in self:
-            if rec.bill_rate < 0:
-                raise ValidationError(
-                    _("Bill Rate cannot be negative on contract '%s'.", rec.display_name)
-                )
             if rec.budget < 0:
                 raise ValidationError(
                     _("Budget cannot be negative on contract '%s'.", rec.display_name)
+                )
+            if rec.bill_rate < 0:
+                raise ValidationError(
+                    _("Bill Rate cannot be negative on contract '%s'.", rec.display_name)
                 )
 
     # ── State synchronisation ─────────────────────────────────────
@@ -644,6 +640,10 @@ class Contract(models.Model):
             # so the insert would fail on the NOT NULL column instead of here.
             if vals.get('contract_type') == 'sow' and not vals.get('parent_contract_id'):
                 raise ValidationError(_("A parent contract is required."))
+            if vals.get('contract_type') == 'sow':
+                # Its POC is the parent's (_compute_poc); one sent along - by
+                # an import, say - would only stand in for it.
+                vals.pop('poc', None)
             self._normalize_extension_vals(vals)
         records = super().create(vals_list)
         records._clear_unused_billing()
@@ -653,6 +653,17 @@ class Contract(models.Model):
         return records
 
     def write(self, vals):
+        if 'poc' in vals and 'contract_type' not in vals:
+            placed = self.filtered(lambda rec: rec.contract_type == 'sow')
+            if placed:
+                # A placed contract's POC is the parent's (_compute_poc): only
+                # the overarching contracts take one written directly.
+                others = self - placed
+                rest = {fname: value for fname, value in vals.items() if fname != 'poc'}
+                res = others.write(vals) if others else True
+                if rest:
+                    res = placed.write(rest) and res
+                return res
         self._normalize_extension_vals(vals, self)
         if 'end_date' in vals or 'extended_end_date' in vals:
             # A renewal or an extension pushes the end out, which has to re-arm
@@ -984,8 +995,8 @@ class Contract(models.Model):
             'created_on': short_date(fields.Datetime.context_timestamp(
                 self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
             'appraisal_due': short_date(self.annual_appraisal_due),
-            'bill_rate': f'{self.bill_rate:g}%' if self.bill_rate else '',
-            'budget': f'{self.budget:g} LPM' if self.budget else '',
+            'budget': formatLang(self.env, self.budget) if self.budget else '',
+            'bill_rate': formatLang(self.env, self.bill_rate) if self.bill_rate else '',
             'billing_frequency': label('billing_frequency'),
             'billing_start': short_date(self.billing_start_date),
             'documents': len(self._get_documents()),

@@ -198,12 +198,11 @@ class ContractReportWizard(models.TransientModel):
                 'annual_appraisal_due': contract.annual_appraisal_due,
                 'extended_end_date': contract.extended_end_date,
                 'remarks': contract.remarks or '',
-                # Billing: the bill rate on an FTE MSA, the rest on an SOW.
+                # Billing: the budget on an FTE MSA, the rest on an SOW.
                 # Whatever does not apply is empty, and shows as N/A.
-                'bill_rate': contract.bill_rate,
                 'budget': contract.budget,
+                'bill_rate': contract.bill_rate,
                 'billing_frequency': frequency_labels.get(contract.billing_frequency, ''),
-                'billing_poc': contract.billing_poc or '',
                 'billing_start_date': contract.billing_start_date,
             })
         return rows

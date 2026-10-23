@@ -163,13 +163,13 @@
                         </div>
                         <label for="bill_rate_lpm" string="Commercial Agreement"
                                invisible="commercial_basis != 'lpm'"/>
-                        <div class="o_row" invisible="commercial_basis != 'lpm'">
-                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline"/>
+                        <div class="d-flex align-items-baseline gap-1" invisible="commercial_basis != 'lpm'">
+                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline o_input_7ch"/>
                             <span class="oe_inline text-muted">LPM</span>
                         </div>
                         <label for="project_duration" invisible="engagement_type == 'fte'"/>
-                        <div class="o_row" invisible="engagement_type == 'fte'">
-                            <field name="project_duration" nolabel="1" class="oe_inline"/>
+                        <div class="d-flex align-items-baseline gap-1" invisible="engagement_type == 'fte'">
+                            <field name="project_duration" nolabel="1" class="oe_inline o_input_4ch"/>
                             <span class="oe_inline text-muted">months</span>
                         </div>
                         <label string="Project Duration" for="engagement_type"
