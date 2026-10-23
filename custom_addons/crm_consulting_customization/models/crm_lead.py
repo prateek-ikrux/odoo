@@ -2,6 +2,7 @@
 import base64
 import calendar
 import logging
+import re
 from collections import Counter
 from datetime import datetime, time, timedelta
 
@@ -9,6 +10,7 @@ import pytz
 
 from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import SQL
 from odoo.tools.misc import format_date
 
 from .crm_pipeline_report_xlsx import (
@@ -126,6 +128,25 @@ PRIMARY_POC_FIELDS = {
     'poc1_linkedin': 'linkedin',
 }
 
+# Words of legal form, dropped from the end of a client's name when telling
+# whether two opportunities are for the same client.
+CLIENT_NAME_SUFFIXES = {
+    'private', 'pvt', 'limited', 'ltd', 'inc', 'incorporated', 'llp', 'llc', 'plc',
+    'corp', 'corporation', 'gmbh',
+}
+
+
+def client_key(name):
+    """A client's name reduced to what tells clients apart: lower case, with
+    spaces, punctuation and a trailing legal form taken out, so "Birlasoft",
+    "Birla Soft" and "Birlasoft Pvt. Ltd." are one client. False for a name
+    with nothing left."""
+    words = re.findall(r'[^\W_]+', (name or '').casefold())
+    while words and words[-1] in CLIENT_NAME_SUFFIXES:
+        words.pop()
+    return ''.join(words) or False
+
+
 # The details of a POC that make up its line in poc_summary, in order.
 POC_SUMMARY_FIELDS = ('name', 'designation', 'location', 'email', 'phone', 'linkedin')
 
@@ -204,6 +225,108 @@ class CrmLead(models.Model):
     # opportunities that already point at a company keep that link.
     name = fields.Char(string='Client Name')
     partner_id = fields.Many2one(string='Client Company')
+
+    # A client should have one opportunity per engagement type, but nothing
+    # is refused: when an opportunity is saved from a form with a client
+    # name or engagement type that is new to it, the
+    # opportunities already in CRM for that client or a like-named one are
+    # listed in a popup, which saves anyway or discards the changes
+    # (static/src/client_duplicate_check.js). Every opportunity counts - won,
+    # open, and other BDAs' that the user cannot see - except a lost one, which
+    # a client coming back starts afresh from. FTE/Consulting is a type of its
+    # own, not FTE and Consulting at once: a Consulting client absorbing the
+    # candidate through FTE. An import has no popup to show, so what it
+    # brings in is found afterwards with the Possible Duplicates filter.
+    #
+    # Clients are told apart by client_key, the name reduced by client_key()
+    # above. A name that contains another or is contained in it - "ITC" and
+    # "ITC (FlyDubai)" - is listed too, as a similar client.
+    client_key = fields.Char(compute='_compute_client_key', store=True, index=True)
+    is_possible_duplicate = fields.Boolean(
+        'Possible Duplicate', compute='_compute_is_possible_duplicate',
+        search='_search_is_possible_duplicate',
+        help='Another opportunity that is not lost has the same client and engagement type.')
+
+    @api.depends('name')
+    def _compute_client_key(self):
+        for lead in self:
+            lead.client_key = client_key(lead.name)
+
+    def _possible_duplicate_ids_query(self):
+        """Opportunities, not lost, sharing their client and engagement type
+        with another one in the same company."""
+        return SQL("""
+            SELECT lead.id FROM crm_lead lead
+             WHERE lead.active AND lead.type = 'opportunity' AND lead.client_key IS NOT NULL
+               AND EXISTS (
+                   SELECT 1 FROM crm_lead other
+                    WHERE other.id != lead.id AND other.active AND other.type = 'opportunity'
+                      AND other.client_key = lead.client_key
+                      AND other.engagement_type = lead.engagement_type
+                      AND (other.company_id = lead.company_id OR other.company_id IS NULL
+                           OR lead.company_id IS NULL))
+        """)
+
+    def _compute_is_possible_duplicate(self):
+        self.flush_model(['client_key', 'engagement_type', 'active', 'type', 'company_id'])
+        self.env.cr.execute(self._possible_duplicate_ids_query())
+        duplicate_ids = {row[0] for row in self.env.cr.fetchall()}
+        for lead in self:
+            lead.is_possible_duplicate = lead._origin.id in duplicate_ids
+
+    def _search_is_possible_duplicate(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            return NotImplemented
+        query = self._possible_duplicate_ids_query()
+        positive = (operator == '=') == value
+        return [('id', 'in' if positive else 'not in', query)]
+
+    @api.model
+    def get_client_duplicate_message(self, name, engagement_type=False, lead_type=False,
+                                     company_id=False, lead_id=False):
+        """What the save popup says about an opportunity about to be saved
+        with these values, or False for nothing to say. Read past record
+        rules, so another BDA's opportunity counts too."""
+        if (lead_type or 'opportunity') != 'opportunity':
+            return False
+        key = client_key(name)
+        if not key or len(key) < 3:
+            return False
+        engagement_type = engagement_type or self._fields['engagement_type'].default(self)
+        self.flush_model(['client_key', 'active', 'type', 'company_id'])
+        self.env.cr.execute(SQL(
+            """SELECT id FROM crm_lead
+                WHERE active AND type = 'opportunity' AND id != %(id)s
+                  AND (%(company)s = 0 OR company_id = %(company)s OR company_id IS NULL)
+                  AND (client_key = %(key)s OR position(%(key)s IN client_key) > 0
+                       OR (length(client_key) >= 3 AND position(client_key IN %(key)s) > 0))
+                ORDER BY client_key = %(key)s AND engagement_type = %(type)s DESC,
+                         client_key = %(key)s DESC, id
+                LIMIT 10""",
+            id=lead_id or 0, company=company_id or 0, key=key, type=engagement_type))
+        matches = self.sudo().browse(row[0] for row in self.env.cr.fetchall())
+        if not matches:
+            return False
+        lines = []
+        for lead in matches:
+            if lead.client_key != key:
+                kind = _('similar client name')
+            elif lead.engagement_type == engagement_type:
+                kind = _('same client and engagement type')
+            else:
+                kind = _('same client, different engagement type')
+            lines.append('• %s\n   %s' % (lead._describe_for_duplicate(), kind))
+        return _(
+            'CRM already has opportunities for this or a similar client:\n\n%(matches)s\n\n'
+            'If one of them is this deal, ask to be added as a BDA on it rather than adding it '
+            'again.', matches='\n\n'.join(lines))
+
+    def _describe_for_duplicate(self):
+        lead = self.sudo()
+        return _('"%(name)s" (%(type)s) - BDA: %(bdas)s - stage: %(stage)s',
+                 name=lead.name, type=lead._selection_label('engagement_type'),
+                 bdas=', '.join(lead._get_bda_users().mapped('name')) or _('none'),
+                 stage=lead.stage_id.name or _('none'))
 
     # Client Type and Industry / Domain belong to the opportunity. They are
     # entered here and held here; nothing reads them off the client record, so

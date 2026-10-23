@@ -111,6 +111,42 @@ lost deals is not blocked by it.
 The priority stars that CRM puts beside the closing date are off the form. The
 column is untouched, so stars already given are kept.
 
+### Possible duplicate opportunities (19.0.1.29.0)
+
+A client should have one opportunity per engagement type, but nothing is
+refused. Saving an opportunity from a form - a new one, or one whose Client
+Name or Engagement Type changed - first asks the server what CRM already
+holds for that client or a like-named one. If anything, a **Possible
+duplicate opportunity** popup lists each match with its engagement type,
+BDAs and stage, marked *same client and engagement type*, *same client,
+different engagement type* or *similar client name*, and suggests asking to
+be added as a BDA on it instead:
+
+- **Save Anyway** saves as usual.
+- **Discard Changes** reverts the unsaved changes - a new opportunity back
+  to a blank form.
+- Closing the popup goes back to editing with the changes kept.
+
+The popup is `static/src/client_duplicate_check.js`, asking
+`crm.lead.get_client_duplicate_message`. A form with a required field still
+empty shows Odoo's own message first and the popup on the next save. An
+import has no popup and goes through; **Pipeline > Filters > Possible
+Duplicates** (`is_possible_duplicate`) lists every opportunity sharing its
+client and engagement type with another one that is not lost.
+
+- **Same client** compares the Client Name with case, spaces, punctuation
+  and a trailing legal form (Pvt, Private, Ltd, Limited, Inc, LLP, LLC, PLC,
+  Corp, Corporation, GmbH) taken out: "Birlasoft", "Birla Soft" and
+  "Birlasoft Pvt. Ltd." are one client. It is kept in `client_key`.
+- **Same engagement type** is exact. FTE/Consulting - a Consulting client
+  absorbing the candidate through FTE - is a type of its own, so it sits
+  beside an FTE and a Consulting opportunity for the same client.
+- **Every opportunity counts** - won and open, and other BDAs' that the user
+  cannot see - **except lost ones**: a client coming back after a lost deal
+  starts a new opportunity without a popup about the old one.
+- **Similar client name** is a name that contains, or is contained in, the
+  one entered - "ITC" and "ITC (FlyDubai)" - often a separate account.
+
 ### Salesperson and BDA
 
 They are the same idea, so the form shows one field: **BDA**, which takes as

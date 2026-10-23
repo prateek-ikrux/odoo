@@ -56,6 +56,7 @@
                 <attribute name="placeholder">e.g. Microsoft</attribute>
             </xpath>
 
+
             <!--
                 How this deal is classified, entered on the front page next to
                 the client it is for. The two are the opportunity's own - they
@@ -519,6 +520,11 @@
                         domain="[('engagement_type', '=', 'consulting')]"/>
                 <filter string="FTE/Consulting" name="filter_engagement_blended"
                         domain="[('engagement_type', '=', 'fte_consulting')]"/>
+                <separator/>
+                <!-- Same client and engagement type as another opportunity
+                     that is not lost - what an import brings in unchecked. -->
+                <filter string="Possible Duplicates" name="filter_possible_duplicate"
+                        domain="[('is_possible_duplicate', '=', True)]"/>
             </xpath>
 
             <!--
