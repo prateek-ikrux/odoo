@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'CRM Consulting Customization',
-    'version': '19.0.1.28.0',
+    'version': '19.0.1.29.0',
     'category': 'Sales/CRM',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -32,6 +32,14 @@ opportunity keeps the stage it died in and the reason is reportable on its own.
 Several people work one account, so an opportunity names one owner and any
 number of BDAs, and the form asks for the BDAs rather than a salesperson.
 
+A client should have one opportunity per engagement type, but nothing is
+refused. Saving an opportunity with a client name or engagement type new to
+it pops up what CRM already holds for that client - read past case, spacing,
+punctuation and a legal form such as Pvt Ltd - or a like-named one, other
+BDAs' included, and the user saves anyway or discards the changes. Lost
+opportunities do not count, and FTE/Consulting is a type of its own. Imports
+have no popup; the Possible Duplicates filter finds what they bring in.
+
 POCs are recorded on the opportunity itself, in one list with no limit on
 how many, added a row at a time and dragged into order. The first is the
 primary contact, whose details the opportunity keeps a copy of for Send
@@ -41,13 +49,16 @@ Opportunities can email people as they move. Each kind is switched on and
 configured under CRM > Configuration > Settings. Change notifications and
 activity reminders follow one three-level hierarchy: Leadership, picked in
 the settings; managers, who are the Team Leaders of sales teams; and BDAs,
-the members of their teams. Email only ever goes up it.
+the members of their teams.
 
 * Change notifications - when an opportunity is created, deleted, or a change
-  to it is recorded in its audit log, to everyone above whoever made the
-  change: a BDA's change to their team leader and leadership, a manager's to
-  leadership, and leadership's to nobody. Never to the person themselves or
-  their peers. Automatic changes go to the opportunity's whole hierarchy.
+  to it - its POC list included - is recorded in its audit log. Always to the
+  opportunity's BDAs, those just taken off it among them; then a BDA's change
+  to their team leader and leadership, a manager's to the BDAs' team leaders
+  and leadership, and leadership's to the BDAs' team leaders. Never to the
+  person themselves. Automatic changes go to the opportunity's whole
+  hierarchy. Odoo's own "You have been assigned" email is left out for
+  opportunities while these are on, as the change notification covers it.
 * Stage Ageing Report - an email on the schedule picked - daily, weekly on
   a weekday, or monthly on a day of the month, at a time of day (weekly on
   Monday at midnight by default) - with an Excel list of every active client
@@ -101,6 +112,7 @@ can be picked as BDAs.
     'assets': {
         'web.assets_backend': [
             'crm_consulting_customization/static/src/ordinal_date_field.js',
+            'crm_consulting_customization/static/src/client_duplicate_check.js',
         ],
     },
     # Fills the BDA list of opportunities that predate this module, which

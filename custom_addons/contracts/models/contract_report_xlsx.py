@@ -25,8 +25,7 @@ _ATTACHMENT_COLUMNS = [
 # FTE is billed on the MSA; a consulting-only MSA leaves these as N/A, its
 # billing sitting on each SOW under it.
 _MSA_BILLING_COLUMNS = [
-    ('Bill Rate (%)',      'bill_rate',          12, 'number'),
-    ('Billing POC',        'billing_poc',        20, 'text'),
+    ('Budget',             'budget',             16, 'number'),
     ('Billing Start Date', 'billing_start_date', 16, 'date'),
 ]
 
@@ -43,9 +42,8 @@ SOW_COLUMNS = [
     ('Contract End Date',       'end_date',             16, 'date'),
     ('Annual Appraisal Due',    'annual_appraisal_due', 18, 'date'),
     ('Extended End Date',       'extended_end_date',    16, 'date'),
-    ('Budget (LPM)',            'budget',               13, 'number'),
+    ('Bill Rate',               'bill_rate',            16, 'number'),
     ('Billing Frequency',       'billing_frequency',    15, 'text'),
-    ('Billing POC',             'billing_poc',          20, 'text'),
     ('Billing Start Date',      'billing_start_date',   16, 'date'),
     ('Remarks',                 'remarks',              40, 'text'),
 ]
@@ -103,7 +101,7 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
     })
     int_fmt = workbook.add_format({'border': 1, 'valign': 'vcenter', 'align': 'center'})
     number_fmt = workbook.add_format({
-        'border': 1, 'valign': 'vcenter', 'align': 'right', 'num_format': '0.00',
+        'border': 1, 'valign': 'vcenter', 'align': 'right', 'num_format': '#,##0.00',
     })
     na_fmt = workbook.add_format({
         'border': 1, 'valign': 'vcenter', 'align': 'center',
@@ -198,8 +196,8 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
             elif kind == 'int':
                 worksheet.write_number(r, col, val or 0, int_fmt)
             elif kind == 'number':
-                # Zero is what an unset bill rate or budget reads as, so it
-                # shows as not applicable rather than as a rate of nothing.
+                # Zero is what an unset budget or bill rate reads as, so it
+                # shows as not applicable rather than as an amount of nothing.
                 if val:
                     worksheet.write_number(r, col, val, number_fmt)
                 else:

@@ -4,8 +4,9 @@
     <!-- Same layout as Contracts settings: a switch per kind of email, and
          its details only while it is on. Change notifications and activity
          reminders follow one hierarchy - leadership picked here, sales team
-         leaders as managers, their team members as BDAs - and only ever go
-         up it. The Stage Ageing and Client Inactivity reports are scheduled
+         leaders as managers, their team members as BDAs. Activity reminders
+         only go up it; a change notification goes to the other two levels
+         from whoever made the change. The Stage Ageing and Client Inactivity reports are scheduled
          emails with a spreadsheet, each sent daily, weekly or monthly at a
          time picked here, so each goes to its own list; Select
          everyone and Clear fill or empty a list in one click. -->
@@ -19,7 +20,7 @@
 
                     <setting id="crm_hierarchy_setting"
                              string="Notification Hierarchy"
-                             help="Change notifications and activity reminders go up this hierarchy, never down.">
+                             help="Who change notifications and activity reminders go to.">
                         <div class="content-group">
                             <div class="row">
                                 <label for="crm_leadership_ids" string="Leadership"
@@ -42,6 +43,17 @@
                                             class="btn-link p-0"/>
                                 </div>
                             </div>
+                            <div class="alert alert-warning mt-3 mb-0 py-2" role="alert"
+                                 invisible="not crm_bdas_without_team_ids">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fa fa-exclamation-triangle" title="Warning"/>
+                                    <span>These BDAs have no team leader - they are in no sales team, or
+                                        in one without a Team Leader - so no manager hears of their changes
+                                        or their activity reminders. Add them to a sales team.</span>
+                                </div>
+                                <field name="crm_bdas_without_team_ids" widget="many2many_tags_avatar"
+                                       readonly="1" class="mt-2"/>
+                            </div>
                         </div>
                     </setting>
 
@@ -51,14 +63,17 @@
                         <field name="crm_change_notify"/>
                         <div class="content-group mt16" invisible="not crm_change_notify">
                             <div class="text-muted">
-                                To everyone above whoever made the change - never to them,
-                                their peers or anyone below. Automatic changes go to the
-                                opportunity's whole hierarchy.
+                                Always to the opportunity's BDAs, including any just taken off
+                                it. Then a BDA's change also goes to their team leader and
+                                leadership, a manager's to the BDAs' team leaders and
+                                leadership, and leadership's to the BDAs' team leaders. Never
+                                to whoever made it. Automatic changes go to the opportunity's
+                                whole hierarchy.
                             </div>
                             <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0 py-2"
                                  role="alert" invisible="crm_leadership_ids">
                                 <i class="fa fa-exclamation-triangle" title="Warning"/>
-                                <span>No leadership is picked, so changes made by managers will reach nobody.</span>
+                                <span>No leadership is picked, so changes made by BDAs and managers reach no leadership.</span>
                             </div>
                         </div>
                     </setting>

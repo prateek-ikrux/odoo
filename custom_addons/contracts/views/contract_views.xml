@@ -34,7 +34,6 @@
                 <field name="type_id" optional="show"
                        column_invisible="context.get('default_contract_type') != 'msa'"/>
                 <field name="poc" optional="show"/>
-                <field name="billing_poc" optional="show"/>
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                 <field name="start_date" widget="contracts_date"/>
                 <field name="end_date" widget="contracts_date"/>
@@ -45,11 +44,11 @@
                        optional="show"/>
                 <field name="extended_end_date" widget="contracts_date" optional="hide"/>
                 <field name="annual_appraisal_due" widget="contracts_date" optional="hide"/>
-                <!-- FTE is billed on the MSA by bill rate, consulting on each
-                     SOW by budget, on a billing cycle. -->
-                <field name="bill_rate" string="Bill Rate (%)" optional="hide"
+                <!-- FTE is billed on the MSA by budget, consulting on each SOW
+                     by bill rate, on a billing cycle. Both are full figures. -->
+                <field name="budget" optional="hide"
                        column_invisible="context.get('default_contract_type') != 'msa'"/>
-                <field name="budget" string="Budget (LPM)" optional="show"
+                <field name="bill_rate" optional="show"
                        column_invisible="context.get('default_contract_type') != 'sow'"/>
                 <field name="billing_frequency" optional="hide"
                        column_invisible="context.get('default_contract_type') != 'sow'"/>
@@ -147,7 +146,7 @@
                                  unit rides alongside the value. -->
                             <label for="days_left"
                                    invisible="state != 'active' or term == 'until_completion'"/>
-                            <div class="o_row"
+                            <div class="d-flex align-items-baseline gap-1"
                                  invisible="state != 'active' or term == 'until_completion'">
                                 <field name="days_left" class="oe_inline"/>
                                 <span class="text-muted">days remaining</span>
@@ -204,22 +203,13 @@
                     <group string="Billing" name="billing"
                            invisible="contract_type == 'msa' and billing_mode not in ('fte', 'both')">
                         <group name="billing_terms">
-                            <label for="bill_rate" invisible="contract_type != 'msa'"/>
-                            <div class="o_row" invisible="contract_type != 'msa'">
-                                <field name="bill_rate" class="oe_inline"/>
-                                <span>%</span>
-                            </div>
-                            <label for="budget" invisible="contract_type != 'sow'"/>
-                            <div class="o_row" invisible="contract_type != 'sow'">
-                                <field name="budget" class="oe_inline"/>
-                                <span>LPM</span>
-                            </div>
+                            <field name="budget" invisible="contract_type != 'msa'"/>
+                            <field name="bill_rate" invisible="contract_type != 'sow'"/>
                             <field name="billing_frequency" widget="radio"
                                    options="{'horizontal': true}"
                                    invisible="contract_type != 'sow'"/>
                         </group>
                         <group name="billing_contact">
-                            <field name="billing_poc" string="Billing POC in Charge"/>
                             <field name="billing_start_date" widget="contracts_date"/>
                         </group>
                     </group>
@@ -245,7 +235,7 @@
                                     <field name="poc" optional="hide"/>
                                     <field name="start_date" widget="contracts_date"/>
                                     <field name="end_date" widget="contracts_date"/>
-                                    <field name="budget" string="Budget (LPM)" optional="show"/>
+                                    <field name="bill_rate" optional="show"/>
                                     <field name="days_left"/>
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'active'"
@@ -269,7 +259,6 @@
                                             </group>
                                             <group>
                                                 <field name="poc" readonly="1"/>
-                                                <field name="billing_poc" readonly="1"/>
                                                 <field name="created_by_id"
                                                        widget="many2one_avatar_user" readonly="1"/>
                                                 <field name="state" readonly="1"/>
@@ -300,7 +289,6 @@
                 <field name="client"/>
                 <field name="type_id"/>
                 <field name="poc"/>
-                <field name="billing_poc"/>
                 <field name="created_by_id"/>
 
                 <filter name="filter_active" string="Active"
@@ -416,6 +404,11 @@
                        options="{'no_create': True}"
                        context="{'contracts_show_period': True}"
                        required="1"/>
+            </xpath>
+            <!-- The POC, like the client, is the contract above's. -->
+            <xpath expr="//group[@name='ownership']/field[@name='poc']" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="placeholder">Taken from the parent contract</attribute>
             </xpath>
 
             <!-- The linked-contracts button and tab are for the contract above;

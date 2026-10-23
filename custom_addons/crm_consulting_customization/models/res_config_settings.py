@@ -31,14 +31,36 @@ class ResConfigSettings(models.TransientModel):
     crm_leadership_ids = fields.Many2many(
         related='company_id.crm_leadership_ids', readonly=False,
     )
+    # BDAs on an open opportunity whom the hierarchy gives no team leader -
+    # in no sales team, or in one without a leader - so no manager hears of
+    # their changes or their activity reminders. Shown as a warning beside the
+    # hierarchy; nothing is stored.
+    crm_bdas_without_team_ids = fields.Many2many(
+        'res.users', compute='_compute_crm_bdas_without_team_ids',
+        string='BDAs Without a Team Leader',
+    )
+
+    @api.depends('crm_leadership_ids')
+    def _compute_crm_bdas_without_team_ids(self):
+        Lead = self.env['crm.lead'].sudo()
+        for settings in self:
+            groups = Lead._read_group(
+                [('type', '=', 'opportunity'), ('company_id', 'in', [settings.company_id.id, False])],
+                ['bda_ids'])
+            bdas = self.env['res.users'].union(*(bda for bda, in groups)).filtered('active')
+            leadership = settings.crm_leadership_ids
+            settings.crm_bdas_without_team_ids = bdas.filtered(
+                lambda user: Lead._get_hierarchy_level(user, leadership) == 0
+                and not Lead._get_team_leaders(user))
 
     # ── Change notifications ──────────────────────────────────────
     crm_change_notify = fields.Boolean(
         string='Change Notifications',
         config_parameter='crm_consulting.change_notify',
         help="Email whenever an opportunity is created, deleted, or a change "
-             "to it is recorded in its audit log - to everyone above whoever "
-             "made the change, and never to them.",
+             "to it is recorded in its audit log - to the opportunity's BDAs "
+             "and the levels of the hierarchy around whoever made the change, "
+             "and never to them.",
     )
 
     # ── Stage Ageing Report ───────────────────────────────────────

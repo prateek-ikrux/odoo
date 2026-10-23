@@ -56,6 +56,7 @@
                 <attribute name="placeholder">e.g. Microsoft</attribute>
             </xpath>
 
+
             <!--
                 How this deal is classified, entered on the front page next to
                 the client it is for. The two are the opportunity's own - they
@@ -162,13 +163,13 @@
                         </div>
                         <label for="bill_rate_lpm" string="Commercial Agreement"
                                invisible="commercial_basis != 'lpm'"/>
-                        <div class="o_row" invisible="commercial_basis != 'lpm'">
-                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline"/>
+                        <div class="d-flex align-items-baseline gap-1" invisible="commercial_basis != 'lpm'">
+                            <field name="bill_rate_lpm" nolabel="1" class="oe_inline o_input_7ch"/>
                             <span class="oe_inline text-muted">LPM</span>
                         </div>
                         <label for="project_duration" invisible="engagement_type == 'fte'"/>
-                        <div class="o_row" invisible="engagement_type == 'fte'">
-                            <field name="project_duration" nolabel="1" class="oe_inline"/>
+                        <div class="d-flex align-items-baseline gap-1" invisible="engagement_type == 'fte'">
+                            <field name="project_duration" nolabel="1" class="oe_inline o_input_4ch"/>
                             <span class="oe_inline text-muted">months</span>
                         </div>
                         <label string="Project Duration" for="engagement_type"
@@ -519,6 +520,11 @@
                         domain="[('engagement_type', '=', 'consulting')]"/>
                 <filter string="FTE/Consulting" name="filter_engagement_blended"
                         domain="[('engagement_type', '=', 'fte_consulting')]"/>
+                <separator/>
+                <!-- Same client and engagement type as another opportunity
+                     that is not lost - what an import brings in unchecked. -->
+                <filter string="Possible Duplicates" name="filter_possible_duplicate"
+                        domain="[('is_possible_duplicate', '=', True)]"/>
             </xpath>
 
             <!--

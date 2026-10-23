@@ -111,6 +111,42 @@ lost deals is not blocked by it.
 The priority stars that CRM puts beside the closing date are off the form. The
 column is untouched, so stars already given are kept.
 
+### Possible duplicate opportunities (19.0.1.29.0)
+
+A client should have one opportunity per engagement type, but nothing is
+refused. Saving an opportunity from a form - a new one, or one whose Client
+Name or Engagement Type changed - first asks the server what CRM already
+holds for that client or a like-named one. If anything, a **Possible
+duplicate opportunity** popup lists each match with its engagement type,
+BDAs and stage, marked *same client and engagement type*, *same client,
+different engagement type* or *similar client name*, and suggests asking to
+be added as a BDA on it instead:
+
+- **Save Anyway** saves as usual.
+- **Discard Changes** reverts the unsaved changes - a new opportunity back
+  to a blank form.
+- Closing the popup goes back to editing with the changes kept.
+
+The popup is `static/src/client_duplicate_check.js`, asking
+`crm.lead.get_client_duplicate_message`. A form with a required field still
+empty shows Odoo's own message first and the popup on the next save. An
+import has no popup and goes through; **Pipeline > Filters > Possible
+Duplicates** (`is_possible_duplicate`) lists every opportunity sharing its
+client and engagement type with another one that is not lost.
+
+- **Same client** compares the Client Name with case, spaces, punctuation
+  and a trailing legal form (Pvt, Private, Ltd, Limited, Inc, LLP, LLC, PLC,
+  Corp, Corporation, GmbH) taken out: "Birlasoft", "Birla Soft" and
+  "Birlasoft Pvt. Ltd." are one client. It is kept in `client_key`.
+- **Same engagement type** is exact. FTE/Consulting - a Consulting client
+  absorbing the candidate through FTE - is a type of its own, so it sits
+  beside an FTE and a Consulting opportunity for the same client.
+- **Every opportunity counts** - won and open, and other BDAs' that the user
+  cannot see - **except lost ones**: a client coming back after a lost deal
+  starts a new opportunity without a popup about the old one.
+- **Similar client name** is a name that contains, or is contained in, the
+  one entered - "ITC" and "ITC (FlyDubai)" - often a separate account.
+
 ### Salesperson and BDA
 
 They are the same idea, so the form shows one field: **BDA**, which takes as
@@ -181,11 +217,18 @@ Hierarchy**:
 | Managers | The **Team Leader** of each sales team | CRM > Configuration > Sales Teams |
 | BDAs | The members of each sales team | CRM > Configuration > Sales Teams |
 
-Someone on two levels counts at the higher. Email only goes up:
+Someone on two levels counts at the higher.
 
-- **Change notifications** go to everyone above whoever made the change - a
-  BDA's to their team leader and leadership, a manager's to leadership,
-  leadership's to nobody. Never to the person who made it, nor their peers.
+- **Change notifications** (19.0.1.29.0) always go to the opportunity's
+  BDAs - co-BDAs included, and any BDA the change took off it. Then a BDA's
+  change also goes to their own team leader and leadership, a manager's to
+  the BDAs' team leaders and leadership, leadership's to the BDAs' team
+  leaders. Never to the person who made it. Adding, editing, removing or
+  reordering POCs counts as a change: the POC list is tracked through
+  `poc_summary` (POC List), and the email shows only the POC lines that
+  changed. While change notifications are on, Odoo's own "You have been
+  assigned" email is left out for opportunities - the new Primary BDA is a
+  BDA, so the change notification already tells them.
   A change made by a scheduled job has nobody behind it, so it goes to the
   opportunity's BDAs, their team leaders and leadership.
 - **Activity reminders** go to the person the activity is assigned to, and
@@ -193,7 +236,8 @@ Someone on two levels counts at the higher. Email only goes up:
   start. An activity assigned to nobody is the opportunity's BDAs' to do.
 
 A BDA in no sales team has no manager, so their changes reach leadership
-only. The upgrade to 19.0.1.25.0 makes whoever was on the change
+only. CRM settings list every BDA on an opportunity who has no team leader,
+under Notification Hierarchy. The upgrade to 19.0.1.25.0 makes whoever was on the change
 notification **Send to** list Leadership, and drops the activity reminder
 list and the BDA, team leader, assignee and upward-only ticks.
 
