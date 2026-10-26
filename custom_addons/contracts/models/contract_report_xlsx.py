@@ -22,11 +22,12 @@ _ATTACHMENT_COLUMNS = [
     ('# Attachments',    'attachment_count', 13, 'int'),
     ('Attachments',      'attachments',      40, 'text'),
 ]
-# FTE is billed on the MSA; a consulting-only MSA leaves these as N/A, its
-# billing sitting on each SOW under it.
+# The FTE terms of an MSA doing FTE; a consulting-only MSA leaves these as
+# N/A, its billing sitting on each SOW under it.
 _MSA_BILLING_COLUMNS = [
     ('Budget',             'budget',             16, 'number'),
-    ('Billing Start Date', 'billing_start_date', 16, 'date'),
+    ('Guarantee Period',   'guarantee_period',   14, 'text'),
+    ('Standard FTE Fee',   'fte_fee',            18, 'text'),
 ]
 
 MSA_COLUMNS = _CLIENT_COLUMN + _COMMON_COLUMNS + _MSA_BILLING_COLUMNS + _ATTACHMENT_COLUMNS
@@ -43,6 +44,8 @@ SOW_COLUMNS = [
     ('Annual Appraisal Due',    'annual_appraisal_due', 18, 'date'),
     ('Extended End Date',       'extended_end_date',    16, 'date'),
     ('Bill Rate',               'bill_rate',            16, 'number'),
+    ('Salary/Cost',             'salary_cost',          16, 'number'),
+    ('Gross Profit Margin',     'gross_profit_margin',  16, 'amount'),
     ('Billing Frequency',       'billing_frequency',    15, 'text'),
     ('Billing Start Date',      'billing_start_date',   16, 'date'),
     ('Remarks',                 'remarks',              40, 'text'),
@@ -202,6 +205,13 @@ def build_contract_report_xlsx(rows, columns, sheet_name, report_title,
                     worksheet.write_number(r, col, val, number_fmt)
                 else:
                     worksheet.write(r, col, 'N/A', na_fmt)
+            elif kind == 'amount':
+                # A worked-out figure: zero, or below, is a real result. None
+                # is what stands for there being nothing to work it out from.
+                if val is None:
+                    worksheet.write(r, col, 'N/A', na_fmt)
+                else:
+                    worksheet.write_number(r, col, val, number_fmt)
             else:
                 worksheet.write(r, col, val or '', cell_fmt)
 

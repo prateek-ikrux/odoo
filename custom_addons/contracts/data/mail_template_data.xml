@@ -85,7 +85,7 @@
         </tr>
         <tr t-if="not is_sow">
             <td t-att-style="label_td">Contract Type</td>
-            <td t-att-style="value_td" t-out="object.type_id.name or 'Not set'"/>
+            <td t-att-style="value_td" t-out="r.get('contract_type') or 'Not set'"/>
         </tr>
         <tr t-if="not is_sow and object.child_contract_ids">
             <td t-att-style="label_td">SOWs Under It</td>
@@ -140,15 +140,31 @@
         </tr>
 
         <!-- Billing -->
-        <t t-if="r.get('budget') or r.get('bill_rate') or r.get('billing_frequency') or r.get('billing_start')">
+        <t t-if="r.get('budget') or r.get('guarantee_period') or r.get('fte_fee') or r.get('bill_rate') or r.get('salary_cost') or r.get('billing_frequency') or r.get('billing_start')">
             <tr><td colspan="2" t-att-style="group_td">Billing</td></tr>
             <tr t-if="r.get('budget')">
                 <td t-att-style="label_td">Budget</td>
                 <td t-att-style="value_td" t-out="r['budget']"/>
             </tr>
+            <tr t-if="r.get('guarantee_period')">
+                <td t-att-style="label_td">Guarantee Period</td>
+                <td t-att-style="value_td" t-out="r['guarantee_period']"/>
+            </tr>
+            <tr t-if="r.get('fte_fee')">
+                <td t-att-style="label_td">Standard FTE Fee</td>
+                <td t-att-style="value_td" t-out="r['fte_fee']"/>
+            </tr>
             <tr t-if="r.get('bill_rate')">
                 <td t-att-style="label_td">Bill Rate</td>
                 <td t-att-style="value_td" t-out="r['bill_rate']"/>
+            </tr>
+            <tr t-if="r.get('salary_cost')">
+                <td t-att-style="label_td">Salary/Cost</td>
+                <td t-att-style="value_td" t-out="r['salary_cost']"/>
+            </tr>
+            <tr t-if="r.get('gross_profit_margin')">
+                <td t-att-style="label_td">Gross Profit Margin</td>
+                <td t-att-style="value_td" t-out="r['gross_profit_margin']"/>
             </tr>
             <tr t-if="r.get('billing_frequency')">
                 <td t-att-style="label_td">Frequency</td>

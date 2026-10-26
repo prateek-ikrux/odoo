@@ -5,9 +5,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.tools.misc import format_date, formatLang
-from odoo.exceptions import ValidationError
-
-from .contract_type import CONSULTING_MODES, FTE_MODES
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -26,6 +24,17 @@ TYPE_SELECTION = [
     ('sow', 'Statement of Work'),
 ]
 
+# What business an MSA covers, which decides how it is billed and what can sit
+# under it: consulting is billed on each SOW placed under the MSA, FTE on the
+# MSA itself, with FTE placements made under it. A fixed choice of three.
+CONTRACT_TYPE_SELECTION = [
+    ('consulting', 'Consulting'),
+    ('fte', 'FTE'),
+    ('both', 'FTE/Consulting'),
+]
+FTE_MODES = ('fte', 'both')
+CONSULTING_MODES = ('consulting', 'both')
+
 YES_NO_SELECTION = [
     ('no', 'No'),
     ('yes', 'Yes'),
@@ -37,6 +46,15 @@ BILLING_FREQUENCY_SELECTION = [
     ('yearly', 'Yearly'),
 ]
 
+# How long the client is covered for a candidate placed on FTE, from the
+# candidate's date of joining.
+GUARANTEE_PERIOD_SELECTION = [
+    ('30', '30 Days'),
+    ('60', '60 Days'),
+    ('90', '90 Days'),
+    ('180', '180 Days'),
+]
+
 # An overarching contract either runs to a date or runs for as long as there is
 # work under it. The second kind has no end date at all, rather than a made-up
 # one, so it never expires, never counts down and never sends a reminder.
@@ -45,16 +63,28 @@ TERM_SELECTION = [
     ('until_completion', 'Until Completion of Service'),
 ]
 
-# Billing follows the business done. FTE is billed on the overarching contract,
-# by a budget; consulting on each contract placed under it, by a bill rate. Both
-# are entered as the full figure, not in lakhs. Each contract carries only the
-# fields of the business it is billed for.
+# How the fee for an FTE hire is claimed: a percentage, or a flat amount.
+FEE_TYPE_SELECTION = [
+    ('percentage', 'Claimed %'),
+    ('flat', 'Flat Rate'),
+]
+
+# Billing follows the business done. An MSA doing FTE carries the FTE terms
+# agreed with the client - a budget, a guarantee period, and a standard fee
+# where one is agreed - while each hire under it is billed on its own (an FTE
+# placement); consulting is billed on each contract placed under the MSA, by a
+# bill rate against the salary or cost of the person placed, from a billing
+# start date on a billing cycle. Amounts are entered as the full figure, not
+# in lakhs. Each contract carries only the fields of the business it covers.
 FTE_BILLING_FIELDS = [
     'budget',
-    'billing_start_date',
+    'guarantee_period',
+    'fte_fee_type',
+    'fte_fee_value',
 ]
 CONSULTING_BILLING_FIELDS = [
     'bill_rate',
+    'salary_cost',
     'billing_frequency',
     'billing_start_date',
 ]
@@ -76,26 +106,36 @@ class Contract(models.Model):
     _rec_names_search = ['client', 'candidate', 'role']
 
     # ── Core fields ───────────────────────────────────────────────
-    # Labelled apart from type_id, which is the one users see as Contract Type.
+    # Labelled apart from billing_mode, which is the one users see as Contract
+    # Type.
     contract_type = fields.Selection(
         TYPE_SELECTION, string='Section', required=True, index=True, copy=True,
     )
-    type_id = fields.Many2one(
-        'contracts.type', string='Contract Type', tracking=True, index=True,
-        ondelete='restrict',
-        help="Picked from the master list under Contracts > Configuration > "
-             "Contract Types. Only an overarching contract carries one.",
-    )
     # The type says which business the contract covers: FTE puts billing terms
     # on the contract itself, consulting lets contracts be placed under it.
-    billing_mode = fields.Selection(related='type_id.billing_mode')
+    # Only an MSA has one; an SOW is always a consulting placement.
+    billing_mode = fields.Selection(
+        CONTRACT_TYPE_SELECTION, string='Contract Type', default='consulting',
+        tracking=True, index=True,
+        help="Consulting: billed on each Statement of Work placed under it.\n"
+             "FTE: billed on this contract, by budget, with FTE placements "
+             "made under it.\n"
+             "FTE/Consulting: both.",
+    )
+    # For an SOW: whether the contract above it does FTE too, which is what
+    # lets the candidate be converted to an FTE hire.
+    parent_billing_mode = fields.Selection(related='parent_contract_id.billing_mode')
+    # The FTE placement an SOW's candidate was converted into, if any.
+    converted_placement_ids = fields.One2many(
+        'contracts.fte.placement', 'converted_from_sow_id', string='Converted To',
+    )
     parent_contract_id = fields.Many2one(
         'contracts.contract', string='Parent Contract',
         # A terminated contract is not offered for new placements. Not a
         # constraint: placements made before it was terminated stay valid, and
         # an import of past placements still has to be able to name it.
         domain="[('contract_type', '=', 'msa'), ('state', '!=', 'terminated'), "
-               "('type_id.billing_mode', 'in', ('consulting', 'both'))]",
+               "('billing_mode', 'in', ('consulting', 'both'))]",
         ondelete='restrict', index=True, tracking=True,
         help="The overarching contract this one is placed under.",
     )
@@ -107,6 +147,13 @@ class Contract(models.Model):
     )
     child_contract_count = fields.Integer(
         string='# Linked Contracts', compute='_compute_child_contract_count',
+    )
+    # Candidates hired through an FTE MSA (contracts.fte.placement).
+    fte_placement_ids = fields.One2many(
+        'contracts.fte.placement', 'msa_id', string='FTE Placements',
+    )
+    fte_placement_count = fields.Integer(
+        string='# FTE Placements', compute='_compute_fte_placement_count',
     )
     client = fields.Char(
         string='Client', required=True, tracking=True, index=True,
@@ -224,11 +271,40 @@ class Contract(models.Model):
     # does not apply to a contract is cleared on save.
     budget = fields.Float(
         string='Budget', digits=(12, 2), tracking=True,
-        help="FTE budget, as the full figure - e.g. 1800000, not 18 lakhs.",
+        help="The client's FTE budget under this agreement, as the full figure "
+             "- e.g. 1800000, not 18 lakhs.",
+    )
+    guarantee_period = fields.Selection(
+        GUARANTEE_PERIOD_SELECTION, string='Guarantee Period', tracking=True,
+        help="FTE only: how long the client is covered for each candidate "
+             "placed, from their date of joining.",
+    )
+    fte_fee_type = fields.Selection(
+        FEE_TYPE_SELECTION, string='Standard FTE Fee', tracking=True,
+        help="FTE only: the fee agreed with this client for every hire, where "
+             "one is - a claimed percentage of the CTC, or a flat rate. Each "
+             "new FTE placement starts from it and can still be changed. Leave "
+             "empty where the fee is agreed hire by hire.",
+    )
+    fte_fee_value = fields.Float(
+        string='Standard FTE Fee Value', digits=(12, 2), tracking=True,
+        help="The percentage claimed, e.g. 8.33 - or the flat rate, as the "
+             "full figure.",
     )
     bill_rate = fields.Float(
         string='Bill Rate', digits=(12, 2), tracking=True,
         help="Consulting bill rate, as the full figure - e.g. 450000, not 4.5 lakhs.",
+    )
+    salary_cost = fields.Float(
+        string='Salary/Cost', digits=(12, 2), tracking=True,
+        help="Consulting only: what the person placed costs, as the full figure, "
+             "over the same period as the Bill Rate.",
+    )
+    gross_profit_margin = fields.Float(
+        string='Gross Profit Margin', digits=(12, 2),
+        compute='_compute_gross_profit_margin', store=True,
+        help="Bill Rate less Salary/Cost. Negative when the placement costs "
+             "more than it bills.",
     )
     billing_frequency = fields.Selection(
         BILLING_FREQUENCY_SELECTION, string='Billing Frequency', tracking=True,
@@ -236,6 +312,7 @@ class Contract(models.Model):
     )
     billing_start_date = fields.Date(
         string='Billing Start Date', tracking=True,
+        help="Consulting only: the date billing starts from.",
     )
 
     # ── Display name ──────────────────────────────────────────────
@@ -287,12 +364,17 @@ class Contract(models.Model):
     def _does_fte(self):
         """An MSA whose type covers FTE, and so is billed itself."""
         self.ensure_one()
-        return self.contract_type == 'msa' and self.type_id.billing_mode in FTE_MODES
+        return self.contract_type == 'msa' and self.billing_mode in FTE_MODES
 
     def _does_consulting(self):
         """An MSA whose type covers consulting, and so takes SOWs."""
         self.ensure_one()
-        return self.contract_type == 'msa' and self.type_id.billing_mode in CONSULTING_MODES
+        return self.contract_type == 'msa' and self.billing_mode in CONSULTING_MODES
+
+    def _contract_type_label(self):
+        """The Contract Type as users see it, or a placeholder for none."""
+        self.ensure_one()
+        return dict(CONTRACT_TYPE_SELECTION).get(self.billing_mode) or _("no type set")
 
     def _get_billing_fields(self):
         """The billing fields this contract is billed on."""
@@ -323,6 +405,27 @@ class Contract(models.Model):
     def _compute_child_contract_count(self):
         for rec in self:
             rec.child_contract_count = len(rec.child_contract_ids)
+
+    @api.depends('fte_placement_ids')
+    def _compute_fte_placement_count(self):
+        for rec in self:
+            rec.fte_placement_count = len(rec.fte_placement_ids)
+
+    @api.depends('contract_type', 'bill_rate', 'salary_cost')
+    def _compute_gross_profit_margin(self):
+        for rec in self:
+            rec.gross_profit_margin = (rec.bill_rate - rec.salary_cost
+                                       if rec.contract_type == 'sow' else 0.0)
+
+    def _fte_fee_label(self):
+        """The standard FTE fee as a line of text - "8.33%" or "1,50,000.00
+        flat" - or nothing where none is agreed."""
+        self.ensure_one()
+        if self.fte_fee_type == 'percentage':
+            return f'{self.fte_fee_value:g}%'
+        if self.fte_fee_type == 'flat':
+            return _('%s flat', formatLang(self.env, self.fte_fee_value))
+        return ''
 
     @api.depends('end_date', 'extended_end_date')
     def _compute_effective_end_date(self):
@@ -525,7 +628,7 @@ class Contract(models.Model):
                         _("Statements of Work can only be placed under a contract "
                           "doing consulting; '%(parent)s' does not (%(type)s).",
                           parent=rec.parent_contract_id.display_name,
-                          type=rec.parent_contract_id.type_id.name or _("no type set"))
+                          type=rec.parent_contract_id._contract_type_label())
                     )
             elif rec.parent_contract_id:
                 raise ValidationError(
@@ -537,17 +640,17 @@ class Contract(models.Model):
                     _("Contract '%s' cannot be its own parent.", rec.display_name)
                 )
 
-    @api.constrains('contract_type', 'type_id')
+    @api.constrains('contract_type', 'billing_mode')
     def _check_type(self):
         for rec in self:
-            if rec.contract_type != 'msa' and rec.type_id:
+            if rec.contract_type != 'msa' and rec.billing_mode:
                 raise ValidationError(
                     _("Only a Master Service Agreement has a contract type; "
                       "contract '%s' cannot.", rec.display_name)
                 )
             # The type decides how the contract is billed and whether anything
             # can be placed under it, so an MSA cannot go without one.
-            if rec.contract_type == 'msa' and not rec.type_id:
+            if rec.contract_type == 'msa' and not rec.billing_mode:
                 raise ValidationError(
                     _("A Contract Type is required on contract '%s'.", rec.display_name)
                 )
@@ -556,6 +659,11 @@ class Contract(models.Model):
                     _("Contract '%(name)s' has Statements of Work placed under "
                       "it, so its type has to be one doing consulting.",
                       name=rec.display_name)
+                )
+            if rec.fte_placement_ids and not rec._does_fte():
+                raise ValidationError(
+                    _("Contract '%(name)s' has FTE placements under it, so its "
+                      "type has to be one doing FTE.", name=rec.display_name)
                 )
 
     @api.constrains('contract_type', 'role', 'candidate')
@@ -596,9 +704,19 @@ class Contract(models.Model):
                       end=parent.effective_end_date or _("completion of service"))
                 )
 
-    @api.constrains('budget', 'bill_rate')
+    @api.constrains('budget', 'bill_rate', 'salary_cost', 'fte_fee_type', 'fte_fee_value')
     def _check_billing(self):
         for rec in self:
+            if rec.fte_fee_value < 0:
+                raise ValidationError(
+                    _("The Standard FTE Fee cannot be negative on contract '%s'.",
+                      rec.display_name)
+                )
+            if rec.fte_fee_type == 'percentage' and rec.fte_fee_value > 100:
+                raise ValidationError(
+                    _("The Standard FTE Fee cannot be more than 100%% on contract '%s'.",
+                      rec.display_name)
+                )
             if rec.budget < 0:
                 raise ValidationError(
                     _("Budget cannot be negative on contract '%s'.", rec.display_name)
@@ -606,6 +724,10 @@ class Contract(models.Model):
             if rec.bill_rate < 0:
                 raise ValidationError(
                     _("Bill Rate cannot be negative on contract '%s'.", rec.display_name)
+                )
+            if rec.salary_cost < 0:
+                raise ValidationError(
+                    _("Salary/Cost cannot be negative on contract '%s'.", rec.display_name)
                 )
 
     # ── State synchronisation ─────────────────────────────────────
@@ -644,6 +766,9 @@ class Contract(models.Model):
                 # Its POC is the parent's (_compute_poc); one sent along - by
                 # an import, say - would only stand in for it.
                 vals.pop('poc', None)
+                # Nor does it take the Contract Type the field defaults to:
+                # only an MSA has one.
+                vals['billing_mode'] = False
             self._normalize_extension_vals(vals)
         records = super().create(vals_list)
         records._clear_unused_billing()
@@ -673,7 +798,7 @@ class Contract(models.Model):
             vals.setdefault('reminder_last_sent', False)
         res = super().write(vals)
         if any(fname in vals for fname in
-               ('contract_type', 'type_id', *BILLING_FIELDS)):
+               ('contract_type', 'billing_mode', *BILLING_FIELDS)):
             self._clear_unused_billing()
         if 'attachment_ids' in vals:
             self._link_attachments_to_record()
@@ -822,6 +947,17 @@ class Contract(models.Model):
         if queued:
             self.env.ref('mail.ir_cron_mail_scheduler_action')._trigger()
 
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_fte_placements(self):
+        """Say why, rather than leave it to the database's bare refusal."""
+        for rec in self:
+            if rec.fte_placement_ids:
+                raise UserError(
+                    _("Contract '%(name)s' has %(count)s FTE placement(s) under it. "
+                      "Delete them, or move them to another MSA, first.",
+                      name=rec.display_name, count=len(rec.fte_placement_ids))
+                )
+
     def unlink(self):
         self._send_change_notification('deleted')
         return super().unlink()
@@ -839,7 +975,7 @@ class Contract(models.Model):
             lines += [(_('Candidate'), self.candidate or ''), (_('Role'), self.role or ''),
                       (_('Under MSA'), self.parent_contract_id.display_name or '')]
         else:
-            lines.append((_('Contract Type'), self.type_id.name or _('Not set')))
+            lines.append((_('Contract Type'), self._contract_type_label()))
         lines += [
             (_('Contract POC'), self.poc or ''),
             (_('Period'), _('%(start)s to %(end)s', start=short_date(self.start_date),
@@ -909,6 +1045,45 @@ class Contract(models.Model):
             'default_contract_type': 'sow',
             'default_parent_contract_id': self.id,
         }
+        return action
+
+    def action_convert_to_fte(self):
+        """Ask for the hire's details, then terminate this SOW and record its
+        candidate as an FTE placement under the same MSA."""
+        self.ensure_one()
+        msa = self.parent_contract_id
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Convert to FTE'),
+            'res_model': 'contracts.fte.conversion',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_sow_id': self.id,
+                'default_skillset': self.role,
+                'default_fee_type': msa.fte_fee_type or 'percentage',
+                'default_fee_value': msa.fte_fee_value if msa.fte_fee_type else 0.0,
+            },
+        }
+
+    def action_view_converted_placement(self):
+        """Open the FTE placement this SOW's candidate was converted into."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'contracts.fte.placement',
+            'res_id': self.converted_placement_ids[:1].id,
+            'view_mode': 'form',
+        }
+
+    def action_view_fte_placements(self):
+        """Open the FTE placements under this MSA."""
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'contracts.action_contracts_fte_placement'
+        )
+        action['domain'] = [('msa_id', '=', self.id)]
+        action['context'] = {'default_msa_id': self.id}
         return action
 
     def action_open_parent_contract(self):
@@ -995,8 +1170,15 @@ class Contract(models.Model):
             'created_on': short_date(fields.Datetime.context_timestamp(
                 self.with_user(self.create_uid), self.create_date)) if self.create_date else '',
             'appraisal_due': short_date(self.annual_appraisal_due),
+            'contract_type': self._contract_type_label(),
             'budget': formatLang(self.env, self.budget) if self.budget else '',
+            'guarantee_period': label('guarantee_period'),
+            'fte_fee': self._fte_fee_label(),
             'bill_rate': formatLang(self.env, self.bill_rate) if self.bill_rate else '',
+            'salary_cost': formatLang(self.env, self.salary_cost) if self.salary_cost else '',
+            # Shown alongside the two it comes from, even when nothing.
+            'gross_profit_margin': formatLang(self.env, self.gross_profit_margin)
+                                   if self.bill_rate or self.salary_cost else '',
             'billing_frequency': label('billing_frequency'),
             'billing_start': short_date(self.billing_start_date),
             'documents': len(self._get_documents()),

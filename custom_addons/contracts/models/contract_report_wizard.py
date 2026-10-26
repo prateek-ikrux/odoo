@@ -4,7 +4,7 @@ import base64
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from .contract import STATE_LABELS, STATE_SELECTION, TYPE_SELECTION
+from .contract import CONTRACT_TYPE_SELECTION, STATE_LABELS, STATE_SELECTION, TYPE_SELECTION
 from .contract_report_xlsx import MSA_COLUMNS, SOW_COLUMNS, build_contract_report_xlsx
 
 # Per-section workbook settings: columns, worksheet name, download filename.
@@ -42,8 +42,8 @@ class ContractReportWizard(models.TransientModel):
         'res.users', string='Created By',
         help="Leave empty to include contracts created by anyone.",
     )
-    type_ids = fields.Many2many(
-        'contracts.type', string='Contract Type',
+    billing_mode = fields.Selection(
+        CONTRACT_TYPE_SELECTION, string='Contract Type',
         help="Leave empty to include every contract type. Overarching "
              "contracts only.",
     )
@@ -96,8 +96,8 @@ class ContractReportWizard(models.TransientModel):
             domain.append(('state', '=', self.state))
         if self.created_by_ids:
             domain.append(('created_by_id', 'in', self.created_by_ids.ids))
-        if self.contract_type == 'msa' and self.type_ids:
-            domain.append(('type_id', 'in', self.type_ids.ids))
+        if self.contract_type == 'msa' and self.billing_mode:
+            domain.append(('billing_mode', '=', self.billing_mode))
         if self.start_date_from:
             domain.append(('start_date', '>=', self.start_date_from))
         if self.start_date_to:
@@ -139,8 +139,8 @@ class ContractReportWizard(models.TransientModel):
             lines.append(_("Status: %s", STATE_LABELS.get(self.state, self.state)))
         if self.created_by_ids:
             lines.append(_("Created By: %s", ', '.join(self.created_by_ids.mapped('name'))))
-        if self.contract_type == 'msa' and self.type_ids:
-            lines.append(_("Contract Type: %s", ', '.join(self.type_ids.mapped('name'))))
+        if self.contract_type == 'msa' and self.billing_mode:
+            lines.append(_("Contract Type: %s", dict(CONTRACT_TYPE_SELECTION)[self.billing_mode]))
         if self.start_date_from or self.start_date_to:
             lines.append(_(
                 "Start Date: %(start)s to %(end)s",
@@ -172,6 +172,8 @@ class ContractReportWizard(models.TransientModel):
         term_labels = dict(Contract._fields['term']._description_selection(self.env))
         frequency_labels = dict(
             Contract._fields['billing_frequency']._description_selection(self.env))
+        guarantee_labels = dict(
+            Contract._fields['guarantee_period']._description_selection(self.env))
         rows = []
         for seq, contract in enumerate(contracts, start=1):
             attachments = contract._get_documents()
@@ -179,7 +181,7 @@ class ContractReportWizard(models.TransientModel):
             rows.append({
                 'seq': seq,
                 'client': contract.client or '',
-                'contract_type': contract.type_id.name or '',
+                'contract_type': dict(CONTRACT_TYPE_SELECTION).get(contract.billing_mode, ''),
                 'candidate': contract.candidate or '',
                 'role': contract.role or '',
                 'created_by': contract.created_by_id.name or '',
@@ -198,10 +200,15 @@ class ContractReportWizard(models.TransientModel):
                 'annual_appraisal_due': contract.annual_appraisal_due,
                 'extended_end_date': contract.extended_end_date,
                 'remarks': contract.remarks or '',
-                # Billing: the budget on an FTE MSA, the rest on an SOW.
-                # Whatever does not apply is empty, and shows as N/A.
+                # Billing: the FTE terms on an MSA doing FTE, the rest on an
+                # SOW. Whatever does not apply is empty, and shows as N/A.
                 'budget': contract.budget,
+                'guarantee_period': guarantee_labels.get(contract.guarantee_period, ''),
+                'fte_fee': contract._fte_fee_label(),
                 'bill_rate': contract.bill_rate,
+                'salary_cost': contract.salary_cost,
+                'gross_profit_margin': contract.gross_profit_margin
+                                       if contract.bill_rate or contract.salary_cost else None,
                 'billing_frequency': frequency_labels.get(contract.billing_frequency, ''),
                 'billing_start_date': contract.billing_start_date,
             })

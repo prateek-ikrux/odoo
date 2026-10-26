@@ -31,7 +31,7 @@
 
                 <field name="contract_type" column_invisible="1"/>
                 <field name="client"/>
-                <field name="type_id" optional="show"
+                <field name="billing_mode" optional="show"
                        column_invisible="context.get('default_contract_type') != 'msa'"/>
                 <field name="poc" optional="show"/>
                 <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
@@ -44,19 +44,36 @@
                        optional="show"/>
                 <field name="extended_end_date" widget="contracts_date" optional="hide"/>
                 <field name="annual_appraisal_due" widget="contracts_date" optional="hide"/>
-                <!-- FTE is billed on the MSA by budget, consulting on each SOW
-                     by bill rate, on a billing cycle. Both are full figures. -->
+                <!-- An MSA doing FTE carries the FTE terms agreed with the
+                     client, each hire being billed on its own placement;
+                     consulting is billed on each SOW by bill rate against
+                     salary or cost, on a billing cycle from a start date.
+                     Amounts are full figures. -->
                 <field name="budget" optional="hide"
+                       column_invisible="context.get('default_contract_type') != 'msa'"/>
+                <field name="guarantee_period" optional="hide"
+                       column_invisible="context.get('default_contract_type') != 'msa'"/>
+                <field name="fte_fee_type" optional="hide"
+                       column_invisible="context.get('default_contract_type') != 'msa'"/>
+                <field name="fte_fee_value" optional="hide"
                        column_invisible="context.get('default_contract_type') != 'msa'"/>
                 <field name="bill_rate" optional="show"
                        column_invisible="context.get('default_contract_type') != 'sow'"/>
+                <field name="salary_cost" optional="hide"
+                       column_invisible="context.get('default_contract_type') != 'sow'"/>
+                <field name="gross_profit_margin" optional="show"
+                       column_invisible="context.get('default_contract_type') != 'sow'"/>
                 <field name="billing_frequency" optional="hide"
                        column_invisible="context.get('default_contract_type') != 'sow'"/>
-                <field name="billing_start_date" widget="contracts_date" optional="hide"/>
+                <field name="billing_start_date" widget="contracts_date" optional="hide"
+                       column_invisible="context.get('default_contract_type') != 'sow'"/>
                 <field name="days_left" string="Days Left"
                        invisible="term == 'until_completion'"/>
                 <field name="attachment_count" string="Attachments" optional="show"/>
                 <field name="child_contract_count" string="Linked"
+                       column_invisible="context.get('default_contract_type') != 'msa'"
+                       optional="hide"/>
+                <field name="fte_placement_count" string="FTE Placements"
                        column_invisible="context.get('default_contract_type') != 'msa'"
                        optional="hide"/>
                 <field name="termination_date" widget="contracts_date" optional="hide"/>
@@ -117,6 +134,16 @@
                                 <span class="o_stat_text">Linked</span>
                             </div>
                         </button>
+                        <button name="action_view_fte_placements"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-user-plus"
+                                invisible="contract_type != 'msa' or not id or billing_mode not in ('fte', 'both')">
+                            <div class="o_stat_info">
+                                <field name="fte_placement_count" class="o_stat_value"/>
+                                <span class="o_stat_text">FTE Placements</span>
+                            </div>
+                        </button>
                     </div>
 
                     <widget name="web_ribbon" title="Terminated" bg_color="text-bg-danger"
@@ -153,7 +180,10 @@
                             </div>
                             <!-- The date is only asked for once the contract is
                                  said to be extended; answering No clears it.
-                                 A contract with no end has nothing to extend. -->
+                                 A contract with no end has nothing to extend.
+                                 Extending an MSA extends the agreement: the
+                                 SOWs under it can run on, and hires can still
+                                 be made through it. -->
                             <field name="is_extended" widget="radio"
                                    options="{'horizontal': true}"
                                    invisible="term == 'until_completion'"/>
@@ -177,14 +207,12 @@
                                    invisible="state != 'terminated'"/>
                         </group>
                         <group string="Ownership" name="ownership">
-                            <!-- Only the types an admin keeps in the master
-                                 list; nothing is added from here. A placed
-                                 contract has no type of its own. -->
-                            <field name="type_id"
-                                   options="{'no_create': True, 'no_open': True}"
+                            <!-- One of three, Consulting to start with. A
+                                 placed contract has no type of its own. -->
+                            <field name="billing_mode" widget="radio"
+                                   options="{'horizontal': true}"
                                    invisible="contract_type != 'msa'"
                                    required="contract_type == 'msa'"/>
-                            <field name="billing_mode" invisible="1"/>
                             <field name="poc"/>
                             <field name="created_by_id" widget="many2one_avatar_user" readonly="1"/>
                             <field name="create_date" widget="contracts_datetime" string="Created On" readonly="1"/>
@@ -197,19 +225,32 @@
                         </group>
                     </group>
 
-                    <!-- An MSA carries billing only for FTE: consulting is
-                         billed on each SOW placed under it. An SOW is always
-                         consulting, so always billed. -->
-                    <group string="Billing" name="billing"
-                           invisible="contract_type == 'msa' and billing_mode not in ('fte', 'both')">
-                        <group name="billing_terms">
-                            <field name="budget" invisible="contract_type != 'msa'"/>
-                            <field name="bill_rate" invisible="contract_type != 'sow'"/>
-                            <field name="billing_frequency" widget="radio"
-                                   options="{'horizontal': true}"
-                                   invisible="contract_type != 'sow'"/>
+                    <!-- An MSA doing FTE carries the FTE terms agreed with the
+                         client; each hire under it is billed on its own FTE
+                         placement. Consulting is billed on each SOW, which is
+                         always consulting, so always billed. -->
+                    <group string="FTE Terms" name="fte_terms"
+                           invisible="contract_type != 'msa' or billing_mode not in ('fte', 'both')">
+                        <group name="fte_amounts">
+                            <field name="budget"/>
+                            <field name="guarantee_period"/>
                         </group>
-                        <group name="billing_contact">
+                        <group name="fte_fee">
+                            <field name="fte_fee_type" widget="radio"
+                                   options="{'horizontal': true}"/>
+                            <field name="fte_fee_value" invisible="not fte_fee_type"/>
+                        </group>
+                    </group>
+                    <group string="Billing" name="billing" invisible="contract_type != 'sow'">
+                        <group name="billing_terms">
+                            <field name="bill_rate"/>
+                            <field name="salary_cost"/>
+                            <field name="gross_profit_margin"
+                                   decoration-danger="gross_profit_margin &lt; 0"/>
+                            <field name="billing_frequency" widget="radio"
+                                   options="{'horizontal': true}"/>
+                        </group>
+                        <group name="billing_dates">
                             <field name="billing_start_date" widget="contracts_date"/>
                         </group>
                     </group>
@@ -236,6 +277,7 @@
                                     <field name="start_date" widget="contracts_date"/>
                                     <field name="end_date" widget="contracts_date"/>
                                     <field name="bill_rate" optional="show"/>
+                                    <field name="gross_profit_margin" optional="hide"/>
                                     <field name="days_left"/>
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'active'"
@@ -273,6 +315,28 @@
                                 Nothing has been placed under this contract yet.
                             </div>
                         </page>
+                        <!-- Read here, recorded under FTE Placements or from the
+                             button above, which opens them for this MSA. -->
+                        <page string="FTE Placements" name="fte_placements"
+                              invisible="contract_type != 'msa' or billing_mode not in ('fte', 'both')">
+                            <field name="fte_placement_ids" readonly="1" nolabel="1">
+                                <list>
+                                    <field name="candidate"/>
+                                    <field name="date_of_joining" widget="contracts_date"/>
+                                    <field name="skillset" optional="show"/>
+                                    <field name="offered_ctc" optional="show"/>
+                                    <field name="fee_type"/>
+                                    <field name="fee_value"/>
+                                    <field name="billing_date" widget="contracts_date" optional="show"/>
+                                    <field name="guarantee_end_date" widget="contracts_date" optional="hide"/>
+                                </list>
+                            </field>
+                            <div class="text-muted mt-2"
+                                 invisible="fte_placement_count">
+                                <i class="fa fa-info-circle" title="Information"/>
+                                No candidate has been hired through this contract yet.
+                            </div>
+                        </page>
                     </notebook>
                 </sheet>
                 <chatter/>
@@ -287,7 +351,7 @@
         <field name="arch" type="xml">
             <search string="Search Contracts">
                 <field name="client"/>
-                <field name="type_id"/>
+                <field name="billing_mode"/>
                 <field name="poc"/>
                 <field name="created_by_id"/>
 
@@ -313,9 +377,9 @@
                         domain="[('term', '=', 'until_completion')]"/>
                 <separator/>
                 <filter name="filter_fte" string="FTE"
-                        domain="[('type_id.billing_mode', 'in', ('fte', 'both'))]"/>
+                        domain="[('billing_mode', 'in', ('fte', 'both'))]"/>
                 <filter name="filter_consulting" string="Consulting"
-                        domain="[('type_id.billing_mode', 'in', ('consulting', 'both'))]"/>
+                        domain="[('billing_mode', 'in', ('consulting', 'both'))]"/>
                 <separator/>
                 <filter name="filter_start_date" string="Start Date" date="start_date"/>
                 <filter name="filter_end_date" string="End Date" date="end_date"/>
@@ -324,7 +388,7 @@
 
                 <group>
                     <filter name="group_client" string="Client" domain="[]" context="{'group_by': 'client'}"/>
-                    <filter name="group_type" string="Contract Type" domain="[]" context="{'group_by': 'type_id'}"/>
+                    <filter name="group_type" string="Contract Type" domain="[]" context="{'group_by': 'billing_mode'}"/>
                     <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
                     <filter name="group_created_by" string="Created By" domain="[]" context="{'group_by': 'created_by_id'}"/>
                     <filter name="group_end_date" string="End Date" domain="[]" context="{'group_by': 'end_date'}"/>
@@ -411,9 +475,33 @@
                 <attribute name="placeholder">Taken from the parent contract</attribute>
             </xpath>
 
+            <!-- A client giving both kinds of business can hire the consultant
+                 placed here: the SOW is terminated and the candidate recorded
+                 as an FTE placement under the same MSA. -->
+            <xpath expr="//header/button[@name='action_reset_to_active']" position="before">
+                <field name="parent_billing_mode" invisible="1"/>
+                <button name="action_convert_to_fte"
+                        string="Convert to FTE"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'terminated' or parent_billing_mode != 'both'"/>
+            </xpath>
+
             <!-- The linked-contracts button and tab are for the contract above;
-                 down here the useful jump is back up to it. -->
+                 down here the useful jump is back up to it - and, once the
+                 candidate has been hired, across to the FTE placement. -->
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                <field name="converted_placement_ids" invisible="1"/>
+                <button name="action_view_converted_placement"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-user-plus"
+                        invisible="not converted_placement_ids">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Converted</span>
+                        <span class="o_stat_text">to FTE</span>
+                    </div>
+                </button>
                 <button name="action_open_parent_contract"
                         type="object"
                         class="oe_stat_button"
@@ -444,7 +532,7 @@
             <filter name="filter_until_completion" position="replace"/>
             <filter name="filter_fte" position="replace"/>
             <filter name="filter_consulting" position="replace"/>
-            <field name="type_id" position="replace"/>
+            <field name="billing_mode" position="replace"/>
             <filter name="group_type" position="replace"/>
             <filter name="group_client" position="after">
                 <filter name="group_role" string="Role" domain="[]" context="{'group_by': 'role'}"/>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contracts',
-    'version': '19.0.1.22.0',
+    'version': '19.0.1.25.0',
     'category': 'Services/Contracts',
     'author': 'iKrux',
     'website': 'https://www.ikrux.com',
@@ -25,19 +25,37 @@ Every contract moves through three states:
 
 A contract records the client, the point of contact, who created it (read
 only), the start and end dates and the number of days left; its documents are
-attached from the chatter, and are optional. An overarching contract also has a contract type, picked
-from a master list kept under Contracts > Configuration > Contract Types. A
+attached from the chatter, and are optional. An overarching contract also has a contract type:
+Consulting, FTE or FTE/Consulting, Consulting unless another is picked. A
 placed contract has no type; it additionally names the candidate and the role,
 must reference the contract it sits under - one doing consulting - takes its
 client and point of contact from that contract, and has to run inside its
 period.
 
 Billing follows the business done with the client, which the contract type
-sets: FTE, Consulting, or FTE/Consulting, which does both. FTE is billed on
-the overarching contract, by a budget, with no billing frequency. Consulting is
-billed on each contract placed under it, by a bill rate, on a billing
-frequency; only a contract doing consulting takes placed contracts at all.
-Both are entered as the full figure, not in lakhs.
+sets: Consulting, FTE, or FTE/Consulting - a client giving both kinds of
+business at once. An overarching contract doing FTE carries the FTE terms
+agreed with the client: a budget, a guarantee period of 30, 60, 90 or 180
+days, and - for a client who agrees one - a standard fee, a claimed
+percentage or a flat rate. Consulting is billed on each contract placed under
+it, by a bill rate against the salary or cost of the person placed - the
+difference shown as the Gross Profit Margin - from a billing start date on a
+billing frequency; only a contract doing consulting takes placed contracts at
+all. Amounts are entered as the full figure, not in lakhs.
+
+Beside the two sections of contract, FTE Placements records every candidate
+hired by a client through a contract doing FTE: the candidate's name, date of
+joining, skillset and offered CTC, the fee claimed - a percentage or a flat
+rate, and its value, starting from the contract's standard fee where there is
+one - and the date the hire is billed on. A placement takes its client from
+the contract it was made through, and is covered by that contract's guarantee
+period, which the placement shows the end of. A contract with placements
+under it has to keep doing FTE.
+
+Under an FTE/Consulting contract, the candidate of a placed contract the
+client hires is converted to FTE from that contract: it is terminated as of
+the date of joining, and the candidate recorded as an FTE placement under the
+same overarching contract, the two linked.
 
 Before a contract runs out, a nightly scheduled action emails an internal list
 at a set of day milestones - 45, 30 and 7 days left by default. Both the
@@ -54,7 +72,9 @@ expires, shows no days left and sends no reminders, and the contracts placed
 under it are bound only by its start date. A placed contract always has an
 end date.
 
-A contract that is extended records an Extended End Date. From then on it,
+A contract that is extended records an Extended End Date. Extending an
+overarching contract extends the agreement: the contracts placed under it can
+run on, and hires can still be made through it. From then on it,
 not the original end date, is what the contract runs to - expiry, days left
 and the reminders all follow it, and extending re-arms the reminder sequence.
 A placed contract also carries the next annual appraisal date, taken from the
@@ -66,17 +86,16 @@ Configuration > Settings, kept apart from the expiry reminder recipients. Each
 one is emailed as it happens, one email per contract per save.
 
 Access is granted per user from the user form, like any other app: Contracts
-User works with MSAs and SOWs, Contracts Administrator also deletes them and
-maintains the Contract Types master list.
+User works with MSAs, SOWs and FTE placements, Contracts Administrator also
+deletes them.
 
-Each section exports its own filtered Excel report.
+MSAs and SOWs each export their own filtered Excel report.
 """,
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/contracts_security.xml',
         'security/ir.model.access.csv',
         'data/ir_config_parameter_data.xml',
-        'data/contract_type_data.xml',
         'data/contract_reminder_milestone_data.xml',
         'data/mail_template_data.xml',
         'data/ir_cron_data.xml',
@@ -84,8 +103,8 @@ Each section exports its own filtered Excel report.
         # so it has to be loaded first
         'views/contract_report_wizard_views.xml',
         'views/contract_terminate_wizard_views.xml',
-        'views/contract_type_views.xml',
         'views/contract_views.xml',
+        'views/contract_fte_placement_views.xml',
         # the settings action is referenced by the Configuration menu,
         # so it has to be loaded first
         'views/res_config_settings_views.xml',

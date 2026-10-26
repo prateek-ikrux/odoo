@@ -23,11 +23,9 @@
                 <group>
                     <group string="Contract" name="contract_filters">
                         <field name="client" placeholder="All clients..."/>
-                        <field name="type_ids"
+                        <field name="billing_mode"
                                invisible="contract_type != 'msa'"
-                               widget="many2many_tags"
-                               placeholder="All contract types..."
-                               options="{'no_create_edit': True}"/>
+                               placeholder="All contract types..."/>
                         <field name="state" placeholder="All statuses..."/>
                         <field name="created_by_ids"
                                widget="many2many_tags"

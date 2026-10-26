@@ -15,7 +15,7 @@
         <field name="sequence">10</field>
         <field name="privilege_id" ref="res_groups_privilege_contracts"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-        <field name="comment">Can see, create and edit MSAs and SOWs, and export them to Excel.</field>
+        <field name="comment">Can see, create and edit MSAs, SOWs and FTE placements, and export MSAs and SOWs to Excel.</field>
     </record>
 
     <record id="group_contracts_manager" model="res.groups">
@@ -24,7 +24,7 @@
         <field name="privilege_id" ref="res_groups_privilege_contracts"/>
         <field name="implied_ids" eval="[(4, ref('group_contracts_user'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
-        <field name="comment">Can also delete contracts and maintain the Contract Types master list.</field>
+        <field name="comment">Can also delete contracts and FTE placements.</field>
     </record>
 
 </odoo>

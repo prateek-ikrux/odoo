@@ -3,7 +3,8 @@ access_contracts_contract_user,contracts.contract.user,model_contracts_contract,
 access_contracts_contract_manager,contracts.contract.manager,model_contracts_contract,group_contracts_manager,1,1,1,1
 access_contracts_report_wizard,contracts.report.wizard.user,model_contracts_report_wizard,group_contracts_user,1,1,1,1
 access_contracts_terminate_confirm,contracts.terminate.confirm.user,model_contracts_terminate_confirm,group_contracts_user,1,1,1,0
-access_contracts_type_user,contracts.type.user,model_contracts_type,group_contracts_user,1,0,0,0
-access_contracts_type_manager,contracts.type.manager,model_contracts_type,group_contracts_manager,1,1,1,1
 access_contracts_reminder_milestone_user,contracts.reminder.milestone.user,model_contracts_reminder_milestone,group_contracts_user,1,0,0,0
 access_contracts_reminder_milestone_system,contracts.reminder.milestone.system,model_contracts_reminder_milestone,base.group_system,1,1,1,1
+access_contracts_fte_conversion_user,contracts.fte.conversion.user,model_contracts_fte_conversion,group_contracts_user,1,1,1,1
+access_contracts_fte_placement_user,contracts.fte.placement.user,model_contracts_fte_placement,group_contracts_user,1,1,1,0
+access_contracts_fte_placement_manager,contracts.fte.placement.manager,model_contracts_fte_placement,group_contracts_manager,1,1,1,1
